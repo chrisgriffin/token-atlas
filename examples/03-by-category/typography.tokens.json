@@ -1,0 +1,21 @@
+{
+  "type": {
+    "body": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": ["Inter", "system-ui", "sans-serif"],
+        "fontSize": { "value": 1, "unit": "rem" },
+        "fontWeight": 400,
+        "letterSpacing": { "value": 0, "unit": "px" },
+        "lineHeight": 1.5
+      }
+    },
+    "link-color": {
+      "$type": "color",
+      "$value": "{color.brand}",
+      "$description": "Cross-file alias — hover shows the source file, Cmd+click jumps to it"
+    },
+    "link-color-hover": { "$type": "color", "$value": "{color.brand-dark}" },
+    "heading-margin": { "$type": "dimension", "$value": "{space.lg}" }
+  }
+}

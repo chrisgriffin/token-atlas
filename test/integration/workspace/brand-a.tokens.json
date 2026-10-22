@@ -1,0 +1,8 @@
+{
+  "brand": {
+    "$type": "color",
+    "primary": {
+      "$value": { "colorSpace": "srgb", "components": [0.8, 0, 0], "hex": "#cc0000" }
+    }
+  }
+}

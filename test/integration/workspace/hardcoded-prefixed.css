@@ -1,0 +1,5 @@
+/* Uses the ds- export prefix, so the replace fix must keep it. */
+.card {
+  background: var(--ds-color-base-slate-900);
+  border-color: #0f172a;
+}

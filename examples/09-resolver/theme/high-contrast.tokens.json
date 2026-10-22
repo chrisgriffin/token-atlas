@@ -1,0 +1,7 @@
+{
+  "theme": {
+    "$type": "color",
+    "background": { "$value": "{color.black}" },
+    "text": { "$value": "{color.white}" }
+  }
+}

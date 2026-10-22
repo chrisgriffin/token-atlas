@@ -1,0 +1,14 @@
+{
+  "color": {
+    "$type": "color",
+    "brand": {
+      "$value": { "colorSpace": "srgb", "components": [0.231, 0.51, 0.965], "hex": "#3b82f6" }
+    },
+    "brand-dark": {
+      "$value": { "colorSpace": "srgb", "components": [0.145, 0.388, 0.922], "hex": "#2563eb" }
+    },
+    "neutral-900": {
+      "$value": { "colorSpace": "srgb", "components": [0.059, 0.09, 0.165], "hex": "#0f172a" }
+    }
+  }
+}

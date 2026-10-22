@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Token Atlas lint config",
+  "description": "Token lint conventions for this workspace folder. Every rule is silent until its key is set: Token Atlas ships no opinions of its own.",
+  "type": "object",
+  "additionalProperties": false,
+  "patternProperties": { "^_": { "description": "A comment; ignored." } },
+  "properties": {
+    "$schema": { "type": "string" },
+    "tiers": {
+      "description": "Token tiers, primitive first, e.g. [\"base\", \"system\", \"component\"]. A tier is a token path's first segment (before any \"/mode\" suffix). Aliases must point down the tiers. Fewer than two: the rule is silent.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "vocabularies": {
+      "description": "Closed sets of leaf names. A token whose parent path matches one of an entry's paths must have a leaf in its values; the first matching entry governs.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["paths", "values"],
+        "additionalProperties": false,
+        "patternProperties": { "^_": {} },
+        "properties": {
+          "paths": {
+            "description": "Parent-path patterns, e.g. \"system.radius\" or \"*.state\". `*` matches exactly one segment.",
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "values": {
+            "description": "The allowed leaf names.",
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "rampPaths": {
+      "description": "Color ramp groups, e.g. \"color.neutral\" or \"color.*.ramp\" (`*` is one segment). Ordered by numeric step, each ramp's lightness must move one way.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "naming": {
+      "type": "object",
+      "required": ["case"],
+      "additionalProperties": false,
+      "properties": {
+        "case": {
+          "description": "The case every group and token name follows. Numeric names and vocabulary values are always allowed.",
+          "enum": ["kebab-case", "camelCase", "snake_case", "PascalCase"]
+        }
+      }
+    },
+    "contrastPairs": {
+      "description": "Foreground/background token pairs and the WCAG contrast each must reach. A pair is checked on resolved values, in the file that defines its foreground, under the active token set.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["foreground", "background"],
+        "additionalProperties": false,
+        "patternProperties": { "^_": {} },
+        "properties": {
+          "foreground": {
+            "description": "The text or icon color's token path, e.g. \"color.text.default\". Findings appear on its definition.",
+            "type": "string",
+            "minLength": 1
+          },
+          "background": {
+            "description": "The surface color's token path, e.g. \"color.surface.default\".",
+            "type": "string",
+            "minLength": 1
+          },
+          "target": { "$ref": "#/definitions/contrastTarget" }
+        }
+      }
+    },
+    "rules": {
+      "description": "Severity per rule. A rule whose config is set but which is not listed here runs at \"warn\".",
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": { "^_": {} },
+      "properties": {
+        "token-atlas/tier-alias-inverted": { "$ref": "#/definitions/severity" },
+        "token-atlas/vocabulary-invalid": { "$ref": "#/definitions/severity" },
+        "token-atlas/ramp-not-monotonic": { "$ref": "#/definitions/severity" },
+        "token-atlas/name-case": { "$ref": "#/definitions/severity" },
+        "token-atlas/contrast-insufficient": { "$ref": "#/definitions/severity" }
+      }
+    }
+  },
+  "definitions": {
+    "severity": { "enum": ["off", "warn", "error"] },
+    "contrastTarget": {
+      "description": "A WCAG threshold: AA (4.5:1), AA-large (3:1), AAA (7:1), AAA-large (4.5:1), non-text (3:1), or a ratio from 1 to 21. Defaults to AA.",
+      "oneOf": [
+        { "enum": ["AA", "AA-large", "AAA", "AAA-large", "non-text"] },
+        { "type": "number", "minimum": 1, "maximum": 21 }
+      ]
+    }
+  }
+}

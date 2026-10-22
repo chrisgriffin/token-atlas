@@ -1,0 +1,33 @@
+name: Build Check
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: build-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
+    permissions:
+      contents: read
+      packages: read
+    uses: chrisgriffin/workflows/.github/workflows/_reusable-node-ci.yml@v1
+    with:
+      node_version: "22"
+      claude_md_budget: "8500"
+      docs_owed: ""
+      docs_only_paths: docs/** .claude/** .github/CODEOWNERS
+      run: |
+        npm run format:check
+        npm run typecheck
+        npm test
+        npm run build
+        xvfb-run -a npm run test:integration
+    secrets:
+      NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

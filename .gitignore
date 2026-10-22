@@ -1,0 +1,21 @@
+node_modules/
+dist/
+# Integration fixture: build output tokenAtlas.exclude must keep out of the panel.
+!test/integration/workspace/dist/
+out/
+*.vsix
+.DS_Store
+*.log
+.vscode-test/
+.remember/
+
+# Local agent tooling output, never committed.
+morning-briefing.md
+pm-briefing.md
+recovery-recap.md
+
+# Local agent tooling, never committed.
+.operator/
+
+# Spec Kit machine-local state, per checkout.
+.specify/feature.json

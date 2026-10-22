@@ -1,0 +1,11 @@
+/* Exported stylesheet: custom properties an export tool built from the tokens
+   in primitives.tokens.json, plus one that is not a token at all. */
+:root {
+  --color-base-white: #ffffff;
+  --not-a-token-at-all: 3px;
+}
+
+.card {
+  background: var(--color-base-white);
+  border-radius: var(--not-a-token-at-all);
+}

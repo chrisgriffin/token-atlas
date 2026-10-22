@@ -1,0 +1,9 @@
+{
+  "theme": {
+    "$type": "color",
+    "background": { "$value": "{color.base.slate-900}" },
+    "surface": { "$value": "{color.base.slate-800}" },
+    "text": { "$value": "{color.base.white}" },
+    "accent": { "$value": "{color.base.blue-400}" }
+  }
+}

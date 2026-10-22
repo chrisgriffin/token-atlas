@@ -1,0 +1,5 @@
+// A var() usage in Sass, for the inlay hint suite, and a commented-out one.
+.card {
+  color: var(--color-base-blue-600);
+  // outline-color: var(--color-base-blue-600);
+}

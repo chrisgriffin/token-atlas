@@ -1,0 +1,382 @@
+{
+  "name": "token-atlas",
+  "displayName": "Token Atlas",
+  "description": "Language features for W3C/DTCG design tokens in VS Code: hovers, completion, go-to-definition, rename and validation on token JSON and on exported CSS/Sass/JS, plus an opt-in visual editor.",
+  "version": "0.30.2",
+  "publisher": "chrisgriffin",
+  "icon": "media/icon.png",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0",
+    "node": ">=22"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "design tokens",
+    "dtcg",
+    "design system",
+    "tokens",
+    "theming"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chrisgriffin/token-atlas.git"
+  },
+  "bugs": {
+    "url": "https://github.com/chrisgriffin/token-atlas/issues"
+  },
+  "homepage": "https://github.com/chrisgriffin/token-atlas#readme",
+  "qna": "https://github.com/chrisgriffin/token-atlas/issues",
+  "main": "./dist/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true,
+      "description": "Token Atlas only reads and edits token files through the workspace API; it runs no workspace code."
+    },
+    "virtualWorkspaces": true
+  },
+  "activationEvents": [
+    "onStartupFinished",
+    "onLanguage:json",
+    "onLanguage:jsonc",
+    "onLanguage:css",
+    "onLanguage:scss",
+    "onLanguage:sass",
+    "onLanguage:less",
+    "onLanguage:javascript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact"
+  ],
+  "contributes": {
+    "jsonValidation": [
+      {
+        "fileMatch": "token-atlas.lint.json",
+        "url": "./schemas/token-atlas.lint.schema.json"
+      }
+    ],
+    "configuration": {
+      "title": "Token Atlas",
+      "properties": {
+        "tokenAtlas.include": {
+          "type": "array",
+          "scope": "resource",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/*.json",
+            "**/*.tokens"
+          ],
+          "markdownDescription": "Globs for files Token Atlas considers as design tokens. Each one is confirmed by a DTCG content check (`$value` / `$type`), so the default of every JSON file finds tokens under any name. Narrow it (e.g. `[\"tokens/**/*.json\"]`) in a very large repo."
+        },
+        "tokenAtlas.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/node_modules/**",
+            "**/.git/**",
+            "**/dist/**",
+            "**/build/**",
+            "**/out/**",
+            "**/coverage/**",
+            "**/.next/**",
+            "**/.vscode-test/**",
+            "**/package.json",
+            "**/package-lock.json",
+            "**/tsconfig*.json"
+          ],
+          "scope": "window",
+          "markdownDescription": "Globs to keep out of workspace token discovery: excluded files do not appear in the Tokens panel, are not offered as alias targets, and raise no cross-file collision warnings. Open one directly and it still gets hovers, validation and the visual editor. The default skips build output and tooling files; setting it replaces that list, and `[]` excludes nothing. JSON files over 2 MB are never scanned."
+        },
+        "tokenAtlas.defaultEditor": {
+          "type": "string",
+          "enum": [
+            "text",
+            "visual"
+          ],
+          "enumDescriptions": [
+            "Open token files in the JSON text editor, with Token Atlas's language features.",
+            "Open token files in the Token Atlas visual editor."
+          ],
+          "default": "text",
+          "scope": "resource",
+          "markdownDescription": "Which editor a design-token file opens in. `visual` reopens any JSON file that sniffs as DTCG in the Token Atlas token editor; \"Open as JSON\" still sends a file back to text for as long as it stays open."
+        },
+        "tokenAtlas.rootFontSize": {
+          "type": "number",
+          "scope": "resource",
+          "default": 16,
+          "markdownDescription": "Root font size in `px`, used to convert between `px` and `rem` in dimension hovers."
+        },
+        "tokenAtlas.contrastTarget": {
+          "type": "string",
+          "scope": "resource",
+          "enum": [
+            "AA",
+            "AA-large",
+            "AAA",
+            "AAA-large",
+            "non-text"
+          ],
+          "enumDescriptions": [
+            "WCAG 1.4.3 AA, normal text: 4.5:1.",
+            "WCAG 1.4.3 AA, large text (18pt, or 14pt bold): 3:1.",
+            "WCAG 1.4.6 AAA, normal text: 7:1.",
+            "WCAG 1.4.6 AAA, large text (18pt, or 14pt bold): 4.5:1.",
+            "WCAG 1.4.11 AA, UI components and graphics: 3:1."
+          ],
+          "default": "AA",
+          "markdownDescription": "WCAG 2.2 contrast level that colour hovers and the visual editor's colour preview judge each contrast ratio against, marking it pass or fail."
+        },
+        "tokenAtlas.defaultColorSpace": {
+          "type": "string",
+          "scope": "resource",
+          "enum": [
+            "srgb",
+            "srgb-linear",
+            "hsl",
+            "hwb",
+            "lab",
+            "lch",
+            "oklab",
+            "oklch",
+            "display-p3",
+            "a98-rgb",
+            "prophoto-rgb",
+            "rec2020",
+            "xyz-d65",
+            "xyz-d50"
+          ],
+          "default": "srgb",
+          "markdownDescription": "Colour space new colour tokens are created in, in the visual editor. Existing tokens keep their own space."
+        },
+        "tokenAtlas.defaultDimensionUnit": {
+          "type": "string",
+          "scope": "resource",
+          "enum": [
+            "px",
+            "rem"
+          ],
+          "default": "px",
+          "markdownDescription": "Unit new dimension tokens are created in, in the visual editor. `rem` values are derived from `#tokenAtlas.rootFontSize#`."
+        },
+        "tokenAtlas.modeView": {
+          "type": "string",
+          "enum": [
+            "single",
+            "sideBySide"
+          ],
+          "enumDescriptions": [
+            "One mode at a time, chosen from the toolbar's mode dropdown.",
+            "Every mode in its own column, as Figma shows a variable's modes."
+          ],
+          "default": "single",
+          "markdownDescription": "How the visual editor shows a mode file: a file a DTCG resolver modifier lists as one of its contexts, such as `light.tokens.json` under a `theme` modifier. The toolbar toggle changes this setting."
+        },
+        "tokenAtlas.validation": {
+          "type": "string",
+          "scope": "resource",
+          "enum": [
+            "on",
+            "off"
+          ],
+          "default": "on",
+          "markdownDescription": "Report DTCG validation problems (unresolved references, reference cycles, malformed values) as diagnostics, and strike through each use of a `$deprecated` token in token files, resolver files and open CSS, Sass, Less, JS and TS files."
+        },
+        "tokenAtlas.pathCollisions": {
+          "type": "string",
+          "scope": "window",
+          "enum": [
+            "warning",
+            "information",
+            "off"
+          ],
+          "default": "information",
+          "markdownDescription": "How to report a token path defined in more than one file. The check runs across the whole workspace, so this is a window-level setting. Paths shared only by one DTCG resolver modifier's files (its contexts, such as `light` and `dark`, or the files layered inside one context) are alternatives and never reported; a set file beside them still is. Identical paths across brand or theme files are often deliberate, so the default is `information`; raise it to `warning` or turn it `off`."
+        },
+        "tokenAtlas.hardcodedValues": {
+          "type": "string",
+          "scope": "window",
+          "enum": [
+            "off",
+            "hint",
+            "warning"
+          ],
+          "default": "off",
+          "markdownDescription": "In CSS, SCSS, Sass and Less, report a colour or `px`/`rem` literal that equals a token in the active set, with a quick fix that replaces it with the token's exported name (`var(--…)`, `$…`, `@…`). Comments and variable definitions are skipped."
+        },
+        "tokenAtlas.unusedTokens": {
+          "type": "string",
+          "scope": "window",
+          "enum": [
+            "off",
+            "hint",
+            "information"
+          ],
+          "default": "off",
+          "markdownDescription": "Flag tokens in open token files that no `{reference}` and no CSS, Sass, Less, JS or TS identifier uses. Off by default because it scans every code file in the workspace; `hint` fades the token's name, `information` also lists it in the Problems panel."
+        },
+        "tokenAtlas.codeColorSwatches": {
+          "type": "boolean",
+          "scope": "window",
+          "default": true,
+          "markdownDescription": "Show a color swatch before each use of a color token in CSS, SCSS, Sass, Less, JS and TS (`var(--color-brand-primary)`, `$color-brand-primary`, `tokens.color.brand.primary`), in the color it resolves to in the active set."
+        },
+        "tokenAtlas.inlayHints": {
+          "type": "boolean",
+          "scope": "window",
+          "default": true,
+          "markdownDescription": "Show an inlay hint after each `{reference}` in token JSON, in tokens written inline in a resolver, and after each `var(--token)` in CSS, Sass and Less, with the value it resolves to in the active set (`= #0055ff`, `= 16px`). Hover the hint for the token's card. VS Code's own `editor.inlayHints.enabled` also applies."
+        }
+      }
+    },
+    "customEditors": [
+      {
+        "viewType": "tokenAtlas.tokenEditor.any",
+        "displayName": "Token Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.json"
+          },
+          {
+            "filenamePattern": "*.tokens"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "commands": [
+      {
+        "command": "tokenAtlas.newTokenFile",
+        "title": "Token Atlas: New Token File",
+        "icon": "$(add)"
+      },
+      {
+        "command": "tokenAtlas.openCurrent",
+        "title": "Token Atlas: Open Current File in Token Editor",
+        "icon": "$(symbol-color)"
+      },
+      {
+        "command": "tokenAtlas.revealToken",
+        "title": "Reveal Token",
+        "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.scopeToGroup",
+        "title": "Show Group in Token Editor",
+        "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.chooseActiveSet",
+        "title": "Choose Active Token Files",
+        "category": "Token Atlas"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "tokenAtlas.openCurrent",
+          "when": "tokenAtlas.isTokenDocument && (resourceLangId =~ /^jsonc?$/ || resourceExtname == .tokens)",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "tokenAtlas.revealToken",
+          "when": "false"
+        },
+        {
+          "command": "tokenAtlas.scopeToGroup",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "tokenAtlas.newTokenFile",
+          "when": "view == tokenAtlas.tokens",
+          "group": "navigation"
+        }
+      ]
+    },
+    "views": {
+      "token-atlas": [
+        {
+          "id": "tokenAtlas.tokens",
+          "name": "Tokens",
+          "contextualTitle": "Design Tokens",
+          "icon": "$(symbol-color)"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "tokenAtlas.tokens",
+        "contents": "No token files in this workspace yet.\n[New token file](command:tokenAtlas.newTokenFile)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "token-atlas",
+          "title": "Design Tokens",
+          "icon": "media/map.svg"
+        }
+      ]
+    },
+    "configurationDefaults": {
+      "[json]": {
+        "editor.quickSuggestions": {
+          "strings": true
+        }
+      },
+      "[jsonc]": {
+        "editor.quickSuggestions": {
+          "strings": true
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "test": "vitest run",
+    "test:integration": "node -e \"require('node:fs').rmSync('out',{recursive:true,force:true})\" && node esbuild.mjs --integration && vscode-test",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "package": "vsce package --no-dependencies",
+    "vscode:prepublish": "node esbuild.mjs --production",
+    "version:recommend": "conventional-recommended-bump -p conventionalcommits"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^3.9.1",
+    "conventional-changelog-cli": "^5.0.0",
+    "conventional-changelog-conventionalcommits": "^8.0.0",
+    "conventional-recommended-bump": "^10.0.0",
+    "esbuild": "^0.23.0",
+    "jsdom": "^25.0.1",
+    "prettier": "^3.8.1",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "dependencies": {
+    "colorjs.io": "^0.5.2",
+    "jsonc-parser": "^3.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "button": {
+    "$type": "color",
+    "background": { "$value": "{theme.accent}" },
+    "label": { "$value": "{theme.background}" }
+  },
+  "page": {
+    "$type": "color",
+    "background": { "$value": "{theme.background}" },
+    "text": { "$value": "{theme.text}" }
+  }
+}

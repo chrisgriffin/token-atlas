@@ -1,0 +1,20 @@
+name: Create GitHub Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  release:
+    if: github.event.pull_request.merged == true
+    permissions:
+      contents: write
+    uses: chrisgriffin/workflows/.github/workflows/_reusable-create-github-release.yml@v1
+    with:
+      node_version: "22"
+      build_command: npm ci && npm run build && npm run package
+      release_assets: ./*.vsix
+      marketplace_packages: ./*.vsix
+    secrets:
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}

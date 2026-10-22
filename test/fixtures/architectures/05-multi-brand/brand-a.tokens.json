@@ -1,0 +1,11 @@
+{
+  "primitive": {
+    "$type": "color",
+    "accent": {
+      "$value": { "colorSpace": "srgb", "components": [0.231, 0.51, 0.965], "hex": "#3b82f6" }
+    }
+  },
+  "brand": {
+    "primary": { "$type": "color", "$value": "{primitive.accent}" }
+  }
+}

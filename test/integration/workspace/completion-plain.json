@@ -1,0 +1,7 @@
+{
+  "note": "Ordinary JSON: no DTCG key, so Token Atlas must offer no completion here.",
+  "display": {
+    "colorSpace": "srgb",
+    "fallback": "{color.base.white}"
+  }
+}

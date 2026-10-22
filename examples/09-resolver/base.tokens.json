@@ -1,0 +1,19 @@
+{
+  "color": {
+    "$type": "color",
+    "white": { "$value": { "colorSpace": "srgb", "components": [1, 1, 1], "hex": "#ffffff" } },
+    "black": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "hex": "#000000" } },
+    "slate-100": {
+      "$value": { "colorSpace": "srgb", "components": [0.945, 0.961, 0.976], "hex": "#f1f5f9" }
+    },
+    "slate-900": {
+      "$value": { "colorSpace": "srgb", "components": [0.059, 0.09, 0.165], "hex": "#0f172a" }
+    },
+    "blue-400": {
+      "$value": { "colorSpace": "srgb", "components": [0.376, 0.647, 0.98], "hex": "#60a5fa" }
+    },
+    "blue-600": {
+      "$value": { "colorSpace": "srgb", "components": [0.145, 0.388, 0.922], "hex": "#2563eb" }
+    }
+  }
+}

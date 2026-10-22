@@ -1,0 +1,15 @@
+{
+  "type": {
+    "link": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "Inter",
+        "fontSize": { "value": 1, "unit": "rem" },
+        "fontWeight": 500,
+        "letterSpacing": { "value": 0, "unit": "px" },
+        "lineHeight": 1.5
+      }
+    },
+    "link-color": { "$type": "color", "$value": "{color.brand}" }
+  }
+}

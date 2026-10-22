@@ -1,0 +1,16 @@
+# Decision records
+
+This folder records the decisions this repo's own PRs implement, so each one
+travels with the code it shaped.
+
+Each record is `ADR-NNN-<slug>.md`, numbered in order within this repo. It
+opens with YAML frontmatter carrying `status` (`proposed`, `accepted`,
+`superseded` or `deprecated`), `date`, and `superseded-by: ADR-NNN` when it
+has a successor; then `# ADR-NNN: <title>`; then `## Context`,
+`## Decision` and `## Consequences`, in that order.
+
+## Records
+
+| ADR                                                  | Date       | Status   | Decision                                                                           |
+| ---------------------------------------------------- | ---------- | -------- | ---------------------------------------------------------------------------------- |
+| [ADR-001](./ADR-001-exported-identifier-matching.md) | 2026-09-07 | accepted | Match an exported identifier to a token by normalized name, with no export config. |

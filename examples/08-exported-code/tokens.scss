@@ -1,0 +1,8 @@
+// Sass variables — same hover, same Cmd+click to the definition.
+$color-green-500: #22c55e;
+$space-sm: 8px;
+
+.card {
+  border: 1px solid $color-green-500;
+  margin: $space-sm;
+}

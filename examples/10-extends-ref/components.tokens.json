@@ -1,0 +1,30 @@
+{
+  "button-danger": {
+    "$extends": "{button}",
+    "$description": "Inherits text and padding from button in base.tokens.json; overrides background.",
+    "background": { "$value": "{color.red}" }
+  },
+  "button-large": {
+    "$extends": "#/button-danger",
+    "$description": "Extends a variant: inherits danger's red background, overrides padding.",
+    "padding": {
+      "$value": { "value": { "$ref": "#/space/md/$value/value" }, "unit": "rem" }
+    }
+  },
+  "focus": {
+    "$type": "color",
+    "$description": "Blue's red and green components, a brighter blue channel.",
+    "ring": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          { "$ref": "#/color/blue/$value/components/0" },
+          { "$ref": "#/color/blue/$value/components/1" },
+          1
+        ]
+      }
+    }
+  },
+  "caption": { "$value": "{button-large.text}" },
+  "link": { "$ref": "#/button-danger/background", "$type": "color" }
+}

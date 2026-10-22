@@ -1,0 +1,11 @@
+{
+  "button": {
+    "$type": "color",
+    "background": {
+      "$value": "{brand.primary}"
+    },
+    "surface": {
+      "$value": "{light.surface}"
+    }
+  }
+}

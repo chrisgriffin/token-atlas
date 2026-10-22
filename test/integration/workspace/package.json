@@ -1,0 +1,5 @@
+{
+  "name": "fixture-package",
+  "private": true,
+  "$type": "has a DTCG key, so only tokenAtlas.exclude, not the content check, keeps it out"
+}

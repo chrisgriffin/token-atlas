@@ -1,0 +1,7 @@
+{
+  "note": "Ordinary JSON: nested objects, no DTCG key. Token Atlas must leave it alone.",
+  "build": {
+    "target": "es2022",
+    "outDir": "dist"
+  }
+}

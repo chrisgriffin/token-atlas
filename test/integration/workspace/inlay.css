@@ -1,0 +1,7 @@
+/* var() usages for the inlay hint suite: a token, a token with a fallback, a name that is no token, and a commented-out token. */
+.card {
+  color: var(--color-base-blue-600);
+  /* outline-color: var(--color-base-blue-600); */
+  background: var(--color-base-slate-900, #000);
+  border-color: var(--not-a-token-at-all);
+}

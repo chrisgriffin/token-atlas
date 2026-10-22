@@ -1,0 +1,20 @@
+{
+  "primitive": {
+    "$type": "color",
+    "accent": {
+      "$value": { "colorSpace": "srgb", "components": [0.231, 0.51, 0.965], "hex": "#3b82f6" },
+      "$description": "Brand A is blue"
+    },
+    "accent-soft": {
+      "$value": { "colorSpace": "srgb", "components": [0.876, 0.925, 0.996], "hex": "#dfecfe" }
+    }
+  },
+  "brand": {
+    "$type": "color",
+    "primary": {
+      "$value": "{primitive.accent}",
+      "$description": "Resolves to THIS brand's accent, not brand B's"
+    },
+    "primary-soft": { "$value": "{primitive.accent-soft}" }
+  }
+}

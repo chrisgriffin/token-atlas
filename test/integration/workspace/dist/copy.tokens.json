@@ -1,0 +1,6 @@
+{
+  "copied": {
+    "note": "Build output: a copy of a token file that tokenAtlas.exclude must keep out.",
+    "accent": { "$type": "color", "$value": "#123456" }
+  }
+}

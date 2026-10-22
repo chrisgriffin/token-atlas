@@ -1,0 +1,40 @@
+{
+  "name": "Example app",
+  "version": "2025-11-01",
+  "sets": {
+    "foundation": {
+      "description": "Raw palette and the components built on the theme",
+      "sources": [{ "$ref": "base.tokens.json" }, { "$ref": "components.tokens.json" }]
+    },
+    "layout": {
+      "description": "Written inline: tokens that live in the resolver itself",
+      "sources": [
+        {
+          "radius": {
+            "$type": "dimension",
+            "card": { "$value": { "value": 8, "unit": "px" } }
+          }
+        }
+      ]
+    }
+  },
+  "modifiers": {
+    "theme": {
+      "description": "Colour theme",
+      "contexts": {
+        "light": [{ "$ref": "theme/light.tokens.json" }],
+        "dark": [{ "$ref": "theme/dark.tokens.json" }],
+        "darkHighContrast": [
+          { "$ref": "theme/dark.tokens.json" },
+          { "$ref": "theme/high-contrast.tokens.json" }
+        ]
+      },
+      "default": "light"
+    }
+  },
+  "resolutionOrder": [
+    { "$ref": "#/sets/foundation" },
+    { "$ref": "#/sets/layout" },
+    { "$ref": "#/modifiers/theme" }
+  ]
+}

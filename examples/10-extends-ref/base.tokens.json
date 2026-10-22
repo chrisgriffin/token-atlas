@@ -1,0 +1,19 @@
+{
+  "color": {
+    "$type": "color",
+    "blue": { "$value": { "colorSpace": "srgb", "components": [0.2, 0.4, 0.9], "hex": "#3366e6" } },
+    "red": { "$value": { "colorSpace": "srgb", "components": [0.8, 0.13, 0.2], "hex": "#cc2233" } },
+    "white": { "$value": { "colorSpace": "srgb", "components": [1, 1, 1], "hex": "#ffffff" } }
+  },
+  "space": {
+    "$type": "dimension",
+    "md": { "$value": { "value": 12, "unit": "px" } }
+  },
+  "button": {
+    "$type": "color",
+    "$description": "The base button every variant extends.",
+    "background": { "$value": "{color.blue}" },
+    "text": { "$value": "{color.white}" },
+    "padding": { "$type": "dimension", "$value": "{space.md}" }
+  }
+}

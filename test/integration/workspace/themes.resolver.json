@@ -1,0 +1,36 @@
+{
+  "name": "Fixture themes",
+  "version": "2025-11-01",
+  "sets": {
+    "base": { "sources": [{ "$ref": "primitives.tokens.json" }] }
+  },
+  "modifiers": {
+    "theme": {
+      "contexts": {
+        "light": [{ "$ref": "light.tokens.json" }],
+        "dark": [{ "$ref": "dark.tokens.json" }],
+        "lightOverDark": [{ "$ref": "dark.tokens.json" }, { "$ref": "light.tokens.json" }],
+        "darkOverLight": [{ "$ref": "light.tokens.json" }, { "$ref": "dark.tokens.json" }]
+      },
+      "default": "light"
+    }
+  },
+  "resolutionOrder": [
+    { "$ref": "#/sets/base" },
+    { "$ref": "#/modifiers/theme" },
+    {
+      "type": "set",
+      "name": "extras",
+      "sources": [
+        { "$ref": "missing.tokens.json" },
+        { "$ref": "light.tokens.json#/nope" },
+        { "$ref": "light.tokens.json#/theme" },
+        {
+          "inline": { "$type": "number", "$value": 1 },
+          "inlineAlias": { "$type": "number", "$value": "{inline}" },
+          "edge": { "$type": "color", "$value": "{color.base.slate-800}" }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "$themes": [
+    {
+      "id": "light",
+      "name": "Light",
+      "selectedTokenSets": {
+        "light": "enabled",
+        "dark": "disabled",
+        "semantic": "enabled"
+      }
+    },
+    {
+      "id": "dark",
+      "name": "Dark",
+      "selectedTokenSets": {
+        "dark": "enabled",
+        "light": "disabled",
+        "semantic": "enabled"
+      }
+    }
+  ],
+  "$metadata": {
+    "tokenSetOrder": ["light", "dark", "semantic"]
+  },
+  "light": {
+    "surface": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [1, 1, 1],
+        "hex": "#ffffff"
+      }
+    }
+  },
+  "dark": {
+    "surface": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.07, 0.07, 0.07],
+        "hex": "#121212"
+      }
+    }
+  },
+  "semantic": {
+    "page": {
+      "$type": "color",
+      "$value": "{light.surface}"
+    }
+  }
+}

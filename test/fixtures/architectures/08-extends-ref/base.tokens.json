@@ -1,0 +1,13 @@
+{
+  "color": {
+    "$type": "color",
+    "blue": { "$value": { "colorSpace": "srgb", "components": [0.2, 0.4, 0.9], "hex": "#3366e6" } },
+    "white": { "$value": { "colorSpace": "srgb", "components": [1, 1, 1], "hex": "#ffffff" } }
+  },
+  "button": {
+    "$type": "color",
+    "background": { "$value": "{color.blue}" },
+    "text": { "$value": "{color.white}" },
+    "radius": { "$type": "dimension", "$value": { "value": 4, "unit": "px" } }
+  }
+}

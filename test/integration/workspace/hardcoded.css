@@ -1,0 +1,5 @@
+/* A stylesheet that hard-codes #0f172a, which is color.base.slate-900 in
+   primitives.tokens.json. This comment's copy must not be reported. */
+.panel {
+  color: #0f172a;
+}

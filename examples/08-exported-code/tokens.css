@@ -1,0 +1,14 @@
+/* Hover any custom property — Token Atlas matches it back to the token in tokens.json. */
+:root {
+  --color-blue-500: #3b82f6;
+  --color-overlay: rgb(15 23 42 / 60%);
+  --space-md: 16px;
+  --space-xl: 2rem;
+  /* A prefixed export still matches: leading segments fall away. */
+  --ds-color-red-500: #ef4444;
+}
+
+.button {
+  background: var(--color-blue-500);
+  padding: var(--space-md);
+}
