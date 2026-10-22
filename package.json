@@ -5,12 +5,17 @@
   "version": "0.30.2",
   "publisher": "chrisgriffin",
   "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1C1F3F",
+    "theme": "dark"
+  },
   "license": "MIT",
   "engines": {
     "vscode": "^1.90.0",
     "node": ">=22"
   },
   "categories": [
+    "Linters",
     "Visualization",
     "Other"
   ],
@@ -19,7 +24,12 @@
     "dtcg",
     "design system",
     "tokens",
-    "theming"
+    "theming",
+    "w3c",
+    "tokens studio",
+    "style dictionary",
+    "css variables",
+    "color"
   ],
   "repository": {
     "type": "git",
@@ -350,7 +360,7 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "package": "vsce package --no-dependencies",
+    "package": "vsce package --no-dependencies --githubBranch main",
     "vscode:prepublish": "node esbuild.mjs --production",
     "version:recommend": "conventional-recommended-bump -p conventionalcommits"
   },

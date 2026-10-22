@@ -1,18 +1,20 @@
 # Token Atlas
 
-Design tokens in VS Code. Open a [W3C/DTCG token file](https://www.designtokens.org/tr/drafts/format/) and it behaves like code: completion, hover, go-to-definition, find references, rename, color swatches, and validation. The same features work on the CSS, Sass, and JS your export tool writes, so `var(--color-brand-primary)` resolves back to the token it came from. A visual table editor is one click away for when you want to scan or bulk-edit. Your tokens stay in git as plain JSON with one-line diffs. There is no Figma sync to set up and nothing to subscribe to.
+Design tokens in VS Code. Open a [W3C/DTCG token file](https://www.designtokens.org/tr/2025.10/format/) and it behaves like code: completion, hover, go-to-definition, find references, rename, color swatches, and validation. The same features work on the CSS, Sass, and JS your export tool writes, so `var(--color-brand-primary)` resolves back to the token it came from. A visual table editor is one click away for when you want to scan or bulk-edit. Your tokens stay in git as plain JSON with one-line diffs. There is no Figma sync to set up and nothing to subscribe to.
 
 ![Hovering an alias in a token file shows the resolved color, its hex and OKLCH values, and WCAG contrast against white and black](media/editor-hover.png)
 
 ## Install
 
-Token Atlas is not on the Marketplace yet. Download the `.vsix` from the latest [release](https://github.com/chrisgriffin/token-atlas/releases) and install it from a terminal:
+Search for **Token Atlas** in the Extensions view and click Install. Or press Cmd+P (Ctrl+P) and run `ext install chrisgriffin.token-atlas`, or from a terminal:
 
 ```
-code --install-extension token-atlas-<version>.vsix --force
+code --install-extension chrisgriffin.token-atlas
 ```
 
-Then reload the window (`Developer: Reload Window`). Needs VS Code 1.90 or newer.
+Needs VS Code 1.90 or newer.
+
+Every [release](https://github.com/chrisgriffin/token-atlas/releases) also carries the `.vsix`, for an editor without Marketplace access. Install it with `code --install-extension token-atlas-<version>.vsix --force`, then reload the window.
 
 ## Getting started
 
@@ -30,7 +32,7 @@ Want something to poke at first? Clone this repo and open [`examples/`](examples
 - Completion for `{alias}` references, `$type`, and `colorSpace`.
 - Hover cards with the resolved value, the alias chain, hex and OKLCH for colors, and px, rem, and pt for dimensions.
 - Inlay hints next to every reference: `{primitive.color.blue-500} = #3b82f6`.
-- Color swatches inline, with a checkerboard behind translucent colors.
+- Color swatches inline, and a checkerboard behind translucent colors in hovers.
 - Go to definition and find references across every token file in the workspace.
 - Outline view, plus _Go to Symbol in Workspace_ (Cmd+T) by token path.
 - Problems for unresolved references, reference cycles, bad values, and tokens that inherit no `$type`.
@@ -63,7 +65,7 @@ The _Design Tokens_ view in the activity bar lists every token file in the works
 
 When the same token path lives in several files (a light and a dark theme, two brands, web and iOS), the status bar shows which set is active. Click it to switch, and every hover and hint re-resolves.
 
-- A [DTCG resolver](https://www.designtokens.org/tr/drafts/resolver/) file (`*.resolver.json`) adds each of its resolutions to the picker, such as _theme: dark_. Sources can be whole files, fragments like `theme.tokens.json#/dark`, or inline tokens. The resolver file is validated too.
+- A [DTCG resolver](https://www.designtokens.org/tr/2025.10/resolver/) file (`*.resolver.json`) adds each of its resolutions to the picker, such as _theme: dark_. Sources can be whole files, fragments like `theme.tokens.json#/dark`, or inline tokens. The resolver file is validated too.
 - Tokens Studio `$themes` show up in the same picker.
 
 The active set is remembered per workspace and never written to the repo.

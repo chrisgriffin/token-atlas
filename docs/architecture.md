@@ -46,7 +46,7 @@ _Reopen Editor With… → Token Editor_ hands the file to `host/tokenEditorProv
 - `examples/` — hands-on token setups, one folder per architecture seen in the wild, for trying the extension by hand; `fixtures/` is a smaller sample for the same purpose.
 - `docs/` — this file and the rest of the written record; `docs/adr/` holds the decision records.
 - `specs/` — the Spec Kit spec, plan and tasks behind past pieces of work.
-- `media/` — the activity-bar icon, the Marketplace icon (`icon.png`, rendered from `icon.svg`), and the screenshots the README embeds.
+- `media/` — the activity-bar icon, the Marketplace icon (`icon.png`, rendered from `icon.svg`), and the screenshots the README embeds (left out of the `.vsix`; the listing loads them from GitHub).
 - `schemas/` — the JSON Schema VS Code uses for completion and checks in a `token-atlas.lint.json`, wired up by `contributes.jsonValidation`.
 - `.github/workflows/` — CI and release triggers; `.vscode/` — launch and task definitions for developing the extension; `.claude/` — permissions and hooks for agent sessions in this repo.
 - `esbuild.mjs` produces two bundles: `dist/extension.js` (Node, CommonJS, with `vscode` left external) and `dist/webview.js` (browser, IIFE). Because the extension is packaged with `--no-dependencies`, the host bundle has to inline everything; a post-build guard fails the build if any unresolved relative `require` survives.
@@ -57,7 +57,7 @@ _Reopen Editor With… → Token Editor_ hands the file to `host/tokenEditorProv
 - **The DTCG spec** (Design Tokens Format Module 2025.10) is the external contract the core is written against. It is an inbound dependency only — the repo tracks the spec, nothing flows back.
 - **Runtime dependencies** are `jsonc-parser` (format-preserving edits), `colorjs.io` (colour-space maths), and React for the webview. All are bundled into `dist/`, so an installed extension has no `node_modules`.
 - **CI.** Every workflow in `.github/workflows/` is a thin trigger stub calling one of the `_reusable-*.yml` workflows in the public **[chrisgriffin/workflows](https://github.com/chrisgriffin/workflows)** repo (at its floating `v1` tag, so a release there is what changes CI here), passing this repo's own facts as inputs (the gate chain, the `CLAUDE.md` byte budget, the docs it owes, the docs-only paths), so a change to CI or the release machinery reaches this repo without a PR here. Local agent tooling is never committed, and `.gitignore`, `.prettierignore` and `.vscodeignore` all list it.
-- **Nothing depends on this repo as code.** There is no npm package and no Marketplace listing; the only output is a `.vsix` file attached to a GitHub Release, installed by hand.
+- **Nothing depends on this repo as code.** There is no npm package; the only output is the `.vsix` each release attaches to its GitHub Release and publishes to the VS Code Marketplace as `chrisgriffin.token-atlas`.
 
 ## Running it
 
@@ -69,7 +69,7 @@ npm test                  # vitest: core, webview and repo-shape tests
 npm run typecheck         # tsc --noEmit
 npm run format:check      # prettier
 npm run test:integration  # the extension inside a downloaded VS Code
-npm run package           # vsce package --no-dependencies → .vsix
+npm run package           # vsce package --no-dependencies --githubBranch main → .vsix
 ```
 
 To use it: press <kbd>F5</kbd> in VS Code ("Run Token Atlas Extension"), which opens an Extension Development Host with the extension loaded, then open one of the token files in `examples/` or `fixtures/`.
