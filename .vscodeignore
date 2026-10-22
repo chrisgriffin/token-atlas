@@ -31,3 +31,4 @@ recovery-recap.md
 postcss.config.mjs
 changelog-preset.config.mjs
 docs/**
+specs/**
