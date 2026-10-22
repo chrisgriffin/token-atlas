@@ -299,4 +299,59 @@ describe("Table cell click target", () => {
     expect(clickCell(0, 2).querySelector(".cell.readonly")).toBeTruthy();
     expect(document.querySelector("input.inline")).toBeNull();
   });
+
+  describe("Cell controls keep their own clicks", () => {
+    /** Row 0 is color.brand.primary: an editable color with an alias chevron. */
+    const control = (col: number, sel: string) =>
+      tokenRows()[0].querySelectorAll("td")[col].querySelector<HTMLElement>(sel)!;
+    /** Clicks `el` and checks no inline edit started: an edit starts when its
+     *  cell takes focus, and can close again at once when the control's own
+     *  popover takes focus back, so the focus is what counts, not the end state. */
+    const clickWithoutEdit = (el: HTMLElement) => {
+      const started: Element[] = [];
+      const row = tokenRows()[0];
+      const onFocusIn = (e: Event) => {
+        if ((e.target as Element).matches(".cell")) started.push(e.target as Element);
+      };
+      row.addEventListener("focusin", onFocusIn);
+      fireEvent.click(el);
+      row.removeEventListener("focusin", onFocusIn);
+      expect(started).toEqual([]);
+      expect(document.querySelector("input.inline")).toBeNull();
+    };
+
+    it("the swatch opens the color picker, which writes the picked color", () => {
+      renderTable();
+      const swatch = control(1, 'input[type="color"]');
+      clickWithoutEdit(swatch);
+      fireEvent.change(swatch, { target: { value: "#ff0000" } });
+      expect(edits.setValue).toHaveBeenCalledWith(
+        ["color", "brand", "primary"],
+        expect.objectContaining({ colorSpace: "srgb", components: [1, 0, 0] }),
+      );
+    });
+
+    it("the alias chevron opens the alias picker", () => {
+      renderTable({
+        aliasCandidates: [token(["ext", "ink"], "#000000", { type: "color" as TokenType })],
+      });
+      clickWithoutEdit(control(1, "button.alias-trigger"));
+      expect(screen.getByRole("dialog", { name: "Choose a token to alias" })).toBeTruthy();
+    });
+
+    it("the problem mark opens the token", () => {
+      const path = ["color", "brand", "primary"];
+      const { onOpen } = renderTable({
+        issues: new Map([["color.brand.primary", [{ severity: "error", path, message: "Bad" }]]]),
+      });
+      clickWithoutEdit(control(0, "button.issue-mark"));
+      expect(onOpen).toHaveBeenCalledWith(path);
+    });
+
+    it("the edit button opens the token", () => {
+      const { onOpen } = renderTable();
+      clickWithoutEdit(control(4, "button.edit"));
+      expect(onOpen).toHaveBeenCalledWith(["color", "brand", "primary"]);
+    });
+  });
 });
