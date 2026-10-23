@@ -100,6 +100,21 @@ describe("workspace index", () => {
     expect((await buildWorkspaceIndex()).has("fresh")).toBe(true);
   });
 
+  it("adds a .json file created after the scan once it is typed into", async () => {
+    await buildWorkspaceIndex();
+    stub.disk.set("/ws/colors.json", "");
+    stub.emit("watcher.create", stub.Uri.file("/ws/colors.json"));
+    await sleep(10);
+    const editor = stub.openDocument("/ws/colors.json", "");
+    editor.edit(token("fresh", 1));
+    expect((await buildWorkspaceIndex()).has("fresh")).toBe(true);
+    work();
+    editor.edit(token("fresher", 2));
+    const index = await buildWorkspaceIndex();
+    expect(work()).toEqual({ findFiles: 0, readFile: 0 });
+    expect(index.has("fresher")).toBe(true);
+  });
+
   it("tells listeners once per pause in typing, not once per keystroke", async () => {
     const editor = openTokens0();
     await buildWorkspaceIndex();

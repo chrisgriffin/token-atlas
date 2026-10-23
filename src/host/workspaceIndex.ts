@@ -695,8 +695,15 @@ export function registerIndexInvalidation(context: vscode.ExtensionContext): voi
   // to a file the scan did not find only rescans when it holds tokens: a
   // build emitting JSON or an edited package.json must not rescan the
   // workspace. A write to a file it did find replaces that file's entry.
+  //
+  // A file created after the scan with no tokens yet (New File → colors.json)
+  // is not a candidate, so its keystrokes cannot reach updateFile. It is
+  // remembered instead, and the first edit that makes it a token or resolver
+  // document rescans once — the scan, not this watcher, applies
+  // tokenAtlas.exclude — after which it is a candidate like any other.
   let watchers: vscode.FileSystemWatcher[] = [];
-  const written = async (uri: vscode.Uri) => {
+  const created = new Set<string>();
+  const written = async (uri: vscode.Uri, isNew = false) => {
     if (candidates?.has(uri.toString())) {
       if (openText(uri) !== undefined) return; // the open buffer speaks for it
       if (updateFile(uri, await readCapped(uri))) indexChanged(false);
@@ -704,11 +711,15 @@ export function registerIndexInvalidation(context: vscode.ExtensionContext): voi
     }
     const text = hasTokenExtension(uri) ? "" : ((await readCapped(uri)) ?? "");
     if (hasTokenExtension(uri) || looksLikeTokens(text) || looksLikeResolver(text)) {
+      created.delete(uri.toString());
       invalidateWorkspaceIndex();
+    } else if (isNew) {
+      created.add(uri.toString());
     }
   };
   const deleted = (uri: vscode.Uri) => {
     const key = uri.toString();
+    created.delete(key);
     if (candidates?.has(key)) {
       if (updateFile(uri, undefined)) indexChanged(false);
     } else if (!candidates || [...candidates].some((c) => c.startsWith(`${key}/`))) {
@@ -722,7 +733,7 @@ export function registerIndexInvalidation(context: vscode.ExtensionContext): voi
         new vscode.RelativePattern(folder, `{${includeGlobs(folder.uri).join(",")}}`),
       );
       w.onDidChange(written);
-      w.onDidCreate(written);
+      w.onDidCreate((uri) => written(uri, true));
       w.onDidDelete(deleted);
       return w;
     });
@@ -742,9 +753,11 @@ export function registerIndexInvalidation(context: vscode.ExtensionContext): voi
       // index, but whatever shows it still needs telling. isTokenDocument
       // checks languageId before reading text, so keystrokes in non-JSON
       // files cost nothing here.
-      const found =
-        candidates?.has(document.uri.toString()) && updateFile(document.uri, document.getText());
-      if (found || isTokenDocument(document) || isResolverDocument(document)) indexChanged(false);
+      const key = document.uri.toString();
+      const found = candidates?.has(key) && updateFile(document.uri, document.getText());
+      const tokens = found || isTokenDocument(document) || isResolverDocument(document);
+      if (tokens && !found && created.delete(key)) invalidateWorkspaceIndex();
+      else if (tokens) indexChanged(false);
     }),
     // A buffer closed without saving takes its edits with it: the file on
     // disk is what the index holds again.
