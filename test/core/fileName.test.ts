@@ -22,6 +22,19 @@ describe("tokenFileName", () => {
     }
   });
 
+  it("drops trailing dots, so the extension follows the name with one dot", () => {
+    expect(tokenFileName("a.")).toEqual({ name: "a.tokens.json" });
+    expect(tokenFileName("brand.. ")).toEqual({ name: "brand.tokens.json" });
+    expect(tokenFileName("..")).toHaveProperty("error");
+  });
+
+  it("rejects a name Windows reserves for a device", () => {
+    for (const input of ["CON", "con", "nul", "COM1", "lpt9", "aux.json", "prn.tokens.json"]) {
+      expect(tokenFileName(input), input).toHaveProperty("error");
+    }
+    expect(tokenFileName("console")).toEqual({ name: "console.tokens.json" });
+  });
+
   it("rejects characters a filename can't hold, path separators included", () => {
     for (const input of [
       "a/b",
