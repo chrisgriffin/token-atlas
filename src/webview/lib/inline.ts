@@ -7,10 +7,19 @@ import { buildFromHex, isDtcgColor } from "../../core/color";
 import { FONT_WEIGHT_KEYWORDS } from "../../core/types";
 import type { EditorSettings } from "../../shared/protocol";
 import { settings as currentSettings } from "./settings";
+import { STROKE_KEYWORDS } from "./css";
 
 const num = (s: string): number | undefined => {
   const n = Number(s);
   return s.trim() !== "" && Number.isFinite(n) ? n : undefined;
+};
+
+const json = (s: string): unknown => {
+  try {
+    return JSON.parse(s);
+  } catch {
+    return undefined;
+  }
 };
 
 const unitValue = (s: string, units: string[]) => {
@@ -27,8 +36,8 @@ export function parseInline(
 ): unknown {
   const t = text.trim();
   if (t === "") return undefined;
-  // `{path.to.token}` is an alias regardless of type.
-  if (/^\{[^{}]+\}$/.test(t)) return t;
+  // `{path.to.token}` is an alias regardless of type; `{"key": …}` is JSON.
+  if (/^\{[^{}]+\}$/.test(t) && json(t) === undefined) return t;
   switch (type) {
     case "color": {
       const space = isDtcgColor(current) ? current.colorSpace : s.defaultColorSpace;
@@ -54,12 +63,13 @@ export function parseInline(
       const nums = m ? m[1].split(",").map((s) => num(s)) : [];
       return nums.length === 4 && nums.every((n) => n !== undefined) ? nums : undefined;
     }
+    case "strokeStyle": {
+      if ((STROKE_KEYWORDS as readonly string[]).includes(t)) return t;
+      const custom = json(t);
+      return custom && typeof custom === "object" && !Array.isArray(custom) ? custom : undefined;
+    }
     default:
       // Composite / unknown types take JSON; plain strings otherwise.
-      try {
-        return JSON.parse(t);
-      } catch {
-        return type === undefined ? t : undefined;
-      }
+      return json(t) ?? (type === undefined ? t : undefined);
   }
 }

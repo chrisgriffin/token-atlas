@@ -42,6 +42,9 @@ export function App() {
   const [columnWidths, setColumnWidths] = useState<ColumnWidths>({});
   const [modes, setModes] = useState<Modes | undefined>();
   const [modeView, setModeView] = useState<ModeView>("single");
+  // Names + Token and + Group have posted that no model has shown yet, by
+  // parent path, so a second click before the host answers picks a new one.
+  const pendingNames = useRef(new Map<string, Set<string>>());
 
   useEffect(() => {
     const handler = (event: MessageEvent<HostToWebview>) => {
@@ -65,6 +68,7 @@ export function App() {
         // From `init` only: an `update` landing mid-drag must not snap a
         // column back to the width saved before it.
         if (msg.type === "init") setColumnWidths(msg.columnWidths ?? {});
+        pendingNames.current.clear();
         setModel(msg.model);
         setValidation(msg.validation);
         setExternalTokens(msg.externalTokens);
@@ -117,13 +121,35 @@ export function App() {
 
   const addNode = (kind: "token" | "group") => {
     if (!model) return;
-    // Add inside a selected group, beside a selected token, or at the root.
+    // Add inside a selected group, beside a selected token, else in the
+    // group the table is scoped to, else at the root.
     const parentPath =
-      selected?.kind === "group" ? selected.path : selectedPath ? selectedPath.slice(0, -1) : [];
-    const siblings = siblingNames(model.root, parentPath);
-    const name = uniqueName(kind === "token" ? "token" : "group", siblings);
+      selected?.kind === "group"
+        ? selected.path
+        : selected
+          ? selected.path.slice(0, -1)
+          : activeScope
+            ? activeScope.split(".")
+            : [];
+    const parentKey = parentPath.join(".");
+    const pending = pendingNames.current.get(parentKey) ?? new Set<string>();
+    const name = uniqueName(kind, new Set([...siblingNames(model.root, parentPath), ...pending]));
+    pendingNames.current.set(parentKey, pending.add(name));
     post({ type: kind === "token" ? "addToken" : "addGroup", parentPath, name });
-    if (kind === "token") open([...parentPath, name]);
+    // Opens once the host's update shows it; a new group has no row to click.
+    open([...parentPath, name]);
+  };
+
+  /** Renames a node from the table or a panel, keeping it selected; false,
+   *  posting nothing, when a sibling already has the name. */
+  const rename = (path: string[], newName: string) => {
+    if (!model) return false;
+    const parentPath = path.slice(0, -1);
+    if (newName !== path[path.length - 1] && siblingNames(model.root, parentPath).has(newName))
+      return false;
+    post({ type: "renameNode", path, newName });
+    setSelectedPath([...parentPath, newName]);
+    return true;
   };
 
   if (error) {
@@ -250,10 +276,7 @@ export function App() {
             onSelect={setSelectedPath}
             onOpen={open}
             edits={{
-              rename: (path, newName) => {
-                post({ type: "renameNode", path, newName });
-                setSelectedPath([...path.slice(0, -1), newName]);
-              },
+              rename,
               setValue: (path, value) => post({ type: "setValue", path, value }),
               setDescription: (path, description) =>
                 post({ type: "setDescription", path, description }),
@@ -294,7 +317,7 @@ export function App() {
               onChangeDescription={(description) =>
                 post({ type: "setDescription", path: selected.path, description })
               }
-              onRename={(newName) => post({ type: "renameNode", path: selected.path, newName })}
+              onRename={(newName) => rename(selected.path, newName)}
               onDelete={() => {
                 post({ type: "deleteNode", path: selected.path });
                 setSelectedPath(null);
@@ -324,7 +347,7 @@ export function App() {
               onChangeDescription={(description) =>
                 post({ type: "setDescription", path: selected.path, description })
               }
-              onRename={(newName) => post({ type: "renameNode", path: selected.path, newName })}
+              onRename={(newName) => rename(selected.path, newName)}
               onDelete={() => {
                 post({ type: "deleteNode", path: selected.path });
                 setSelectedPath(null);

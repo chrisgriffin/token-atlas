@@ -50,3 +50,14 @@ describe("parseInline", () => {
     expect(parseInline("mystery", undefined, undefined)).toBe("mystery");
   });
 });
+
+describe("parseInline strokeStyle", () => {
+  it("reads a keyword, or a custom stroke as JSON, and refuses anything else (#8)", () => {
+    expect(parseInline("dotted", "strokeStyle", "dashed")).toBe("dotted");
+    expect(parseInline('{"dashArray":[],"lineCap":"round"}', "strokeStyle", "solid")).toEqual({
+      dashArray: [],
+      lineCap: "round",
+    });
+    expect(parseInline("wavy", "strokeStyle", "solid")).toBeUndefined();
+  });
+});

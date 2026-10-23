@@ -1,6 +1,7 @@
 /** A sensible starting `$value` for each DTCG type, used when a token is
  *  given a type while it still carries the bare `0` it was created with.
  *  Colour space and dimension unit follow the user's settings. */
+import { buildFromHex } from "../../core/color";
 import type { TokenType } from "../../core/types";
 import type { EditorSettings } from "../../shared/protocol";
 import { settings as currentSettings } from "./settings";
@@ -12,14 +13,19 @@ function length(valuePx: number, s: EditorSettings) {
   return { value: Math.round(rem * 1000) / 1000, unit: "rem" as const };
 }
 
+/** A colour object for `hex` in the configured space. `hex` is an sRGB
+ *  fallback; it would contradict a wide-gamut space, so only sRGB keeps it. */
+export function starterColor(hex: string, s: EditorSettings = currentSettings()) {
+  const { hex: fallback, ...color } = buildFromHex(hex, s.defaultColorSpace)!;
+  return s.defaultColorSpace === "srgb" ? { ...color, hex: fallback } : color;
+}
+
 export function defaultValueFor(type: TokenType, s: EditorSettings = currentSettings()): unknown {
   const px = (value: number) => length(value, s);
+  const color = (hex: string) => starterColor(hex, s);
   switch (type) {
     case "color":
-      // `hex` is an sRGB fallback; it would contradict a wide-gamut space.
-      return s.defaultColorSpace === "srgb"
-        ? { colorSpace: "srgb", components: [0, 0, 0], hex: "#000000" }
-        : { colorSpace: s.defaultColorSpace, components: [0, 0, 0] };
+      return color("#000000");
     case "dimension":
       return px(16);
     case "fontFamily":
@@ -35,7 +41,7 @@ export function defaultValueFor(type: TokenType, s: EditorSettings = currentSett
     case "strokeStyle":
       return "solid";
     case "border":
-      return { color: "#000000", width: px(1), style: "solid" };
+      return { color: color("#000000"), width: px(1), style: "solid" };
     case "transition":
       return {
         duration: { value: 200, unit: "ms" },
@@ -43,11 +49,17 @@ export function defaultValueFor(type: TokenType, s: EditorSettings = currentSett
         timingFunction: [0.25, 0.1, 0.25, 1],
       };
     case "shadow":
-      return { color: "#00000033", offsetX: px(0), offsetY: px(2), blur: px(4), spread: px(0) };
+      return {
+        color: color("#00000033"),
+        offsetX: px(0),
+        offsetY: px(2),
+        blur: px(4),
+        spread: px(0),
+      };
     case "gradient":
       return [
-        { color: "#000000", position: 0 },
-        { color: "#ffffff", position: 1 },
+        { color: color("#000000"), position: 0 },
+        { color: color("#ffffff"), position: 1 },
       ];
     case "typography":
       return {

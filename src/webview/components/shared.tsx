@@ -1,5 +1,5 @@
 /** Header, section, and delete button shared by the token and group panels. */
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Close, ErrorIcon, Trash, TypeIcon, WarningIcon } from "../icons";
 import {
   COMPOSITE_TYPES,
@@ -19,7 +19,8 @@ interface HeaderProps {
   summary?: ReactNode;
   /** Opens the group at a parent path; the breadcrumb segments call it. */
   onOpenPath?: (path: string[]) => void;
-  onRename: (newName: string) => void;
+  /** False refuses the name (a sibling has it): Enter keeps the box open. */
+  onRename: (newName: string) => boolean | void;
   onMove: (direction: "up" | "down") => void;
   onDelete: () => void;
   onClose: () => void;
@@ -43,9 +44,24 @@ export function NodeHeader({
 }: HeaderProps) {
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState(name);
+  const [bad, setBad] = useState(false);
+  // Set once Enter or Escape has closed the box, so the blur that follows
+  // neither renames again nor renames a cancelled draft.
+  const closed = useRef(false);
   const startRename = () => {
+    closed.current = false;
     setNameDraft(name);
+    setBad(false);
     setRenaming(true);
+  };
+  /** Renames to the draft; false when the name is refused. */
+  const submit = () => {
+    const next = nameDraft.trim();
+    return !next || next === name || onRename(next) !== false;
+  };
+  const close = () => {
+    closed.current = true;
+    setRenaming(false);
   };
   const parents = path.slice(0, -1);
   return (
@@ -77,25 +93,34 @@ export function NodeHeader({
           {renaming ? (
             <input
               autoFocus
-              className="mono"
+              className={`mono${bad ? " bad" : ""}`}
               value={nameDraft}
-              onChange={(e) => setNameDraft(e.target.value)}
+              onChange={(e) => {
+                setNameDraft(e.target.value);
+                setBad(false);
+              }}
               onKeyDown={(e) => {
-                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                if (e.key === "Escape") {
-                  setNameDraft(name);
-                  setRenaming(false);
+                if (e.nativeEvent.isComposing) return;
+                if (e.key === "Enter") {
+                  if (submit()) close();
+                  else setBad(true);
+                } else if (e.key === "Escape") {
+                  // Cancels the rename only; the panel's own Escape closes it.
+                  e.stopPropagation();
+                  close();
                 }
               }}
               onBlur={() => {
-                const next = nameDraft.trim();
-                if (next && next !== name) onRename(next);
+                if (!closed.current) submit(); // a refused name simply reverts
                 setRenaming(false);
               }}
             />
           ) : (
-            <h2 onClick={startRename} title="Click to rename">
-              {name}
+            // The name is a button, so Tab reaches it and Enter or Space renames.
+            <h2 onClick={startRename}>
+              <button className="node-name" title="Click to rename">
+                {name}
+              </button>
             </h2>
           )}
           {badge}

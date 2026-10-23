@@ -14,11 +14,14 @@ export function Glyph({
   value,
   type,
   onPick,
+  tabbable,
 }: {
   value: unknown;
   type: TokenType | undefined;
   /** Given for an editable color: the swatch opens the picker. */
   onPick?: (value: unknown) => void;
+  /** Whether that picker is a Tab stop; the table's selected row only. */
+  tabbable?: boolean;
 }) {
   switch (type) {
     case "color": {
@@ -31,6 +34,7 @@ export function Glyph({
           <ColorSwatchInput
             hex={hex}
             size={12}
+            tabbable={tabbable}
             onPick={(picked) => {
               const next = buildFromHex(picked, space);
               if (next) onPick({ ...next, alpha: isDtcgColor(value) ? value.alpha : undefined });
