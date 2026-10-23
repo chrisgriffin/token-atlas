@@ -15,7 +15,7 @@ Seventeen fixes in `src/core/`, each pinned by a test under a `core model fixes`
 - Legacy fix: `computeLegacyFixes` walks a composite's value and types each string by its member (`expectedTypeAt`), so the new sub-value errors have the same quick fix.
 - Validation shapes: member tables per composite type from §9; primitive sub-values reuse the primitive check; references anywhere in a sub-value are skipped. Color checks use `COLOR_SPACES` from `color.ts`; units live once in `types.ts` and `legacy.ts` imports them.
 - Edits: `inferFormat(text)` reads the first indented line (tab or the smallest space run) and CRLF; used whenever the caller passes no format. A removed property goes through `computeDeleteEdits`; an added one through `computeAddEdits`, which gains a one-line case writing `, "key": value` inline.
-- Rename: `computeRenameEdits` throws `InvalidNameError` for an empty name, `{`, `}`, `.` or a leading `$` other than `$root`; `src/host/rename.ts` drops its own copy of the check and lets that message through.
+- Rename: `computeRenameEdits` throws `InvalidNameError` for an empty name, `{`, `}`, `.` or a leading `$` (`$root` included, as #19's host check decided); `src/host/rename.ts` drops its own copy of the check and lets that message through.
 - Modes: each source's `$extends` is expanded against the sources before it, and the merged tokens are resolved as plain tokens.
 - `expandExtends` records the tokens it typed and clears them at the start of the next run.
 - Resolver: `"2025.10"` first in `VERSIONS`, date forms kept; one RFC 6901 unescape helper serves pointers, set and modifier references.

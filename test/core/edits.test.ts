@@ -272,12 +272,8 @@ describe("multi-line files edit exactly as jsonc-parser's formatter does", () =>
 describe("core model fixes — rename refuses an illegal name", () => {
   const text = `{\n  "a": { "$type": "number", "$value": 1 },\n  "b": { "$type": "number", "$value": "{a}" }\n}`;
 
-  it.each(["x.y", "{x}", "x}", "$a", ""])("refuses %j and returns no edits", (name) => {
+  it.each(["x.y", "{x}", "x}", "$a", "$root", ""])("refuses %j and returns no edits", (name) => {
     expect(() => computeRenameEdits(text, ["a"], name)).toThrow(InvalidNameError);
     expect(() => computeRenameEdits(text, ["a"], name)).toThrow(/may not/);
-  });
-
-  it("allows $root, the one reserved token name (§6.2)", () => {
-    expect(applyEdits(text, computeRenameEdits(text, ["a"], "$root"))).toContain('"$root": {');
   });
 });

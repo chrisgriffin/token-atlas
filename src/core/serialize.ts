@@ -86,13 +86,14 @@ export class NameTakenError extends Error {
 
 /**
  * A rename to a name a token or group cannot have: empty, holding `{`, `}` or
- * `.` (§5.1.1), or starting with `$`, which is the spec's own (§6.8) — except
- * `$root`, the reserved root token name (§6.2). Thrown, like NameTakenError.
+ * `.` (§5.1.1), or starting with `$`, which is the spec's own (§6.8). `$root`
+ * is refused too: a token already named `$root` (§6.2) may be renamed from,
+ * not to. Thrown, like NameTakenError.
  */
 export class InvalidNameError extends Error {
   constructor(name: string) {
     super(
-      `"${name}" is not a valid name: token names may not be empty or contain "{", "}" or ".", and only "$root" may start with "$".`,
+      `"${name}" is not a valid name: token names may not be empty, start with "$", or contain "{", "}", or ".".`,
     );
     this.name = "InvalidNameError";
   }
@@ -214,7 +215,7 @@ function indentOf(text: string, node: Node): string | undefined {
  * References in other files are the host's job: see computeReferenceRenameEdits.
  */
 export function computeRenameEdits(text: string, nodePath: string[], newName: string): Edit[] {
-  if (!newName || ILLEGAL_NAME.test(newName) || (newName.startsWith("$") && newName !== "$root")) {
+  if (!newName || ILLEGAL_NAME.test(newName) || newName.startsWith("$")) {
     throw new InvalidNameError(newName);
   }
   const oldName = nodePath[nodePath.length - 1];

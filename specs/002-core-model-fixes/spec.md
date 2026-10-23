@@ -67,7 +67,7 @@ Someone writes a value the spec does not allow and the Problems panel says what 
 - A `$ref` pointer from a composite to another member of its own value resolves as before and is not a cycle; a cycle is only reported when resolution got stuck and a reference leads back to the token.
 - A value with a `$ref` pointer left unresolved gets no shape error: the pointer is reported, and the value it stands for is unknown.
 - Example files that broke the newly checked rules are corrected: two 8-digit `hex` fallbacks, and the kitchen sink's legacy colors inside composites.
-- `$root` may itself be renamed to and from; any other name starting with `$` is refused.
+- A token named `$root` may be renamed; a rename to any name starting with `$`, `$root` included, is refused. (Corrected after merging #19, whose host check refuses `$root`: this spec first let a rename go to `$root`, and keeping that would have left two name checks that disagree.)
 - Text with a real syntax error still reads as no tokens, as before, because a best guess at half-typed JSON can put tokens at the wrong paths; the error itself is now reported.
 
 ## Requirements
