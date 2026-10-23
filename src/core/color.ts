@@ -101,17 +101,24 @@ function clamp01(n: number): number {
   return Math.max(0, Math.min(1, n));
 }
 
-/** Parse any token color value into a colorjs Color, or null. */
+/**
+ * Parse any token color value into a colorjs Color, or null. A DTCG object
+ * needs exactly three components, each a finite number or `"none"` (read as
+ * 0), and an alpha that is absent or a finite number: anything else is no
+ * color, rather than a guess painted as one.
+ */
 export function toColor(value: unknown): Color | null {
   try {
     if (typeof value === "string") return new Color(value);
     if (isDtcgColor(value)) {
-      const coords = value.components.map((c) => (typeof c === "number" ? c : 0)) as [
-        number,
-        number,
-        number,
-      ];
-      return new Color(colorjsId(value.colorSpace), coords, value.alpha ?? 1);
+      const { components, alpha } = value as { components: unknown[]; alpha?: unknown };
+      const finite = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
+      if (components.length !== 3 || !components.every((c) => finite(c) || c === "none")) {
+        return null;
+      }
+      if (alpha !== undefined && !finite(alpha)) return null;
+      const coords = components.map((c) => (finite(c) ? c : 0)) as [number, number, number];
+      return new Color(colorjsId(value.colorSpace), coords, alpha ?? 1);
     }
   } catch {
     /* fall through */
@@ -131,14 +138,17 @@ export function toHex(value: unknown): string | null {
   }
 }
 
-/** Convert a token color value to clamped sRGB RGBA in 0..1 (for vscode.Color). */
+/**
+ * Convert a token color value to sRGB RGBA in 0..1 (for vscode.Color),
+ * gamut-mapped as the hover's hex is, so a wide-gamut swatch and its hover agree.
+ */
 export function toRgba01(value: unknown): Rgba | null {
   const c = toColor(value);
   if (!c) return null;
   try {
-    const srgb = c.to("srgb");
+    const srgb = c.to("srgb").toGamut({ space: "srgb" });
     const [r, g, b] = srgb.coords;
-    return { r: clamp01(r), g: clamp01(g), b: clamp01(b), a: srgb.alpha ?? 1 };
+    return { r: clamp01(r), g: clamp01(g), b: clamp01(b), a: clamp01(Number(srgb.alpha ?? 1)) };
   } catch {
     return null;
   }
@@ -184,8 +194,9 @@ export function cssColorStrings(value: unknown): CssColorStrings | null {
   const c = toColor(value);
   if (!c) return null;
   try {
-    const alpha = c.alpha ?? 1;
-    const suffix = alpha < 1 ? ` / ${Math.round(alpha * 100)}%` : "";
+    // An alpha that rounds to 100% reads as opaque everywhere, the hex included.
+    const percent = Math.round(Number(c.alpha ?? 1) * 100);
+    const suffix = percent < 100 ? ` / ${percent}%` : "";
     // sRGB-based notations need an in-gamut color: a P3/OKLCH value outside
     // sRGB otherwise yields nonsense like `hsl(157 297% 21%)`.
     const inSrgb = c.to("srgb").toGamut({ space: "srgb" });
@@ -194,7 +205,7 @@ export function cssColorStrings(value: unknown): CssColorStrings | null {
     const [hwbH, hwbW, hwbB] = inSrgb.to("hwb").coords;
     const [okL, okC, okH] = c.to("oklch").coords;
     return {
-      hex: c.to("srgb").toString({ format: "hex", collapse: false }),
+      hex: percent < 100 ? c.to("srgb").toString({ format: "hex", collapse: false }) : hex6(c),
       rgb: `rgb(${r} ${g} ${b}${suffix})`,
       hsl: `hsl(${deg(hslH)} ${pct(hslS)} ${pct(hslL)}${suffix})`,
       hwb: `hwb(${deg(hwbH)} ${pct(hwbW)} ${pct(hwbB)}${suffix})`,
@@ -218,6 +229,13 @@ function dec3(n: number): number {
   return Number.isNaN(n) ? 0 : Math.round(n * 1000) / 1000;
 }
 
+/** `#rrggbb`, alpha dropped: the 6-digit form DTCG requires of a `hex` fallback. */
+function hex6(c: Color): string {
+  const opaque = c.to("srgb");
+  opaque.alpha = 1;
+  return opaque.toString({ format: "hex", collapse: false });
+}
+
 /** Build a DTCG color object in `colorSpace` from a source color + optional alpha. */
 export function buildFromColor(source: Color, colorSpace: string, alpha?: number): DtcgColor {
   const converted = source.to(colorjsId(colorSpace));
@@ -227,7 +245,7 @@ export function buildFromColor(source: Color, colorSpace: string, alpha?: number
     components: converted.coords.map(num),
   };
   if (a !== 1) out.alpha = num(a);
-  out.hex = converted.to("srgb").toString({ format: "hex", collapse: false });
+  out.hex = hex6(converted);
   return out;
 }
 
@@ -273,17 +291,34 @@ export function buildFromComponents(
  * WCAG 2.1 contrast ratio between two token color values (1..21), or null.
  * Truncated, not rounded, to 2 decimals: WCAG judges the exact ratio, so
  * 4.496 must read 4.49 and fail AA rather than read 4.5 and pass.
+ *
+ * A translucent color is what shows through it: the foreground is blended
+ * over the background, and a translucent background over white first.
+ * ponytail: white stands in for whatever is behind the background; a pair
+ * whose real backdrop is dark needs that backdrop named to be judged exactly.
  */
 export function wcagContrast(value: unknown, against: unknown): number | null {
-  const a = toColor(value);
-  const b = toColor(against);
-  if (!a || !b) return null;
+  const fg = toColor(value);
+  const bg = toColor(against);
+  if (!fg || !bg) return null;
   try {
+    const b = over(bg, new Color("srgb", [1, 1, 1]));
+    const a = over(fg, b);
     // The epsilon keeps a float like 20.999999999 from truncating to 20.99.
     return Math.floor(a.contrast(b, "WCAG21") * 100 + 1e-6) / 100;
   } catch {
     return null;
   }
+}
+
+/** `top` composited over the opaque `under` in sRGB, as a browser paints it; `top` itself when opaque. */
+function over(top: Color, under: Color): Color {
+  const alpha = Number(top.alpha ?? 1);
+  if (!(alpha < 1)) return top; // opaque, or an alpha colorjs left as NaN
+  const t = top.to("srgb").coords.map(Number);
+  const u = under.to("srgb").coords.map(Number);
+  const mixed = t.map((v, i) => alpha * (Number.isNaN(v) ? 0 : v) + (1 - alpha) * u[i]);
+  return new Color("srgb", mixed as [number, number, number]);
 }
 
 /** Every WCAG 2.2 contrast threshold, keyed by the `tokenAtlas.contrastTarget` value. */

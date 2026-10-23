@@ -152,3 +152,23 @@ describe("aliasCompletionContext", () => {
     expect(aliasCompletionContext(text, at(text, "{fo"))?.subPath).toEqual([0]);
   });
 });
+
+describe("core model fixes — the alias picker and $ref pointers", () => {
+  it("does not offer a token whose $ref pointer reaches back into the token being edited", () => {
+    const m = parseTokens(
+      JSON.stringify({
+        bd: {
+          $type: "border",
+          $value: { color: "{c}", width: { value: 1, unit: "px" }, style: "solid" },
+        },
+        c: { $type: "color", $value: { $ref: "#/bd/$value/color" } },
+        d: { $type: "color", $value: { colorSpace: "srgb", components: [0, 0, 0] } },
+      }),
+    );
+    const idx = resolveAliases(m);
+    expect(wouldCycle(idx, "bd", "c")).toBe(true);
+    expect(aliasCandidates(idx.values(), "bd", "color", idx).map((t) => t.path.join("."))).toEqual([
+      "d",
+    ]);
+  });
+});

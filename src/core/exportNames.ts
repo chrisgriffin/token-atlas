@@ -14,10 +14,14 @@ export function normalizeName(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-/** Split on separators and camelCase boundaries: `dsColor-brand.primary` → [ds, Color, brand, primary]. */
+/**
+ * Split on separators, camelCase boundaries and the end of a capitalized
+ * acronym: `DSColor-brand.primary` → [DS, Color, brand, primary].
+ */
 function segments(identifier: string): string[] {
   return identifier
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2")
     .split(/[^A-Za-z0-9]+/)
     .filter(Boolean);
 }
@@ -54,6 +58,25 @@ export function tokenMatcher(keys: Iterable<string>): (identifier: string) => st
 /** `--a-b`, `$a-b`, `aB`, `a_b`, `a.b.c`: one run of identifier chars, dots allowed between. */
 export const EXPORT_IDENTIFIER = /[$\w-]+(?:\.[$\w-]+)*/;
 
+/** The variable spellings a stylesheet has; any other word there is a property, keyword or selector. */
+const STYLESHEET_VARIABLE: Record<string, RegExp> = {
+  css: /^--/,
+  scss: /^--|(?:^|\.)\$/, // `$x`, or `tokens.$x` from a Sass module
+  sass: /^--|(?:^|\.)\$/,
+  less: /^--/, // `@x` too: the `@` sits before the scanned name, see `before`
+};
+
+/**
+ * Whether `name`, scanned with `EXPORT_IDENTIFIER` from a file in
+ * `languageId`, can name a token at all. In a stylesheet only a variable
+ * can: `--x`, Sass's `$x`, Less's `@x` (`before` is the character ahead of
+ * the name). Elsewhere, and with no language, every identifier can.
+ */
+export function canNameToken(name: string, languageId?: string, before = ""): boolean {
+  const variable = languageId ? STYLESHEET_VARIABLE[languageId] : undefined;
+  return !variable || variable.test(name) || (languageId === "less" && before === "@");
+}
+
 /** Where an identifier appears in a file: zero-based line and character, like an editor position. */
 export interface IdentifierOccurrence {
   line: number;
@@ -69,8 +92,12 @@ export interface IdentifierOccurrence {
 /**
  * Every identifier in exported code, grouped by spelling. Matching to tokens
  * happens later, per spelling, so a file is read once however the tokens change.
+ * With a stylesheet `languageId`, only the names `canNameToken` allows.
  */
-export function scanIdentifiers(text: string): Map<string, IdentifierOccurrence[]> {
+export function scanIdentifiers(
+  text: string,
+  languageId?: string,
+): Map<string, IdentifierOccurrence[]> {
   const out = new Map<string, IdentifierOccurrence[]>();
   const re = new RegExp(EXPORT_IDENTIFIER.source, "g");
   let line = 0;
@@ -79,6 +106,7 @@ export function scanIdentifiers(text: string): Map<string, IdentifierOccurrence[
   for (let m = re.exec(text); m; m = re.exec(text)) {
     const name = m[0];
     if (!/[A-Za-z]/.test(name)) continue; // 16px, -1, 0.5
+    if (!canNameToken(name, languageId, text[m.index - 1])) continue;
     for (
       let i = text.indexOf("\n", scanned);
       i !== -1 && i < m.index;
@@ -110,7 +138,8 @@ export function scanIdentifiers(text: string): Map<string, IdentifierOccurrence[
  * Plain CSS (`languageId` `css`) has no `//` comments, so there only `/* *\/` is
  * blanked and a protocol-relative `url(//…)` keeps the rest of its line.
  * SCSS, Sass and Less read an unquoted `url(//…)` as a URL too, so there it is
- * kept up to its `)`; a `//` after it still starts a comment.
+ * kept up to its `)`, and a `//` inside a quoted string is no comment either;
+ * a `//` after them still starts one.
  * ponytail: strings are not parsed, so a `//` or `/*` inside a JS string blanks
  * what follows it; a scanner then misses a usage there, never invents one.
  */
@@ -119,7 +148,7 @@ export function blankComments(text: string, languageId?: string): string {
   const blocks = text.replace(/\/\*[\s\S]*?(?:\*\/|$)/g, blank);
   if (languageId === "css") return blocks;
   const lineComment = ["scss", "sass", "less"].includes(languageId ?? "")
-    ? /(url\(\s*\/\/[^)\n]*)|(^|[^:])(\/\/[^\n]*)/gim
+    ? /(url\(\s*\/\/[^)\n]*|"[^"\n]*"|'[^'\n]*')|(^|[^:])(\/\/[^\n]*)/gim
     : /()(^|[^:])(\/\/[^\n]*)/gm;
   return blocks.replace(lineComment, (_, url: string, pre: string, c: string) =>
     url ? url : pre + blank(c),
@@ -149,7 +178,7 @@ export function tokenUsages<T>(
 ): Array<TokenUsage<T>> {
   const match = tokenMatcher(keys);
   const out: Array<TokenUsage<T>> = [];
-  for (const [name, occurrences] of scanIdentifiers(blankComments(text, languageId))) {
+  for (const [name, occurrences] of scanIdentifiers(blankComments(text, languageId), languageId)) {
     const key = match(name);
     const value = key ? pick(key) : undefined;
     if (value === undefined || value === null || value === "") continue;
@@ -332,7 +361,10 @@ export function renameInIdentifier(
   for (let p = 0; p < id.length && i < 0; p++) {
     if (!ALNUM.test(id[p])) continue;
     const boundary =
-      p === 0 || !ALNUM.test(id[p - 1]) || (/[a-z0-9]/.test(id[p - 1]) && /[A-Z]/.test(id[p]));
+      p === 0 ||
+      !ALNUM.test(id[p - 1]) ||
+      (/[a-z0-9]/.test(id[p - 1]) && /[A-Z]/.test(id[p])) ||
+      (/[A-Z]/.test(id[p - 1]) && /[A-Z]/.test(id[p]) && /[a-z]/.test(id[p + 1] ?? ""));
     if (boundary && normalizeName(id.slice(p)) === norm) i = p;
   }
   if (i < 0) return undefined;

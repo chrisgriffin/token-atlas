@@ -84,6 +84,19 @@ describe("hard-coded values", () => {
     expect(findLiterals("a { b: c; } // color: #2563eb;", "scss")).toEqual([]);
   });
 
+  it("skips an SVG fragment reference: url(#id) is no color", () => {
+    for (const ref of ["url(#abc)", 'url("#abc")', "url( '#fed' )"]) {
+      expect(findLiterals(`.a { fill: ${ref}; color: #2563eb; }`).map((l) => l.text)).toEqual([
+        "#2563eb",
+      ]);
+    }
+  });
+
+  it.each(["scss", "less"])('in %s, finds a literal after a quoted url("//…")', (languageId) => {
+    const css = 'a { background: url("//cdn.example.com/a.png") #2563eb; }';
+    expect(findLiterals(css, languageId).map((l) => l.text)).toEqual(["#2563eb"]);
+  });
+
   it("reads Sass's indented syntax: newlines end a statement, indentation opens a block", () => {
     const opensWithVariable = ["$space-sm: 8px", ".a", "  margin: 8px", "  color: #2563eb"].join(
       "\n",

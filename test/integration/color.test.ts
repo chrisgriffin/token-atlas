@@ -120,7 +120,7 @@ async function offersFor(doc: vscode.TextDocument, range: vscode.Range): Promise
 }
 
 before(async () => {
-  const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffin.token-atlas");
+  const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffinio.token-atlas");
   assert.ok(ext, "extension not found");
   await ext.activate();
 });
@@ -246,5 +246,40 @@ describe("Colour swatches", () => {
       Array.isArray(written.components) && written.components.length === 3,
       `expected three components back, got ${JSON.stringify(written.components)}`,
     );
+  });
+
+  it("writes a picked color as the visual editor writes it, keeping an explicit alpha of 1", async () => {
+    const text = `{
+  "brand": {
+    "$type": "color",
+    "red": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.5, 0, 0],
+        "alpha": 1
+      }
+    }
+  }
+}
+`;
+    const doc = await vscode.workspace.openTextDocument({ content: text, language: "json" });
+    const [swatch] = await swatchesIn(doc);
+    assert.ok(swatch, "no swatch on brand.red");
+    const objects = (await offersFor(doc, swatch.range)).filter((o) => o.newText.startsWith("{"));
+    assert.equal(objects.length, 1, "expected one object offer");
+    assert.ok(objects[0].replacesValue, "the object offer does not replace the $value");
+
+    // Written as the visual editor writes it (core computeSetEdits): laid out
+    // over lines at the value's own indent, never one compact line, and the
+    // explicit `"alpha": 1` kept.
+    const written = objects[0].newText;
+    assert.deepEqual(JSON.parse(written), {
+      colorSpace: "srgb",
+      components: [1, 0, 0],
+      alpha: 1,
+      hex: "#ff0000",
+    });
+    assert.match(written, /^\{\n {8}"colorSpace": "srgb",\n/);
+    assert.match(written, /\n {8}"alpha": 1,\n/);
   });
 });

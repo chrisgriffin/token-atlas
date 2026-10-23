@@ -54,3 +54,29 @@ describe("contextValues", () => {
     expect(cell.file).toBe("theme/dark.tokens.json");
   });
 });
+
+describe("core model fixes — mode columns and $extends", () => {
+  it("shows a token a mode file has only through $extends", () => {
+    const { resolver } = parseResolver(
+      JSON.stringify({
+        version: "2025.10",
+        modifiers: {
+          theme: { contexts: { light: [{ $ref: "light.json" }], dark: [{ $ref: "dark.json" }] } },
+        },
+        resolutionOrder: [{ $ref: "#/modifiers/theme" }],
+      }),
+    );
+    const mode = (gap: number) =>
+      JSON.stringify({
+        base: { $type: "number", gap: { $value: gap } },
+        button: { $extends: "{base}" },
+      });
+    const files: Record<string, string> = { "light.json": mode(1), "dark.json": mode(2) };
+    const cells = contextValues(resolver!, resolver!.modifiers[0], "dark", (f) => files[f], [
+      "base.gap",
+      "button.gap",
+    ]);
+    expect(cells["button.gap"]).toEqual({ value: 2, resolved: 2, file: "dark.json" });
+    expect(cells["base.gap"]).toEqual({ value: 2, resolved: 2, file: "dark.json" });
+  });
+});

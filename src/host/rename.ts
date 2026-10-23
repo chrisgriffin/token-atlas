@@ -33,8 +33,6 @@ import {
   tokenScopeAt,
 } from "./workspaceIndex";
 
-const ILLEGAL_NAME = /[{}.]/;
-
 /**
  * Rename the node at `nodePath` in `document` (inside `scope` when it is an
  * inline resolver source), rewriting references in every token file and every
@@ -46,6 +44,9 @@ export async function buildRenameEdit(
   newName: string,
   scope: Fragment = { text: document.getText(), path: [], offset: 0 },
 ): Promise<vscode.WorkspaceEdit> {
+  // Both rename paths come through here, F2 and the visual editor's:
+  // computeRenameEdits throws InvalidNameError for an illegal name before
+  // anything is edited.
   const edit = new vscode.WorkspaceEdit();
   add(edit, document, computeRenameEdits(scope.text, nodePath, newName), scope.offset);
 
@@ -189,9 +190,6 @@ class TokenRenameProvider implements vscode.RenameProvider {
     if (!renamable(document)) return;
     const target = renameTargetAt(document, position);
     if (!target) return;
-    if (!newName || ILLEGAL_NAME.test(newName)) {
-      throw new Error('Token names may not be empty or contain "{", "}", or ".".');
-    }
     return buildRenameEdit(document, target.path, newName, target.scope);
   }
 }

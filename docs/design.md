@@ -135,8 +135,8 @@ This isn't either/or, which is why "not sure" was the right instinct: start with
 
 - A **token** is any object with a `$value`. A **group** is any object without one. Groups nest arbitrarily and may carry `$type`, `$description`, `$extensions` that descendants inherit.
 - Token member props: `$value` (required), `$type`, `$description`, `$deprecated`, `$extensions`.
-- **Names** may not contain `{`, `}`, or `.` and may not begin with `$`. The `.` is reserved as the reference path separator.
-- File extension `.tokens` or `.tokens.json`; media type `application/design-tokens+json`. Plain JSON — **no comments, no JSON5** (don't offer comment preservation; it isn't valid DTCG).
+- **Names** may not contain `{`, `}`, or `.` and may not begin with `$`, except `$root`, a group's root token (§6.2), referenced as `{group.$root}`. The `.` is reserved as the reference path separator.
+- File extension `.tokens` or `.tokens.json`; media type `application/design-tokens+json`. Plain JSON — **no comments, no JSON5** (don't offer comment preservation; it isn't valid DTCG). Token Atlas still reads a file with comments or trailing commas, as VS Code's `jsonc` language allows them, so such a file keeps its tokens.
 
 ### 4.2 Types to support for "full" conformance
 
@@ -191,7 +191,7 @@ If the visual editor does `JSON.stringify(model)` on save, it will reorder keys 
 
 **Use `jsonc-parser`'s `modify()` / `applyEdits()`** to compute _surgical_ edits against the existing text: change only the bytes that actually changed, preserve key order and indentation everywhere else. The host adapter turns those into a `WorkspaceEdit`. Net effect: editing one color in the UI produces a one-line git diff.
 
-Adding or deleting a property beside a sibling is the exception: `modify()` reformats every line its edit touches, a one-line neighbour such as `"lg": { "$value": 2 }` included, so `computeAddEdits` and `computeDeleteEdits` in `src/core/serialize.ts` write that edit themselves and fall back to `modify()` everywhere else (#304).
+Adding or deleting a property beside a sibling is the exception: `modify()` reformats every line its edit touches, a one-line neighbour such as `"lg": { "$value": 2 }` included, so `computeAddEdits` and `computeDeleteEdits` in `src/core/serialize.ts` write that edit themselves and fall back to `modify()` everywhere else (#304). Setting or removing a `$` property goes through the same two, so a one-line token stays on one line. Every new line takes the file's own indentation (tabs, or its smallest space indent) and line ending, read from the text when the caller passes no formatting options.
 
 ---
 
@@ -255,7 +255,7 @@ than a message anyone sends.
 - **M6 — Structure & theming.** Group/token CRUD, rename, reorder, search/filter; implement the chosen multi-file theming model.
 - **M7 — Polish.** Theme-matched styling, large-file performance (virtualized tree), packaging, README, publish to Marketplace.
 
-M0 to M6 have shipped, and so has most of M7. The virtualized tree and the Marketplace publish have not (§10).
+M0 to M6 have shipped, and so has most of M7, including the Marketplace publish. The virtualized tree has not (§10).
 
 A natural **first runnable target is M2** — it proves the whole loop (parse → render → edit → clean save → undo) end to end; everything after is breadth.
 
@@ -276,7 +276,7 @@ These were open before coding; each is now settled in the code.
 
 ### Sources
 
-- [Design Tokens Format Module 2025.10 (draft)](https://www.designtokens.org/tr/drafts/format/)
+- [Design Tokens Format Module 2025.10](https://www.designtokens.org/tr/2025.10/format/)
 - [Design Tokens specification reaches first stable version — DTCG / W3C](https://www.w3.org/community/design-tokens/2025/10/28/design-tokens-specification-reaches-first-stable-version/)
 - [Design Tokens Community Group](https://www.designtokens.org/)
 - [Style Dictionary — DTCG support](https://styledictionary.com/info/dtcg/)
@@ -289,4 +289,3 @@ These were open before coding; each is now settled in the code.
   severity (`information` by default), except paths the active document
   defines itself and paths shared only by one resolver modifier's files.
 - No virtualized tree in the visual editor (filter and panel scoping instead).
-- Not yet published to the Marketplace: the icon is in, the publisher account and its `VSCE_PAT` are not (#18).

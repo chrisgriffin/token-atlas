@@ -16,6 +16,7 @@
  * Paths are as the resolver writes them, relative to it; `read` maps one to
  * its text, with `""` meaning the resolver document itself.
  */
+import { expandExtends } from "./extends";
 import { parseTokens } from "./parse";
 import { indexTokens, resolveAliases } from "./resolve";
 import {
@@ -91,14 +92,19 @@ export function contextValues(
     if (text === undefined) continue;
     const target = hash === -1 ? { text } : pointerTarget(text, ref.slice(hash + 1));
     if (!target) continue;
+    // A group's `$extends` reaches this source's groups or an earlier one's.
+    const model = parseTokens(target.text);
+    expandExtends(model.root, merged);
     // Later sources win, so each one overwrites what came before it.
-    for (const [key, token] of indexTokens(parseTokens(target.text))) merged.set(key, token);
+    for (const [key, token] of indexTokens(model)) merged.set(key, token);
   }
-  resolveAliases({ root: { kind: "group", name: "", path: [], children: [...merged.values()] } });
+  // Flattened, an inherited token is a token of this context like any other.
+  const children = [...merged.values()].map((t) => ({ ...t, inheritedFrom: undefined }));
+  const resolved = resolveAliases({ root: { kind: "group", name: "", path: [], children } });
   const file = own.at(-1);
   return Object.fromEntries(
     keys.map((key) => {
-      const token = merged.get(key);
+      const token = resolved.get(key);
       return [key, { value: token?.value, resolved: token?.resolvedValue, file }];
     }),
   );

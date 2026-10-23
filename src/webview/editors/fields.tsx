@@ -7,6 +7,8 @@
  * you actually stopped on. Selects commit immediately.
  */
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { isReference, referenceTarget, refPointer } from "../../core/parse";
+import { Unlink } from "../icons";
 
 /** How long typing must pause before a text or number input commits. */
 export const COMMIT_DELAY_MS = 400;
@@ -82,28 +84,90 @@ export function Row({ children, gap = 8 }: { children: ReactNode; gap?: number }
 /** A swatch over the transparency checkerboard that opens the native color
  *  picker. `hex` may carry alpha (#rrggbbaa); the picker itself is opaque-only,
  *  so `onPick` gets #rrggbb and callers keep the token's own alpha. Clicks stop
- *  here so a table row doesn't also enter text edit. */
+ *  here so a table row doesn't also enter text edit.
+ *
+ *  A drag in the picker fires `input` on every step; the swatch previews
+ *  those and `onPick` runs once, on the native `change` that ends the pick,
+ *  so one pick is one edit. (React's onChange is the `input` event here.) */
 export function ColorSwatchInput({
   hex,
   size,
   onPick,
+  tabbable = true,
 }: {
   hex: string;
   size: number;
   onPick: (hex: string) => void;
+  /** In the Tab order; the table passes false for every row but the selected one. */
+  tabbable?: boolean;
 }) {
+  const [dragging, setDragging] = useState<string | null>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const pick = useRef(onPick);
+  pick.current = onPick;
+  useEffect(() => {
+    const el = input.current!;
+    const commit = () => {
+      setDragging(null);
+      pick.current(el.value);
+    };
+    el.addEventListener("change", commit);
+    return () => el.removeEventListener("change", commit);
+  }, []);
+  const shown = dragging ? dragging + hex.slice(7) : hex;
   return (
     <span className="swatch picker" style={{ width: size, height: size }} title="Pick color">
-      <span style={{ background: hex }} />
+      <span style={{ background: shown }} />
       <input
+        ref={input}
         type="color"
-        value={hex.slice(0, 7)}
+        value={shown.slice(0, 7)}
         aria-label="Pick color"
+        tabIndex={tabbable ? 0 : -1}
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
-        onChange={(e) => onPick(e.target.value)}
+        onChange={(e) => setDragging(e.target.value)}
       />
     </span>
+  );
+}
+
+/** A curly reference or a `{ "$ref": … }` pointer, rather than a value. */
+export const isRef = (v: unknown): boolean => isReference(v) || refPointer(v) !== undefined;
+
+/** A value that references another token, shown as that reference and never
+ *  edited in place. Unlink writes `resolved`, what the reference resolves to;
+ *  with nothing resolved (or only the reference itself back) it is disabled. */
+export function RefValue({
+  value,
+  resolved,
+  onChange,
+}: {
+  value: unknown;
+  resolved: unknown;
+  onChange: (value: unknown) => void;
+}) {
+  const shown = isReference(value) ? referenceTarget(value) : refPointer(value);
+  const unresolved = resolved === undefined || isRef(resolved);
+  return (
+    <div className="ref-row">
+      <span className="ref-chip" style={{ cursor: "default" }} title="References another token">
+        <code>{shown}</code>
+      </span>
+      <button
+        className="ghost"
+        disabled={unresolved}
+        title={
+          unresolved
+            ? "Unresolved: there is no value to unlink to"
+            : "Use the value it resolves to instead of the reference"
+        }
+        aria-label="Unlink from token"
+        onClick={() => onChange(resolved)}
+      >
+        <Unlink />
+      </button>
+    </div>
   );
 }
 
@@ -129,7 +193,7 @@ export function TextInput({
       {...live.props}
       onBlur={live.blur}
       onKeyDown={(e) => {
-        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        if (e.key === "Enter" && !e.nativeEvent.isComposing) (e.target as HTMLInputElement).blur();
       }}
     />
   );
@@ -172,7 +236,7 @@ export function NumberInput({
         if (Number.isNaN(parse(live.draft))) live.setDraft(String(latest.current));
       }}
       onKeyDown={(e) => {
-        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        if (e.key === "Enter" && !e.nativeEvent.isComposing) (e.target as HTMLInputElement).blur();
       }}
     />
   );
@@ -205,6 +269,13 @@ export interface Dimension {
   unit: "px" | "rem";
 }
 
+/** `{value, unit}`, the only shape the dimension and duration fields spread:
+ *  anything else (a legacy "16px", a reference) would spread into garbage. */
+const unitObject = <T,>(v: unknown): T | undefined =>
+  v && typeof v === "object" && typeof (v as { value?: unknown }).value === "number"
+    ? (v as T)
+    : undefined;
+
 export function DimensionField({
   value,
   onChange,
@@ -212,7 +283,7 @@ export function DimensionField({
   value: Dimension | undefined;
   onChange: (d: Dimension) => void;
 }) {
-  const dim = value ?? { value: 0, unit: "px" as const };
+  const dim = unitObject<Dimension>(value) ?? { value: 0, unit: "px" as const };
   return (
     <Row>
       <NumberInput
@@ -242,7 +313,7 @@ export function DurationField({
   value: Duration | undefined;
   onChange: (d: Duration) => void;
 }) {
-  const dur = value ?? { value: 0, unit: "ms" as const };
+  const dur = unitObject<Duration>(value) ?? { value: 0, unit: "ms" as const };
   return (
     <Row>
       <NumberInput

@@ -66,7 +66,7 @@ const hints = (doc: vscode.TextDocument) =>
 
 describe("Deprecated token uses", () => {
   before(async () => {
-    const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffin.token-atlas");
+    const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffinio.token-atlas");
     assert.ok(ext, "extension not found");
     await ext.activate();
     writeFileSync(
@@ -95,7 +95,7 @@ describe("Deprecated token uses", () => {
       resolver.fsPath,
       JSON.stringify(
         {
-          version: "2025-11-01",
+          version: "2025.10",
           resolutionOrder: [
             {
               type: "set",

@@ -7,7 +7,11 @@ import { dirname, join } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
-/** The screenshots the README embeds (#478): the listing renders the packaged README, so they ship with it. */
+/**
+ * The screenshots the README embeds. They stay out of the package: vsce
+ * rewrites their links to GitHub (`--githubBranch main`), and the listing
+ * loads them from there.
+ */
 const README_IMAGES = [
   ...readFileSync(join(ROOT, "README.md"), "utf8").matchAll(/!\[[^\]]*\]\((media\/[\w-]+\.png)\)/g),
 ].map((m) => m[1]);
@@ -18,10 +22,10 @@ const ALLOWED = [
   /^README\.md$/,
   /^LICENSE$/,
   /^CHANGELOG\.md$/,
-  /^media\/[\w.-]+\.svg$/,
+  // `contributes.viewsContainers`: the activity-bar icon.
+  /^media\/map\.svg$/,
   // `icon`: the Marketplace listing image (PNG; the Marketplace rejects SVG).
   /^media\/icon\.png$/,
-  ...README_IMAGES.map((f) => new RegExp(`^${f.replace(/\./g, "\\.")}$`)),
   // `contributes.jsonValidation`: completion and checks in token-atlas.lint.json.
   /^schemas\/token-atlas\.lint\.schema\.json$/,
   // Built by `npm run build`, which CI runs after the tests — so these are
@@ -62,9 +66,9 @@ describe("packaged .vsix contents", () => {
     expect(files).toContain(icon);
   });
 
-  it("ships every screenshot the README embeds", () => {
+  it("ships none of the screenshots the README embeds", () => {
     expect(README_IMAGES.length).toBeGreaterThanOrEqual(2);
-    expect(files).toEqual(expect.arrayContaining(README_IMAGES));
+    expect(files.filter((f) => README_IMAGES.includes(f))).toEqual([]);
   });
 
   it("ships nothing but the extension itself", () => {

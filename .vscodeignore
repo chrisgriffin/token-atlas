@@ -31,3 +31,10 @@ recovery-recap.md
 postcss.config.mjs
 changelog-preset.config.mjs
 docs/**
+specs/**
+
+# The README's screenshots load from GitHub on the listing (vsce rewrites their
+# links), and icon.svg is only the source icon.png is rendered from.
+media/*.png
+!media/icon.png
+media/icon.svg

@@ -75,16 +75,21 @@ export function registerDiagnostics(context: vscode.ExtensionContext): void {
   );
 
   const refresh = async (document: vscode.TextDocument) => {
+    if (!diagnosable(document)) return;
     const off =
       vscode.workspace.getConfiguration("tokenAtlas", document.uri).get<string>("validation") ===
       "off";
+    /** Publish, unless the document closed while its problems were worked out. */
+    const publish = (into: vscode.DiagnosticCollection, found: vscode.Diagnostic[]) => {
+      if (!document.isClosed) into.set(document.uri, found);
+    };
     if (LANGUAGES.includes(document.languageId)) {
       if (off) deprecatedCode.delete(document.uri);
-      else deprecatedCode.set(document.uri, await deprecatedCodeDiagnostics(document));
+      else publish(deprecatedCode, await deprecatedCodeDiagnostics(document));
       return;
     }
     if (!off && isResolverDocument(document)) {
-      resolvers.set(document.uri, await resolverDiagnostics(document));
+      publish(resolvers, await resolverDiagnostics(document));
       return;
     }
     resolvers.delete(document.uri);
@@ -92,7 +97,7 @@ export function registerDiagnostics(context: vscode.ExtensionContext): void {
       collection.delete(document.uri); // validation off, or stopped sniffing as tokens
       return;
     }
-    collection.set(document.uri, await computeDiagnostics(document));
+    publish(collection, await computeDiagnostics(document));
   };
 
   const refreshAllOpen = () => {
@@ -156,6 +161,7 @@ export function registerDiagnostics(context: vscode.ExtensionContext): void {
       collection.delete(doc.uri);
       resolvers.delete(doc.uri);
       deprecatedCode.delete(doc.uri);
+      unused.delete(doc.uri);
     }),
     // The active document's own definitions are exempt (local-first), so the
     // set of reported collisions depends on which editor is active.
@@ -187,6 +193,21 @@ export function registerDiagnostics(context: vscode.ExtensionContext): void {
 }
 
 const LINT_CONFIG = "token-atlas.lint.json";
+
+/**
+ * True for a document whose problems belong in the Problems panel: a file on
+ * disk, an untitled buffer, or a file of a (virtual) workspace folder. Not a
+ * second view of a file under another scheme, such as a diff's `git:` side,
+ * which would report every problem twice.
+ */
+export function diagnosable(document: vscode.TextDocument): boolean {
+  const { scheme } = document.uri;
+  return (
+    scheme === "file" ||
+    scheme === "untitled" ||
+    vscode.workspace.getWorkspaceFolder(document.uri) !== undefined
+  );
+}
 
 /** Parsed config per workspace folder, cleared whenever any config file changes. */
 const lintConfigCache = new Map<string, Promise<LintFile | undefined>>();
@@ -321,7 +342,7 @@ function unusedTokensMode(): string {
 
 async function refreshUnused(unused: vscode.DiagnosticCollection): Promise<void> {
   const mode = unusedTokensMode();
-  const open = vscode.workspace.textDocuments.filter(isTokenDocument);
+  const open = vscode.workspace.textDocuments.filter((d) => isTokenDocument(d) && diagnosable(d));
   if (mode === "off" || !open.length) {
     unused.clear();
     return;
@@ -506,7 +527,10 @@ function toDiagnostic(
   root: Node | undefined,
   issue: ValidationIssue,
 ): vscode.Diagnostic {
-  const range = rangeForPath(document, root, issue.path);
+  const range =
+    issue.offset !== undefined
+      ? new vscode.Range(document.positionAt(issue.offset), document.positionAt(issue.offset + 1))
+      : rangeForPath(document, root, issue.path);
   const diagnostic = new vscode.Diagnostic(
     range,
     issue.message,

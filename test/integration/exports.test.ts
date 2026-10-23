@@ -134,7 +134,7 @@ describe("Exported code", () => {
   // `execute*Provider` commands work off a TextDocument — so there is no
   // teardown to pair with it.
   before(async () => {
-    const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffin.token-atlas");
+    const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffinio.token-atlas");
     assert.ok(ext, "extension not found");
     await ext.activate();
   });
@@ -197,6 +197,12 @@ describe("Exported code", () => {
   it("stays silent on an exported identifier that is not a token", async () => {
     assert.equal(await tokenAtlasHoverAt("exported.css", "--not-a-token-at-all"), "");
     assert.deepEqual(await tokenDefinitionsAt("exported.css", "--not-a-token-at-all"), []);
+  });
+
+  it("stays silent on a bare word in a stylesheet, even one that spells a token", async () => {
+    // `grid-area: color-base-white` names a grid area: in CSS only `--x` is a variable.
+    assert.equal(await tokenAtlasHoverAt("exported.css", " color-base-white;"), "");
+    assert.deepEqual(await tokenDefinitionsAt("exported.css", " color-base-white;"), []);
   });
 
   it("completes a token as a custom property, a Sass variable and an object path", async () => {

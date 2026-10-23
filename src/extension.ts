@@ -79,8 +79,11 @@ export function activate(context: vscode.ExtensionContext): TokenAtlasTestHooks 
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("tokenAtlas.openCurrent", async () => {
-      const uri = vscode.window.activeTextEditor?.document.uri;
+    // The editor-title button passes the file of the editor it sits on, which
+    // with split editors need not be the active one; the palette passes none.
+    vscode.commands.registerCommand("tokenAtlas.openCurrent", async (target?: vscode.Uri) => {
+      const uri =
+        target instanceof vscode.Uri ? target : vscode.window.activeTextEditor?.document.uri;
       if (!uri) {
         void vscode.window.showInformationMessage(
           "Open a JSON token file first, then run this command.",

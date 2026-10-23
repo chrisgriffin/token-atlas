@@ -47,3 +47,16 @@ describe("release-pr.yml — trigger stub", () => {
     expect(text).toMatch(/^ {6}pull-requests: write$/m);
   });
 });
+
+describe("create-github-release.yml — trigger stub", () => {
+  it("passes both registry tokens by name: VSCE_PAT for the Marketplace, OVSX_PAT for Open VSX", () => {
+    const text = wf("create-github-release");
+    expect(text).toContain(
+      "uses: chrisgriffin/workflows/.github/workflows/_reusable-create-github-release.yml@v1",
+    );
+    expect(text).toMatch(
+      /^ {4}secrets:\n {6}VSCE_PAT: \$\{\{ secrets\.VSCE_PAT \}\}\n {6}OVSX_PAT: \$\{\{ secrets\.OVSX_PAT \}\}$/m,
+    );
+    expect(text).not.toContain("secrets: inherit");
+  });
+});

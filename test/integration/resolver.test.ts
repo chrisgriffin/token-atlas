@@ -87,7 +87,7 @@ describe("DTCG resolver", () => {
   }
 
   before(async () => {
-    const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffin.token-atlas");
+    const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffinio.token-atlas");
     assert.ok(ext, "extension not found");
     await ext.activate();
     probe = await vscode.workspace.openTextDocument(PROBE);
@@ -137,6 +137,36 @@ describe("DTCG resolver", () => {
       /No resolver document/,
     );
     assert.ok((await surfaceHover()).includes(DARK), "the dark resolution is still active");
+  });
+
+  it("follows an edit to the active resolver without being picked again", async () => {
+    await choose({ theme: "light" });
+    await waitFor(async () => (await surfaceHover()).includes(LIGHT), "light's surface");
+    const doc = await vscode.workspace.openTextDocument(RESOLVER);
+    const original = doc.getText();
+    const from = '"light": [{ "$ref": "light.tokens.json" }]';
+    assert.ok(original.includes(from), "the fixture's light context moved");
+    const rewrite = async (text: string) => {
+      const edit = new vscode.WorkspaceEdit();
+      edit.replace(
+        RESOLVER,
+        new vscode.Range(doc.positionAt(0), doc.positionAt(doc.getText().length)),
+        text,
+      );
+      assert.ok(await vscode.workspace.applyEdit(edit));
+    };
+    try {
+      // Unsaved, as typed: the open document is what the index reads.
+      await rewrite(original.replace(from, '"light": [{ "$ref": "dark.tokens.json" }]'));
+      await waitFor(
+        async () => (await surfaceHover()).includes(DARK),
+        "the light context's new file",
+        5_000,
+      );
+    } finally {
+      await rewrite(original);
+      await doc.save();
+    }
   });
 
   it("reads part of a file through a #/pointer, its children top-level", async () => {

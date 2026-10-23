@@ -102,3 +102,29 @@ describe("computeLegacyFixes", () => {
     expect(computeLegacyFixes("not json")).toEqual([]);
   });
 });
+
+describe("core model fixes — legacy values inside composites", () => {
+  it("converts a legacy color or dimension in a composite sub-value, and nothing else", () => {
+    const text = `{
+  "shadow": {
+    "$type": "shadow",
+    "$value": [{ "color": "#000000", "offsetX": "2px", "offsetY": { "value": 1, "unit": "px" }, "blur": "{b}", "spread": "1em" }]
+  },
+  "border": { "$type": "border", "$value": { "color": "#ff0000", "width": "1px", "style": "solid" } }
+}`;
+    const fixes = computeLegacyFixes(text);
+    expect(fixes.map((f) => f.path.join("."))).toEqual(["shadow", "shadow", "border", "border"]);
+    expect(
+      applyEdits(
+        text,
+        fixes.map((f) => f.edit),
+      ),
+    ).toBe(`{
+  "shadow": {
+    "$type": "shadow",
+    "$value": [{ "color": { "colorSpace": "srgb", "components": [0, 0, 0], "hex": "#000000" }, "offsetX": { "value": 2, "unit": "px" }, "offsetY": { "value": 1, "unit": "px" }, "blur": "{b}", "spread": "1em" }]
+  },
+  "border": { "$type": "border", "$value": { "color": { "colorSpace": "srgb", "components": [1, 0, 0], "hex": "#ff0000" }, "width": { "value": 1, "unit": "px" }, "style": "solid" } }
+}`);
+  });
+});

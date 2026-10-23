@@ -15,6 +15,20 @@ export function dim(d: unknown, scale = 1): string | null {
     : null;
 }
 export const col = (c: unknown): string => toHex(c) ?? "transparent";
+/** A value as text when nothing better fits: never `[object Object]`. */
+const text = (v: unknown): string => (typeof v === "string" ? v : JSON.stringify(v));
+
+/** The DTCG strokeStyle keywords, which a border's style takes too. */
+export const STROKE_KEYWORDS = [
+  "solid",
+  "dashed",
+  "dotted",
+  "double",
+  "groove",
+  "ridge",
+  "outset",
+  "inset",
+] as const;
 /** The family stack as written, for table text. */
 export const family = (f: unknown): string | undefined =>
   Array.isArray(f) ? f.join(", ") : typeof f === "string" ? f : undefined;
@@ -114,10 +128,10 @@ export function summarize(value: unknown, type: string | undefined): string {
   const v = obj(value);
   switch (type) {
     case "color":
-      return toHex(value) ?? String(value);
+      return toHex(value) ?? text(value);
     case "dimension":
     case "duration":
-      return dim(value) ?? String(value);
+      return dim(value) ?? text(value);
     case "fontFamily":
       return family(value) ?? "";
     case "cubicBezier":
@@ -144,6 +158,6 @@ export function summarize(value: unknown, type: string | undefined): string {
     case "strokeStyle":
       return typeof value === "string" ? value : "custom";
     default:
-      return typeof value === "string" ? value : JSON.stringify(value);
+      return text(value);
   }
 }

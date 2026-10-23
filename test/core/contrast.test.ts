@@ -83,6 +83,19 @@ describe("hover contrast verdict", () => {
     expect(md).toMatch(/4\.62:1 on black<\/span>&nbsp;\$\(error\)/);
   });
 
+  it("judges a translucent color by what shows through it on each background", () => {
+    const md = hoverMarkdown({
+      rootPx: 16,
+      isAlias: false,
+      name: "veil",
+      path: ["color", "veil"],
+      type: "color",
+      value: { colorSpace: "srgb", components: [0, 0, 0], alpha: 0.1 },
+    });
+    expect(md).toMatch(/1\.25:1 on white<\/span>&nbsp;\$\(error\)/);
+    expect(md).toMatch(/1:1 on black<\/span>&nbsp;\$\(error\)/);
+  });
+
   it("judges a hand-typed value outside the list against AA instead of throwing", () => {
     const md = hover("AA large");
     expect(md).toContain("WCAG AA (4.5:1)");

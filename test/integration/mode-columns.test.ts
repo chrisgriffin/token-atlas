@@ -11,6 +11,7 @@
  * `token-editor-writes.test.ts`; every file is left as it was found.
  */
 import * as assert from "node:assert/strict";
+import { rmSync } from "node:fs";
 import * as vscode from "vscode";
 import type { TokenAtlasTestHooks } from "../../src/extension";
 
@@ -62,7 +63,7 @@ async function hoverOf(ref: string): Promise<string> {
 }
 
 before(async () => {
-  const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffin.token-atlas");
+  const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffinio.token-atlas");
   assert.ok(ext, "extension not found");
   hooks = await ext.activate();
 });
@@ -103,6 +104,24 @@ describe("Visual editor modes", () => {
       );
     } finally {
       await vscode.commands.executeCommand("tokenAtlas.chooseActiveSet", []);
+    }
+  });
+
+  it("writes the mode view where a value already decides it", async () => {
+    // A workspace value overrides a user one: written to user settings, the
+    // toggle would change nothing the editor reads.
+    const config = () => vscode.workspace.getConfiguration("tokenAtlas", LIGHT);
+    await config().update("modeView", "single", vscode.ConfigurationTarget.Workspace);
+    try {
+      await send({ type: "setModeView", view: "sideBySide" });
+      await waitFor(() => config().get("modeView") === "sideBySide", "the toggle to take effect");
+      assert.equal(config().inspect("modeView")?.workspaceValue, "sideBySide");
+      assert.equal(config().inspect("modeView")?.globalValue, undefined);
+    } finally {
+      await config().update("modeView", undefined, vscode.ConfigurationTarget.Workspace);
+      await config().update("modeView", undefined, vscode.ConfigurationTarget.Global);
+      // The workspace settings file the test wrote, so the fixture stays as committed.
+      rmSync(vscode.Uri.joinPath(workspace, ".vscode").fsPath, { recursive: true, force: true });
     }
   });
 });

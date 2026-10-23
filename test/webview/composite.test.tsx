@@ -83,11 +83,14 @@ describe("BorderEditor", () => {
     });
   });
 
-  it("writes the hex a colour sub-field commits", () => {
+  it("writes the colour a colour sub-field commits as a colour object", () => {
     const onChange = vi.fn();
     render(<BorderEditor value={{ style: "solid" }} onChange={onChange} />);
     type(hexField("#000000"), "#3b82f6");
-    expect(onChange).toHaveBeenCalledWith({ style: "solid", color: "#3b82f6" });
+    expect(onChange).toHaveBeenCalledWith({
+      style: "solid",
+      color: expect.objectContaining({ colorSpace: "srgb", hex: "#3b82f6" }),
+    });
   });
 });
 
@@ -200,14 +203,11 @@ describe("GradientEditor", () => {
     const onChange = vi.fn();
     const { rerender } = render(<GradientEditor value={[]} onChange={onChange} />);
     fireEvent.click(screen.getByRole("button", { name: "+ Add stop" }));
-    expect(onChange).toHaveBeenLastCalledWith([{ color: "#000000", position: 0 }]);
+    expect(onChange.mock.lastCall![0].map((s: { position: number }) => s.position)).toEqual([0]);
 
     rerender(<GradientEditor value={[{ color: "#000000", position: 0 }]} onChange={onChange} />);
     fireEvent.click(screen.getByRole("button", { name: "+ Add stop" }));
-    expect(onChange).toHaveBeenLastCalledWith([
-      { color: "#000000", position: 0 },
-      { color: "#000000", position: 1 },
-    ]);
+    expect(onChange.mock.lastCall![0].map((s: { position: number }) => s.position)).toEqual([0, 1]);
   });
 
   it("removes the stop that was clicked, keeping the rest in order", () => {
@@ -233,7 +233,9 @@ describe("GradientEditor", () => {
     const onChange = vi.fn();
     render(<GradientEditor value={[{ color: "#000000", position: 0.25 }]} onChange={onChange} />);
     type(hexField("#000000"), "#3b82f6");
-    expect(onChange).toHaveBeenCalledWith([{ color: "#3b82f6", position: 0.25 }]);
+    expect(onChange).toHaveBeenCalledWith([
+      { color: expect.objectContaining({ hex: "#3b82f6" }), position: 0.25 },
+    ]);
   });
 });
 
@@ -288,5 +290,131 @@ describe("Remove buttons", () => {
     ]);
     expect(new Set(buttons.map((b) => b.className))).toEqual(new Set(["secondary"]));
     expect(buttons.every((b) => b.textContent === "Remove")).toBe(true);
+  });
+});
+
+describe("Composite sub-values that reference another token", () => {
+  const border = (width: unknown) => ({
+    color: { colorSpace: "srgb", components: [0, 0, 0] },
+    width,
+    style: "solid",
+  });
+  const unlink = () => screen.getByRole("button", { name: "Unlink from token" });
+
+  it("shows a curly reference read-only, with no control that rewrites it (#8)", () => {
+    const onChange = vi.fn();
+    render(<BorderEditor value={border("{border.width.thin}")} onChange={onChange} />);
+    expect(screen.getByText("border.width.thin")).toBeTruthy();
+    // The width's unit select is gone: only the colour and style controls are left.
+    expect(screen.queryByRole("spinbutton")).toBeNull();
+    expect(screen.getAllByRole("combobox")).toHaveLength(1);
+    fireEvent.change(labelled("Style"), { target: { value: "dashed" } });
+    expect(onChange.mock.calls[0][0].width).toBe("{border.width.thin}");
+  });
+
+  it("shows a $ref sub-value the same way (#8)", () => {
+    render(
+      <BorderEditor value={border({ $ref: "#/border/thin/$value/width" })} onChange={vi.fn()} />,
+    );
+    expect(screen.getByText("#/border/thin/$value/width")).toBeTruthy();
+    expect(screen.queryByRole("spinbutton")).toBeNull();
+  });
+
+  it("unlinks to the value the reference resolves to (#8)", () => {
+    const onChange = vi.fn();
+    render(
+      <BorderEditor
+        value={border("{border.width.thin}")}
+        resolved={border({ value: 1, unit: "px" })}
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(unlink());
+    expect(onChange).toHaveBeenCalledWith(border({ value: 1, unit: "px" }));
+  });
+
+  it("disables Unlink when the reference does not resolve (#8)", () => {
+    render(
+      <BorderEditor
+        value={border("{missing}")}
+        resolved={border("{missing}")}
+        onChange={vi.fn()}
+      />,
+    );
+    expect((unlink() as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("covers shadow, typography, transition, gradient and dash sub-values (#8)", () => {
+    const ref = "{ref.elsewhere}";
+    render(
+      <>
+        <ShadowEditor value={{ color: ref, offsetX: ref }} onChange={vi.fn()} />
+        <TypographyEditor value={{ fontFamily: ref, lineHeight: ref }} onChange={vi.fn()} />
+        <TransitionEditor value={{ duration: ref, timingFunction: ref }} onChange={vi.fn()} />
+        <GradientEditor value={[{ color: ref, position: ref }, ref]} onChange={vi.fn()} />
+        <StrokeStyleEditor value={{ dashArray: [ref], lineCap: "butt" }} onChange={vi.fn()} />
+      </>,
+    );
+    expect(screen.getAllByText("ref.elsewhere")).toHaveLength(10);
+  });
+
+  it("never spreads a dimension that is not a {value, unit} object (#8)", () => {
+    const onChange = vi.fn();
+    render(<BorderEditor value={border("1px")} onChange={onChange} />);
+    const unit = screen
+      .getAllByRole("combobox")
+      .find((s) => [...(s as HTMLSelectElement).options].some((o) => o.value === "rem"))!;
+    fireEvent.change(unit, { target: { value: "rem" } });
+    expect(onChange.mock.calls[0][0].width).toEqual({ value: 0, unit: "rem" });
+  });
+});
+
+describe("Composite colour sub-fields", () => {
+  const black = { colorSpace: "srgb", components: [0, 0, 0] };
+
+  it("writes nothing for text that is not a colour, typed or paused on (#8)", () => {
+    const onChange = vi.fn();
+    render(<BorderEditor value={{ color: black }} onChange={onChange} />);
+    type(hexField("#000000"), "not a colour");
+    type(hexField("not a colour"), "#ab");
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("writes a typed colour as a colour object in the field's own space (#8)", () => {
+    const onChange = vi.fn();
+    render(
+      <BorderEditor
+        value={{ color: { colorSpace: "display-p3", components: [0, 0, 0] } }}
+        onChange={onChange}
+      />,
+    );
+    type(hexField("#000000"), "#ff0000");
+    expect(onChange.mock.calls[0][0].color).toMatchObject({ colorSpace: "display-p3" });
+    expect(onChange.mock.calls[0][0].color.components).toHaveLength(3);
+  });
+
+  it("keeps the colour's exact alpha when the picker sets its hue (#8)", () => {
+    const onChange = vi.fn();
+    render(<BorderEditor value={{ color: { ...black, alpha: 0.25 } }} onChange={onChange} />);
+    fireEvent.change(screen.getByLabelText("Pick color"), { target: { value: "#ff0000" } });
+    expect(onChange.mock.calls[0][0].color).toMatchObject({
+      colorSpace: "srgb",
+      components: [1, 0, 0],
+      alpha: 0.25,
+    });
+  });
+
+  it("starts a new shadow layer and gradient stop with colour objects (#8)", () => {
+    const onChange = vi.fn();
+    render(
+      <>
+        <ShadowEditor value={{ color: black }} onChange={onChange} />
+        <GradientEditor value={[]} onChange={onChange} />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "+ Add shadow layer" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ Add stop" }));
+    expect(onChange.mock.calls[0][0][1].color).toMatchObject({ colorSpace: "srgb" });
+    expect(onChange.mock.calls[1][0][0].color).toMatchObject({ colorSpace: "srgb" });
   });
 });

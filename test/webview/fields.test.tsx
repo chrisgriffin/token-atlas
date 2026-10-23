@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { COMMIT_DELAY_MS, NumberInput, TextInput } from "../../src/webview/editors/fields";
+import {
+  COMMIT_DELAY_MS,
+  ColorSwatchInput,
+  NumberInput,
+  TextInput,
+} from "../../src/webview/editors/fields";
 
 /**
  * Text and number inputs commit while typing, once typing pauses, instead of
@@ -99,5 +104,45 @@ describe("NumberInput", () => {
     fireEvent.blur(input);
     expect(onCommit).not.toHaveBeenCalled();
     expect(input.value).toBe("8");
+  });
+});
+
+describe("ColorSwatchInput", () => {
+  it("writes once when a pick is made, not on every step of a drag (#8)", () => {
+    const onPick = vi.fn();
+    render(<ColorSwatchInput hex="#000000" size={12} onPick={onPick} />);
+    const swatch = screen.getByLabelText("Pick color") as HTMLInputElement;
+    for (const v of ["#110000", "#220000", "#330000"])
+      fireEvent.input(swatch, { target: { value: v } });
+    expect(onPick).not.toHaveBeenCalled();
+    expect(swatch.value).toBe("#330000");
+    fireEvent.change(swatch, { target: { value: "#440000" } });
+    expect(onPick.mock.calls).toEqual([["#440000"]]);
+  });
+});
+
+describe("Enter that confirms an IME composition", () => {
+  it("commits nothing in a text or number field, and keeps it focused (#8)", () => {
+    for (const [role, v] of [
+      ["textbox", "にほ"],
+      ["spinbutton", "12"],
+    ] as const) {
+      const onCommit = vi.fn();
+      const { unmount } = render(
+        role === "textbox" ? (
+          <TextInput value="" onCommit={onCommit} />
+        ) : (
+          <NumberInput value={0} onCommit={onCommit} />
+        ),
+      );
+      const field = screen.getByRole(role);
+      field.focus();
+      fireEvent.focus(field);
+      fireEvent.change(field, { target: { value: v } });
+      fireEvent.keyDown(field, { key: "Enter", isComposing: true });
+      expect(document.activeElement, role).toBe(field);
+      expect(onCommit, role).not.toHaveBeenCalled();
+      unmount();
+    }
   });
 });

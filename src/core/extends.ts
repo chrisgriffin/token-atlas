@@ -15,6 +15,12 @@
  */
 import type { GroupNode, TokenNode, TokenType } from "./types";
 
+/**
+ * Tokens whose `type` the last run filled in from an `$extends` target
+ * (§6.7.3), so the next run can clear it: the target may have changed since.
+ */
+const typedByExtends = new WeakSet<TokenNode>();
+
 /** True when any group in `root` extends another. */
 export function hasExtends(root: GroupNode): boolean {
   return (
@@ -24,8 +30,9 @@ export function hasExtends(root: GroupNode): boolean {
 
 /**
  * Expand every `$extends` in `root` in place. Re-running is safe: earlier
- * copies are removed first, so a cached model re-resolved against a changed
- * workspace never keeps a stale inherited token.
+ * copies and the types they gave are removed first, so a cached model
+ * re-resolved against a changed workspace never keeps a stale inherited
+ * token or type.
  */
 export function expandExtends(root: GroupNode, external?: Map<string, TokenNode>): void {
   strip(root);
@@ -89,6 +96,7 @@ export function expandExtends(root: GroupNode, external?: Map<string, TokenNode>
       if (type) {
         token.type = type;
         token.typeIsInherited = true;
+        typedByExtends.add(token);
       }
     }
   }
@@ -147,10 +155,17 @@ function externalGroupType(
   return undefined;
 }
 
+/** Undo a previous run: inherited copies, errors, and the types it gave. */
 function strip(group: GroupNode): void {
   group.children = group.children.filter((c) => !c.inheritedFrom);
   if (group.extends) delete group.extends.error;
-  for (const c of group.children) if (c.kind === "group") strip(c);
+  for (const c of group.children) {
+    if (c.kind === "group") strip(c);
+    else if (typedByExtends.delete(c)) {
+      c.type = undefined;
+      c.typeIsInherited = false;
+    }
+  }
 }
 
 function walk(group: GroupNode, groups: Map<string, GroupNode>, tokens: Map<string, TokenNode>) {

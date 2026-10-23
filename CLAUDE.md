@@ -55,7 +55,7 @@ DTCG Design Tokens Format Module **2025.10** (first stable). Color values are ob
 
 Automated: every push to `develop` opens/updates a `release/next` → `main` PR
 from conventional-commit history; merging it builds and attaches the `.vsix` to
-a GitHub Release. Not on the Marketplace. To install a build:
+a GitHub Release and publishes it to the Marketplace. To install a build:
 `code --install-extension token-atlas-<v>.vsix --force`, then reload the window.
 Mechanism and workflow map: [`docs/releasing.md`](docs/releasing.md).
 

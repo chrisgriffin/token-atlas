@@ -37,6 +37,7 @@ export {
   pointersIn,
 } from "./resolve";
 export {
+  canNameToken,
   cssVarUsages,
   EXPORT_IDENTIFIER,
   exportCompletionContext,
@@ -100,6 +101,7 @@ export {
   computeReferenceRenameEdits,
   computeSwapEdits,
   computeReorderEdits,
+  InvalidNameError,
   NameTakenError,
   type Edit,
 } from "./serialize";

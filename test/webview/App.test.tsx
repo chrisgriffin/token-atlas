@@ -1,4 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
+import { afterEach, beforeAll, describe, it, expect, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 // App.tsx imports vscodeApi, which calls acquireVsCodeApi() at load.
 vi.mock("../../src/webview/vscodeApi", () => ({
@@ -10,7 +11,10 @@ vi.mock("../../src/webview/vscodeApi", () => ({
 }));
 
 import { parseTokens } from "../../src/core/parse";
+import { resolveAliases, validate } from "../../src/core";
+import { post } from "../../src/webview/vscodeApi";
 import {
+  App,
   PANEL_MAX_SHARE,
   PANEL_MIN,
   clampPanelWidth,
@@ -98,5 +102,122 @@ describe("clampPanelWidth", () => {
 
   it("passes a width inside the range through, rounded", () => {
     expect(clampPanelWidth(500.4, 2000)).toBe(500);
+  });
+});
+
+describe("App", () => {
+  beforeAll(() => {
+    globalThis.ResizeObserver = class {
+      observe() {}
+      disconnect() {}
+      unobserve() {}
+    } as unknown as typeof ResizeObserver;
+  });
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  const settings = {
+    rootFontSize: 16,
+    defaultColorSpace: "srgb",
+    defaultDimensionUnit: "px" as const,
+    contrastTarget: "AA" as const,
+    modeView: "single" as const,
+  };
+  const black = { colorSpace: "srgb", components: [0, 0, 0] };
+  const doc = (a = "a") => ({
+    color: { $type: "color", [a]: { $value: black }, b: { $value: black } },
+  });
+
+  /** The host's message for a document, as `init` or `update`. */
+  function send(type: "init" | "update", d: unknown, extra: Record<string, unknown> = {}) {
+    const model = parseTokens(JSON.stringify(d));
+    resolveAliases(model);
+    const data = {
+      type,
+      model,
+      validation: validate(model),
+      externalTokens: [],
+      settings,
+      scope: [],
+      columnWidths: {},
+      ...extra,
+    };
+    act(() => {
+      window.dispatchEvent(new MessageEvent("message", { data }));
+    });
+  }
+  const posts = (type: string) =>
+    vi
+      .mocked(post)
+      .mock.calls.map((c) => c[0] as { type: string } & Record<string, unknown>)
+      .filter((m) => m.type === type);
+  const panelName = () => document.querySelector("aside.panel .node-header-name h2")?.textContent;
+  const renamePanel = (to: string) => {
+    fireEvent.click(document.querySelector("aside.panel .node-header-name h2")!);
+    const input = document.querySelector(".node-header-name input") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: to } });
+    fireEvent.keyDown(input, { key: "Enter" });
+  };
+
+  it("keeps the panel open on a token renamed from its header (#8)", () => {
+    render(<App />);
+    send("init", doc(), { selected: ["color", "a"] });
+    renamePanel("renamed");
+    expect(posts("renameNode")).toEqual([
+      { type: "renameNode", path: ["color", "a"], newName: "renamed" },
+    ]);
+    send("update", doc("renamed"));
+    expect(panelName()).toBe("renamed");
+  });
+
+  it("keeps the panel open on a group renamed from its header (#8)", () => {
+    render(<App />);
+    send("init", doc(), { selected: ["color"] });
+    renamePanel("colour");
+    send("update", { colour: doc().color });
+    expect(panelName()).toBe("colour");
+  });
+
+  it("refuses a name a sibling already has, in the panel and the table (#8)", () => {
+    render(<App />);
+    send("init", doc(), { selected: ["color", "a"] });
+    renamePanel("b");
+    const cell = [...document.querySelectorAll<HTMLElement>("tr.token .name-cell .cell")].find(
+      (c) => c.textContent === "a",
+    )!;
+    act(() => cell.focus());
+    const input = document.activeElement as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "b" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(posts("renameNode")).toEqual([]);
+    expect(input.className).toContain("bad");
+    expect(panelName()).toBe("a");
+  });
+
+  it("opens the new group's panel on + Group (#8)", () => {
+    render(<App />);
+    send("init", doc());
+    fireEvent.click(screen.getByText("+ Group"));
+    expect(posts("addGroup")).toEqual([{ type: "addGroup", parentPath: [], name: "group" }]);
+    send("update", { ...doc(), group: {} });
+    expect(panelName()).toBe("group");
+    expect(document.querySelector("tr.section")?.textContent).toBeTruthy();
+  });
+
+  it("adds a token inside the scoped group when nothing is selected (#8)", () => {
+    render(<App />);
+    send("init", doc(), { scope: ["color"] });
+    fireEvent.click(screen.getByText("+ Token"));
+    expect(posts("addToken")[0]).toMatchObject({ parentPath: ["color"] });
+  });
+
+  it("posts two different names for a quick double click on + Token (#8)", () => {
+    render(<App />);
+    send("init", doc());
+    fireEvent.click(screen.getByText("+ Token"));
+    fireEvent.click(screen.getByText("+ Token"));
+    expect(posts("addToken").map((m) => m.name)).toEqual(["token", "token1"]);
   });
 });

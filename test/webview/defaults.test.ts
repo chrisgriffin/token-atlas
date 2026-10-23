@@ -53,4 +53,20 @@ describe("defaultValueFor", () => {
     expect(c.colorSpace).toBe("display-p3");
     expect(c.hex).toBeUndefined();
   });
+
+  it("starts composite colours as colour objects in the configured space (#8)", () => {
+    const colors = (t: "border" | "shadow" | "gradient", s: EditorSettings) => {
+      const v = defaultValueFor(t, s);
+      return (Array.isArray(v) ? v : [v]).map((x) => (x as Record<string, unknown>).color);
+    };
+    for (const t of ["border", "shadow", "gradient"] as const) {
+      for (const c of colors(t, PX)) expect(c, t).toMatchObject({ colorSpace: "srgb" });
+      for (const c of colors(t, REM_P3)) {
+        expect(c, t).toMatchObject({ colorSpace: "display-p3" });
+        expect((c as Record<string, unknown>).hex, t).toBeUndefined();
+      }
+    }
+    expect(colors("shadow", PX)[0]).toMatchObject({ alpha: 0.2 });
+    expect(colors("gradient", PX)[1]).toMatchObject({ components: [1, 1, 1] });
+  });
 });

@@ -103,6 +103,12 @@ describe("AliasPicker keyboard", () => {
   const highlighted = () =>
     screen.getAllByRole("option").find((o) => o.getAttribute("aria-selected") === "true");
 
+  it("does not pick on the Enter that confirms an IME composition (#8)", () => {
+    const { onPick } = renderPicker();
+    fireEvent.keyDown(input(), { key: "Enter", isComposing: true });
+    expect(onPick).not.toHaveBeenCalled();
+  });
+
   it("moves the highlight with the arrows and picks it with Enter", () => {
     const { onPick } = renderPicker();
     search(".");

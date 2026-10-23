@@ -68,7 +68,7 @@ const pathCollisions = (value: string | undefined) =>
 
 describe("Path collisions", () => {
   before(async () => {
-    const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffin.token-atlas");
+    const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffinio.token-atlas");
     assert.ok(ext, "extension not found");
     await ext.activate();
     // Both brands in the index: an active set would hide one from it.

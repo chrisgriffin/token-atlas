@@ -45,7 +45,9 @@ async function scanOf(uri: vscode.Uri): Promise<Map<string, IdentifierOccurrence
   let scan = scans.get(key);
   if (!scan) {
     const open = vscode.workspace.textDocuments.find((d) => d.uri.toString() === key);
-    scan = scanIdentifiers((open ? open.getText() : await readCapped(uri)) ?? "");
+    // A stylesheet's extension is its language id (css, scss, sass, less).
+    const languageId = open?.languageId ?? uri.path.slice(uri.path.lastIndexOf(".") + 1);
+    scan = scanIdentifiers((open ? open.getText() : await readCapped(uri)) ?? "", languageId);
     scans.set(key, scan);
   }
   return scan;

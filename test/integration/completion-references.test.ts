@@ -166,7 +166,7 @@ describe("Alias completion and find-all-references", () => {
   // rename.test.ts both say the same). Nothing here opens an editor — both
   // commands work off a TextDocument — so there is no teardown to pair with it.
   before(async () => {
-    const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffin.token-atlas");
+    const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffinio.token-atlas");
     assert.ok(ext, "extension not found");
     await ext.activate();
   });

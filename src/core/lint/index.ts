@@ -153,12 +153,12 @@ function rampRule(tokens: TokenNode[], rampPaths: string[], emit: Emit): void {
   }
 }
 
-// A leading digit is lower case: t-shirt steps like `2xl` are not a defect.
+// A leading digit fits every case: t-shirt steps like `2xl` are not a defect.
 const CASES: Record<NameCase, RegExp> = {
   "kebab-case": /^[a-z0-9]+(-[a-z0-9]+)*$/,
   camelCase: /^[a-z0-9][a-zA-Z0-9]*$/,
   snake_case: /^[a-z0-9]+(_[a-z0-9]+)*$/,
-  PascalCase: /^[A-Z][a-zA-Z0-9]*$/,
+  PascalCase: /^[A-Z0-9][a-zA-Z0-9]*$/,
 };
 
 /** Every group and token name, each reported once, where it is written. */
@@ -185,7 +185,8 @@ function nameRule(root: GroupNode, config: LintConfig, emit: Emit): void {
  * Each declared pair is judged where its foreground is defined, on resolved
  * values, so an alias or a background in another file counts as what it is.
  * A side that is not a color is reported rather than skipped: a typo in the
- * config would otherwise silence its pair for good.
+ * config would otherwise silence its pair for good. A foreground no file
+ * defines has nowhere to be judged, so it is reported on the background.
  */
 function contrastRule(
   own: (key: string) => TokenNode | undefined,
@@ -199,7 +200,7 @@ function contrastRule(
     return toColor(value) ? value : undefined;
   };
   for (const { foreground, background, target } of pairs) {
-    const token = own(foreground);
+    const token = own(foreground) ?? (lookup(foreground) ? undefined : own(background));
     if (!token) continue;
     const fg = colorOf(foreground);
     const bg = colorOf(background);

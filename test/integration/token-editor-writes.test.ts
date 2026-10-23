@@ -140,7 +140,7 @@ async function rewrite(text: string): Promise<void> {
 }
 
 before(async () => {
-  const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffin.token-atlas");
+  const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffinio.token-atlas");
   assert.ok(ext, "extension not found");
   hooks = await ext.activate();
 });
@@ -222,6 +222,34 @@ describe("Visual editor writes", () => {
     assert.equal(
       after,
       before.replace('"base": {', '"brand": {').replace('"{palette.base}"', '"{palette.brand}"'),
+    );
+  });
+
+  it("renameNode refuses a name F2 refuses, leaves the file alone and says why", async () => {
+    // The extension and this suite share one `vscode` API object, so the
+    // message the host shows lands here.
+    const shown: string[] = [];
+    const original = vscode.window.showErrorMessage;
+    vscode.window.showErrorMessage = (async (message: string) => {
+      shown.push(message);
+      return undefined;
+    }) as typeof vscode.window.showErrorMessage;
+    try {
+      for (const newName of ["ink.dark", "$description", "{x}", ""]) {
+        const { before, after } = await apply({
+          type: "renameNode",
+          path: ["palette", "ink"],
+          newName,
+        });
+        assert.equal(after, before, `${JSON.stringify(newName)} was written`);
+      }
+    } finally {
+      vscode.window.showErrorMessage = original;
+    }
+    assert.equal(shown.length, 4, `messages shown: ${JSON.stringify(shown)}`);
+    assert.ok(
+      shown.every((m) => /may not be empty, start with "\$"/.test(m)),
+      shown.join("\n"),
     );
   });
 
