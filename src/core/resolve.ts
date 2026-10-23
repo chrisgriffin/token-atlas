@@ -37,7 +37,42 @@ function walk(group: GroupNode, out: Map<string, TokenNode>): void {
   }
 }
 
-type Lookup = (key: string) => TokenNode | undefined;
+export type Lookup = (key: string) => TokenNode | undefined;
+
+/**
+ * Where a reference finds its token: this document first (only the keys
+ * `localScope` allows, when given), then `external` (invariant 4).
+ */
+export function scopedLookup(
+  index: Map<string, TokenNode>,
+  external?: Map<string, TokenNode>,
+  localScope?: (key: string) => boolean,
+): Lookup {
+  return (key) =>
+    (localScope && !localScope(key) ? undefined : index.get(key)) ?? external?.get(key);
+}
+
+/**
+ * Whether following references from the token at `from` — a whole-value
+ * alias, or any reference inside its value, `$ref` pointers included —
+ * reaches `to`. A cycle that does not pass through `to` ends the walk.
+ */
+export function referencesReach(lookup: Lookup, from: string, to: string): boolean {
+  const stack = [from];
+  const seen = new Set<string>();
+  while (stack.length) {
+    const key = stack.pop()!;
+    if (key === to) return true;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const token = lookup(key);
+    if (token) stack.push(...collectReferences(token.value));
+  }
+  return false;
+}
+
+/** The `$type` a token declares itself, not one its group gives it. */
+const ownType = (token: TokenNode) => (token.typeIsInherited ? undefined : token.type);
 
 /**
  * Resolve every token's alias chain in place.
@@ -59,16 +94,16 @@ export function resolveAliases(
 ): Map<string, TokenNode> {
   expandExtends(model.root, external);
   const index = indexTokens(model);
-  const lookup: Lookup = (key) =>
-    (localScope && !localScope(key) ? undefined : index.get(key)) ?? external?.get(key);
+  const lookup = scopedLookup(index, external, localScope);
 
   for (const token of index.values()) {
     if (token.isAlias && token.reference) {
       // Whole-$value alias: follow the chain to a concrete (possibly
-      // composite, possibly itself containing references) value.
+      // composite, possibly itself containing references) value. With no
+      // `$type` of its own, its type is its target's before its group's (§5.2.2).
       const resolved = resolveReference(token.reference, lookup, new Set());
       token.resolvedValue = resolved?.value;
-      token.resolvedType = token.type ?? resolved?.type;
+      token.resolvedType = ownType(token) ?? resolved?.type ?? token.type;
     } else {
       // Not an alias, but composite sub-values may still hold references.
       token.resolvedValue = deepResolveValue(token.value, lookup, new Set());
@@ -98,8 +133,8 @@ function resolveReference(
   if (token.isAlias && token.reference) {
     const inner = resolveReference(token.reference, lookup, next);
     if (!inner) return undefined;
-    // The nearest declared $type along the chain wins.
-    return { value: inner.value, type: token.type ?? inner.type };
+    // The nearest declared $type along the chain wins, then a group's.
+    return { value: inner.value, type: ownType(token) ?? inner.type ?? token.type };
   }
 
   return { value: deepResolveValue(token.value, lookup, next), type: token.type };

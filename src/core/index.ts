@@ -100,6 +100,7 @@ export {
   computeReferenceRenameEdits,
   computeSwapEdits,
   computeReorderEdits,
+  InvalidNameError,
   NameTakenError,
   type Edit,
 } from "./serialize";

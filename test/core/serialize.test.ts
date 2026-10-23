@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { setTokenProperty, computeSetEdits, computeReorderEdits } from "../../src/core/serialize";
+import {
+  setTokenProperty,
+  computeAddEdits,
+  computeSetEdits,
+  computeReorderEdits,
+} from "../../src/core/serialize";
 import { applyEdits } from "jsonc-parser";
 
 const doc = `{
@@ -64,5 +69,61 @@ describe("computeReorderEdits", () => {
 
   it("is a no-op for the current order", () => {
     expect(computeReorderEdits(text, ["space"], ["sm", "md", "lg"])).toEqual([]);
+  });
+});
+
+describe("core model fixes — edits keep the file's own formatting", () => {
+  const changed = (before: string, after: string) => {
+    const a = before.split(/\r?\n/);
+    return after.split(/\r?\n/).filter((line) => !a.includes(line));
+  };
+
+  it("writes tabs in a tab-indented file and leaves untouched lines alone", () => {
+    const tab = `{\n\t"color": {\n\t\t"red": {\n\t\t\t"$type": "number",\n\t\t\t"$value": 1\n\t\t}\n\t}\n}`;
+    const set = setTokenProperty(tab, ["color", "red"], "$description", "x");
+    expect(set).toBe(
+      `{\n\t"color": {\n\t\t"red": {\n\t\t\t"$type": "number",\n\t\t\t"$value": 1,\n\t\t\t"$description": "x"\n\t\t}\n\t}\n}`,
+    );
+    const added = applyEdits(tab, computeAddEdits(tab, ["color"], "blue", { $value: 0 }));
+    expect(changed(tab, added)).toEqual([`\t\t},`, `\t\t"blue": {`, `\t\t\t"$value": 0`]);
+  });
+
+  it("writes 4-space indentation in a 4-space file", () => {
+    const four = `{\n    "color": {\n        "red": {\n            "$value": 1\n        }\n    }\n}`;
+    const added = applyEdits(four, computeAddEdits(four, ["color"], "blue", { $value: 0 }));
+    expect(changed(four, added)).toEqual([
+      `        },`,
+      `        "blue": {`,
+      `            "$value": 0`,
+    ]);
+    const set = setTokenProperty(four, ["color", "red"], "$value", { value: 1, unit: "px" });
+    expect(changed(four, set)).toEqual([
+      `            "$value": {`,
+      `                "value": 1,`,
+      `                "unit": "px"`,
+      `            }`,
+    ]);
+  });
+
+  it("keeps a CRLF file's line endings", () => {
+    const crlf = `{\r\n  "a": {\r\n    "$value": 1\r\n  }\r\n}`;
+    const set = setTokenProperty(crlf, ["a"], "$description", "x");
+    expect(set).toBe(`{\r\n  "a": {\r\n    "$value": 1,\r\n    "$description": "x"\r\n  }\r\n}`);
+  });
+
+  it("keeps a one-line token on one line when a property is added or removed", () => {
+    const text = `{\n  "a": { "$type": "number", "$value": 1, "$description": "x" },\n  "b": { "$value": 2 }\n}`;
+    expect(setTokenProperty(text, ["a"], "$description", undefined)).toBe(
+      `{\n  "a": { "$type": "number", "$value": 1 },\n  "b": { "$value": 2 }\n}`,
+    );
+    expect(setTokenProperty(text, ["a"], "$type", undefined)).toBe(
+      `{\n  "a": { "$value": 1, "$description": "x" },\n  "b": { "$value": 2 }\n}`,
+    );
+    expect(setTokenProperty(text, ["b"], "$deprecated", true)).toBe(
+      `{\n  "a": { "$type": "number", "$value": 1, "$description": "x" },\n  "b": { "$value": 2, "$deprecated": true }\n}`,
+    );
+    expect(setTokenProperty(text, ["b"], "$extensions", { "com.x": { y: 1 } })).toBe(
+      `{\n  "a": { "$type": "number", "$value": 1, "$description": "x" },\n  "b": { "$value": 2, "$extensions": { "com.x": { "y": 1 } } }\n}`,
+    );
   });
 });

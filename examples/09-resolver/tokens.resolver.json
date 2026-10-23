@@ -1,6 +1,6 @@
 {
   "name": "Example app",
-  "version": "2025-11-01",
+  "version": "2025.10",
   "sets": {
     "foundation": {
       "description": "Raw palette and the components built on the theme",

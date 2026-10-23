@@ -19,6 +19,7 @@ import {
   computeSetEdits,
   computeSwapEdits,
   computeReorderEdits,
+  InvalidNameError,
   NameTakenError,
   parseTokens,
   resolveAliases,
@@ -215,7 +216,8 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
         .then(() => handle(msg))
         .catch((err) => {
           // A refused name leaves the file as it was: say why, keep the editor.
-          if (err instanceof NameTakenError) void vscode.window.showErrorMessage(err.message);
+          if (err instanceof NameTakenError || err instanceof InvalidNameError)
+            void vscode.window.showErrorMessage(err.message);
           else post({ type: "error", message: String(err) });
         }));
     webviewPanel.webview.onDidReceiveMessage(receive);

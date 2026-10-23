@@ -15,7 +15,7 @@ const example = readFileSync("examples/09-resolver/tokens.resolver.json", "utf8"
 
 /** A minimal valid document with `extra` merged over it. */
 const doc = (extra: Record<string, unknown>) =>
-  JSON.stringify({ version: "2025-11-01", resolutionOrder: [], ...extra });
+  JSON.stringify({ version: "2025.10", resolutionOrder: [], ...extra });
 
 const messages = (text: string) => parseResolver(text).issues.map((i) => i.message);
 
@@ -126,12 +126,10 @@ describe("resolutionSources", () => {
 describe("parseResolver: validation", () => {
   it("requires a version the spec names, and a resolutionOrder", () => {
     expect(messages("{}")).toEqual([
-      `"version" is required: "2025-11-01".`,
+      `"version" is required: "2025.10".`,
       `"resolutionOrder" is required and must be an array.`,
     ]);
-    expect(messages(doc({ version: "2024-01-01" }))).toEqual([`"version" must be "2025-11-01".`]);
-    // The spec's own table says 2025-10-01; accept both.
-    expect(messages(doc({ version: "2025-10-01" }))).toEqual([]);
+    expect(messages(doc({ version: "2024-01-01" }))).toEqual([`"version" must be "2025.10".`]);
   });
 
   it("reports a JSON syntax error at its offset", () => {
@@ -344,5 +342,37 @@ describe("resolutionCount", () => {
   it("multiplies the contexts of every modifier without listing them", () => {
     const { resolver } = parseResolver(example);
     expect(resolutionCount(resolver!)).toBe(resolutions(resolver!).length);
+  });
+});
+
+describe("core model fixes — resolver documents", () => {
+  it('accepts "version": "2025.10" (§4.1.2), and the older date forms without a message', () => {
+    expect(messages(doc({ version: "2025.10" }))).toEqual([]);
+    expect(messages(doc({ version: "2025-11-01" }))).toEqual([]);
+    expect(messages(doc({ version: "2025-10-01" }))).toEqual([]);
+  });
+
+  it("finds a modifier referenced by an RFC 6901 escaped name", () => {
+    const { resolver, issues } = parseResolver(
+      doc({
+        modifiers: { "a/b~c": { contexts: { x: [], y: [] } } },
+        resolutionOrder: [{ $ref: "#/modifiers/a~1b~0c" }],
+      }),
+    );
+    expect(issues).toEqual([]);
+    expect(resolver!.modifiers.map((m) => m.name)).toEqual(["a/b~c"]);
+  });
+});
+
+describe("core model fixes — a modifier listed twice", () => {
+  it("is one choice in the picker, not a product with itself", () => {
+    const { resolver } = parseResolver(
+      doc({
+        modifiers: { theme: { contexts: { light: [], dark: [] } } },
+        resolutionOrder: [{ $ref: "#/modifiers/theme" }, { $ref: "#/modifiers/theme" }],
+      }),
+    );
+    expect(resolutions(resolver!).map((r) => r.label)).toEqual(["theme: light", "theme: dark"]);
+    expect(resolutionCount(resolver!)).toBe(2);
   });
 });

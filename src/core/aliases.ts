@@ -5,19 +5,15 @@
 import { getLocation } from "jsonc-parser";
 import type { TokenNode, TokenType } from "./types";
 import { isDtcgColor, toHex } from "./color";
+import { referencesReach } from "./resolve";
 
-/** True if aliasing `fromKey` -> `toKey` would create a reference cycle. */
+/**
+ * True if aliasing `fromKey` -> `toKey` would create a reference cycle: any
+ * reference `toKey` leads through, a `$ref` pointer or one inside a
+ * composite included, comes back to `fromKey`.
+ */
 export function wouldCycle(map: Map<string, TokenNode>, fromKey: string, toKey: string): boolean {
-  let cursor: string | undefined = toKey;
-  const seen = new Set<string>();
-  while (cursor) {
-    if (cursor === fromKey) return true;
-    if (seen.has(cursor)) break; // pre-existing cycle not involving `from`
-    seen.add(cursor);
-    const node = map.get(cursor);
-    cursor = node && node.isAlias && node.reference ? node.reference : undefined;
-  }
-  return false;
+  return referencesReach((key) => map.get(key), toKey, fromKey);
 }
 
 /** DTCG type expected for each composite sub-value key. */

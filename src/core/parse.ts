@@ -7,11 +7,30 @@
  * a group's `$extends` are detected here but followed later (resolve.ts,
  * extends.ts).
  */
-import { getLocation } from "jsonc-parser";
+import { getLocation, parse, printParseErrorCode, type ParseError } from "jsonc-parser";
 import { pointerSegments } from "./resolver";
-import type { GroupNode, TokenDocumentModel, TokenNode, TokenType } from "./types";
+import type { GroupNode, TokenDocumentModel, TokenNode, TokenType, ValidationIssue } from "./types";
 
 const REFERENCE_RE = /^\{([^{}]+)\}$/;
+
+/**
+ * The `$` keys this reads, plus the ones it leaves alone on purpose: `$schema`,
+ * and the `$themes` and `$metadata` a Tokens Studio export carries. Any other
+ * `$` key is reported, since names starting with `$` are the spec's (§6.8).
+ */
+const KNOWN_KEYS = new Set([
+  "$value",
+  "$type",
+  "$description",
+  "$extensions",
+  "$deprecated",
+  "$extends",
+  "$ref",
+  "$root",
+  "$schema",
+  "$themes",
+  "$metadata",
+]);
 
 /** Tokens in `group` and every group under it. */
 export function countTokens(group: GroupNode): number {
@@ -33,13 +52,14 @@ export function referenceTarget(value: string): string | undefined {
  * A same-document JSON Pointer (`#/a/b/$value/components/0`, DTCG §7.1.2),
  * split at its first `$`-segment: `key` is the token (or group) path, `a.b`,
  * and `sub` the rest, `["$value", "components", "0"]`. Token names never
- * start with `$`, so the split is unambiguous. Undefined for anything that is
- * not `#/` plus at least one name, a pointer into another file included.
+ * start with `$` except the reserved `$root` (§6.2), which stays in the key,
+ * so the split is unambiguous. Undefined for anything that is not `#/` plus
+ * at least one name, a pointer into another file included.
  */
 export function parsePointer(pointer: string): { key: string; sub: string[] } | undefined {
   if (!pointer.startsWith("#/")) return undefined;
   const segments = pointerSegments(pointer.slice(1));
-  const at = segments.findIndex((s) => s.startsWith("$"));
+  const at = segments.findIndex((s) => s.startsWith("$") && s !== "$root");
   const path = at === -1 ? segments : segments.slice(0, at);
   if (!path.length || path.includes("")) return undefined;
   return { key: path.join("."), sub: at === -1 ? [] : segments.slice(at) };
@@ -74,16 +94,41 @@ export function tokenReferenceAtOffset(text: string, offset: number): string | u
   return m ? m[1] : undefined;
 }
 
+/**
+ * Comments and trailing commas are accepted, as the `jsonc` language allows
+ * them. Text with a real syntax error is an empty document, as a guess at
+ * what half-typed JSON meant can put tokens at the wrong paths; the error is
+ * reported in `issues` at its offset.
+ */
 export function parseTokens(text: string): TokenDocumentModel {
-  let data: unknown;
-  try {
-    data = text.trim().length ? JSON.parse(text) : {};
-  } catch {
-    // Malformed JSON yields an empty document; validation/host surface the error.
-    data = {};
+  const errors: ParseError[] = [];
+  const data: unknown = parse(text, errors, { allowTrailingComma: true });
+  const issues: ValidationIssue[] = errors.map((e) => ({
+    severity: "error",
+    path: [],
+    message: `JSON syntax error: ${printParseErrorCode(e.error)}`,
+    offset: e.offset,
+  }));
+  const obj = !errors.length && isPlainObject(data) ? data : {};
+  const root = buildGroup("", [], obj, undefined, undefined, { doc: obj, issues });
+  return issues.length ? { root, issues } : { root };
+}
+
+interface Context {
+  doc: Record<string, unknown>;
+  issues: ValidationIssue[];
+}
+
+/** A warning for each `$` key of `obj` this neither reads nor knows. */
+function checkKeys(obj: Record<string, unknown>, path: string[], issues: ValidationIssue[]) {
+  for (const key of Object.keys(obj)) {
+    if (!key.startsWith("$") || KNOWN_KEYS.has(key)) continue;
+    issues.push({
+      severity: "warning",
+      path: [...path, key],
+      message: `Unknown property "${key}": names starting with "$" are reserved for the properties the spec defines.`,
+    });
   }
-  const obj = isPlainObject(data) ? data : {};
-  return { root: buildGroup("", [], obj, undefined, undefined, obj) };
 }
 
 function buildGroup(
@@ -92,8 +137,9 @@ function buildGroup(
   obj: Record<string, unknown>,
   inheritedType: TokenType | undefined,
   inheritedDeprecated: boolean | string | undefined,
-  doc: Record<string, unknown>,
+  ctx: Context,
 ): GroupNode {
+  checkKeys(obj, path, ctx.issues);
   const ownType = obj["$type"] as TokenType | undefined;
   const effectiveType = ownType ?? inheritedType;
   const deprecated = obj["$deprecated"] as boolean | string | undefined;
@@ -121,14 +167,17 @@ function buildGroup(
   }
 
   for (const key of Object.keys(obj)) {
-    if (key.startsWith("$")) continue;
-    const childPath = [...path, key];
     const val = obj[key];
     if (!isPlainObject(val)) continue; // tokens & groups are always objects
-    if ("$value" in val || isRefToken(val, doc)) {
+    const childPath = [...path, key];
+    const isToken = "$value" in val || isRefToken(val, ctx.doc);
+    // `$root` is the one `$` name a token may have (§6.2); never a group.
+    if (key.startsWith("$") && !(key === "$root" && isToken)) continue;
+    if (isToken) {
+      checkKeys(val, childPath, ctx.issues);
       group.children.push(buildToken(key, childPath, val, effectiveType, effectiveDeprecated));
     } else {
-      group.children.push(buildGroup(key, childPath, val, effectiveType, effectiveDeprecated, doc));
+      group.children.push(buildGroup(key, childPath, val, effectiveType, effectiveDeprecated, ctx));
     }
   }
 

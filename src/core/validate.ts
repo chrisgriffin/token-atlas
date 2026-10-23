@@ -1,23 +1,28 @@
 /**
- * Structural + semantic validation against the DTCG spec (subset, expanding).
+ * Structural + semantic validation against the DTCG spec.
  *
  * Current checks:
+ *  - what parsing found: JSON syntax errors, unknown `$` keys (warnings)
  *  - illegal characters in names (`{`, `}`, `.`)
+ *  - a `$type` the spec does not define, on a token or a group
  *  - non-alias tokens with no resolvable `$type`
  *  - dangling references (target does not exist), including those nested
- *    inside composite sub-values (e.g. a shadow's `color`)
- *  - reference cycles
+ *    inside composite sub-values (e.g. a shadow's `color`), and an alias
+ *    chain that ends at one
+ *  - reference cycles, through whole-value aliases or composite sub-values
  *  - `$ref` JSON Pointers that are malformed, point into another file, or
  *    name a property the target token does not have
  *  - `$extends` that is malformed, names nothing, names a token, or is part
  *    of a cycle (on the group's `$extends` key)
- *  - composite tokens must declare one of the composite `$type`s
- *  - `$value` shape for the primitives (DTCG 2025.10): a `color` must be
- *    `{ colorSpace, components }`, a `dimension` or `duration` must be
- *    `{ value, unit }` — legacy strings like "#ff0000" or "16px" are errors;
- *    a `number` must be a number, a `fontWeight` a number or a spec keyword,
- *    a `cubicBezier` exactly four numbers, a `fontFamily` a string or an
- *    array of strings
+ *  - `$value` shape (DTCG 2025.10): a `color` must be `{ colorSpace,
+ *    components }` in a defined space, with 3 numeric-or-`"none"` components,
+ *    an alpha from 0 to 1 and a 6-digit hex; a `dimension` or `duration`
+ *    `{ value, unit }` in `px`/`rem` or `ms`/`s` — legacy strings like
+ *    "#ff0000" or "16px" are errors; a `number` must be a number, a
+ *    `fontWeight` a number or a spec keyword, a `cubicBezier` exactly four
+ *    numbers, a `fontFamily` a string or an array of strings; a composite
+ *    (§9) must have exactly its members, each checked as its own type, and a
+ *    reference may stand in for any sub-value
  */
 import type {
   GroupNode,
@@ -27,11 +32,20 @@ import type {
   ValidationIssue,
   ValidationResult,
 } from "./types";
-import { FONT_WEIGHT_KEYWORDS } from "./types";
+import { ALL_TYPES, FONT_WEIGHT_KEYWORDS, UNITS } from "./types";
+import { COLOR_SPACES } from "./color";
 import { isReference, parsePointer, referenceTarget, refPointer } from "./parse";
-import { collectReferences, indexTokens, pointersIn } from "./resolve";
+import {
+  collectReferences,
+  indexTokens,
+  pointersIn,
+  referencesReach,
+  scopedLookup,
+  type Lookup,
+} from "./resolve";
 
-const ILLEGAL_NAME = /[{}.]/;
+/** Characters a token or group name may not hold (§5.1.1). */
+export const ILLEGAL_NAME = /[{}.]/;
 
 export function validate(
   model: TokenDocumentModel,
@@ -39,17 +53,23 @@ export function validate(
   /** Which of this document's own keys count as defined — see `resolveAliases`. */
   localScope?: (key: string) => boolean,
 ): ValidationResult {
-  const issues: ValidationIssue[] = [];
+  const issues: ValidationIssue[] = [...(model.issues ?? [])];
   const index = indexTokens(model);
-  const has = (key: string): boolean =>
-    (index.has(key) && (!localScope || localScope(key))) || external?.has(key) === true;
+  const lookup = scopedLookup(index, external, localScope);
+  const has = (key: string): boolean => lookup(key) !== undefined;
 
   checkNames(model.root, issues);
+  checkGroupTypes(model.root, issues);
   checkExtends(model.root, issues);
 
   for (const token of index.values()) {
     // An inherited copy's findings are its origin's, reported there.
     if (token.inheritedFrom) continue;
+    if (token.type !== undefined && !token.typeIsInherited) {
+      const unknown = unknownType(token.type);
+      if (unknown)
+        issues.push({ severity: "error", path: [...token.path, "$type"], message: unknown });
+    }
     if (token.isAlias) {
       if (token.reference && !has(token.reference)) {
         issues.push({
@@ -57,11 +77,11 @@ export function validate(
           path: token.path,
           message: `Unresolved reference: {${token.reference}}`,
         });
-      } else if (token.resolvedValue === undefined) {
+      } else if (token.resolvedValue === undefined && token.reference) {
         issues.push({
           severity: "error",
           path: token.path,
-          message: `Reference cycle detected starting at {${token.reference}}`,
+          message: chainIssue(token.reference, lookup),
         });
       }
       continue;
@@ -83,27 +103,69 @@ export function validate(
         path: token.path,
         message: "Token has no $type and inherits none from any group.",
       });
-    } else if (!pending.length) {
-      // The resolved value when a `$ref` supplies part of it (§7.3).
+    } else {
+      // The resolved value when a `$ref` supplies part of it (§7.3). One left
+      // unresolved is reported already, and the value it stands for is unknown.
       const value = pointersIn(token.value).length ? token.resolvedValue : token.value;
-      const shape = valueShapeIssue(token.type, value);
-      if (shape) issues.push({ severity: "error", path: token.path, message: shape });
+      if (!pointersIn(value).length) {
+        for (const message of valueIssues(token.type, value)) {
+          issues.push({ severity: "error", path: token.path, message });
+        }
+      }
     }
 
     // References can also live inside composite sub-values (shadow color,
-    // gradient stops, …). Flag any whose target does not exist.
-    for (const ref of collectReferences(token.value)) {
+    // gradient stops, …): each must exist, and must not lead back here.
+    const key = token.path.join(".");
+    const stuck = collectReferences(token.resolvedValue).length > 0;
+    for (const ref of new Set(collectReferences(token.value))) {
       if (!has(ref)) {
         issues.push({
           severity: "error",
           path: token.path,
           message: `Unresolved reference: {${ref}}`,
         });
+      } else if (stuck && referencesReach(lookup, ref, key)) {
+        issues.push({
+          severity: "error",
+          path: token.path,
+          message: `Reference cycle detected through {${ref}}`,
+        });
       }
     }
   }
 
   return { issues };
+}
+
+/**
+ * Why the alias chain from `start` does not resolve: the token at its end
+ * that does not exist, or else a cycle.
+ */
+function chainIssue(start: string, lookup: Lookup): string {
+  const seen = new Set<string>();
+  for (let key: string | undefined = start; key !== undefined && !seen.has(key); ) {
+    seen.add(key);
+    const target = lookup(key);
+    if (!target) return `Unresolved reference: {${start}} leads to {${key}}, which does not exist.`;
+    key = target.isAlias ? target.reference : undefined;
+  }
+  return `Reference cycle detected starting at {${start}}`;
+}
+
+/** The error for a `$type` the spec does not define, or undefined. */
+function unknownType(type: unknown): string | undefined {
+  return (ALL_TYPES as unknown[]).includes(type)
+    ? undefined
+    : `Unknown $type "${String(type)}": use one of ${ALL_TYPES.join(", ")}.`;
+}
+
+function checkGroupTypes(group: GroupNode, issues: ValidationIssue[]): void {
+  const unknown = group.type === undefined ? undefined : unknownType(group.type);
+  if (unknown) issues.push({ severity: "error", path: [...group.path, "$type"], message: unknown });
+  for (const child of group.children) {
+    if (child.kind === "group" && !child.inheritedFrom) checkGroupTypes(child, issues);
+  }
 }
 
 function pointerIssue(pointer: string): string {
@@ -147,8 +209,7 @@ function checkNames(group: GroupNode, issues: ValidationIssue[]): void {
 
 /**
  * The expected `$value` shape per object-valued primitive type, as
- * `[required member, typeof]` pairs. Only whole-token values are checked;
- * sub-values inside composites are a later expansion.
+ * `[required member, typeof]` pairs.
  */
 const VALUE_SHAPES: Partial<Record<TokenType, Array<[string, string]>>> = {
   color: [
@@ -190,7 +251,130 @@ function describeValue(value: unknown): string {
   return `a ${typeof value}`;
 }
 
-function valueShapeIssue(type: TokenType, value: unknown): string | undefined {
+/** A string or number as written, anything else by its kind. */
+const show = (v: unknown) =>
+  typeof v === "string" || typeof v === "number" ? JSON.stringify(v) : describeValue(v);
+
+const isObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+
+/** A reference may stand in for any sub-value (§9). */
+const isRef = (v: unknown) => isReference(v) || refPointer(v) !== undefined;
+
+/** The problems with one member of a composite, `at` naming it (`shadow $value.color`). */
+type Check = (value: unknown, at: string) => string[];
+
+const typed =
+  (type: TokenType): Check =>
+  (value, at) =>
+    valueIssues(type, value).map((m) => `${at}: ${m}`);
+
+const oneOf =
+  (allowed: readonly unknown[], wording: string): Check =>
+  (value, at) =>
+    isRef(value) || allowed.includes(value)
+      ? []
+      : [`${at} must be ${wording} (DTCG 2025.10); got ${show(value)}.`];
+
+const STROKE_KEYWORDS = [
+  "solid",
+  "dashed",
+  "dotted",
+  "double",
+  "groove",
+  "ridge",
+  "outset",
+  "inset",
+];
+
+/** Each object-valued composite's members (§9.3–§9.8). */
+const MEMBERS: Partial<Record<TokenType, Record<string, Check>>> = {
+  strokeStyle: {
+    dashArray: (value, at) =>
+      isRef(value)
+        ? []
+        : Array.isArray(value)
+          ? value.flatMap((d, i) => typed("dimension")(d, `${at}[${i}]`))
+          : [`${at} must be an array of dimensions (DTCG 2025.10); got ${show(value)}.`],
+    lineCap: oneOf(["round", "butt", "square"], `"round", "butt" or "square"`),
+  },
+  border: { color: typed("color"), width: typed("dimension"), style: typed("strokeStyle") },
+  transition: {
+    duration: typed("duration"),
+    delay: typed("duration"),
+    timingFunction: typed("cubicBezier"),
+  },
+  shadow: {
+    color: typed("color"),
+    offsetX: typed("dimension"),
+    offsetY: typed("dimension"),
+    blur: typed("dimension"),
+    spread: typed("dimension"),
+    inset: oneOf([true, false], "true or false"),
+  },
+  gradient: { color: typed("color"), position: typed("number") },
+  typography: {
+    fontFamily: typed("fontFamily"),
+    fontSize: typed("dimension"),
+    fontWeight: typed("fontWeight"),
+    letterSpacing: typed("dimension"),
+    lineHeight: typed("number"),
+  },
+};
+
+/** Members a composite may leave out. */
+const OPTIONAL = new Set(["inset"]);
+
+/** Everything wrong with `value` as a `type` value; none for a reference or an unknown type. */
+function valueIssues(type: TokenType, value: unknown): string[] {
+  if (isRef(value)) return [];
+  if (type === "strokeStyle" && !isObject(value)) {
+    return STROKE_KEYWORDS.includes(value as string)
+      ? []
+      : [
+          `strokeStyle $value must be one of ${STROKE_KEYWORDS.join(", ")}, or an object { dashArray, lineCap } (DTCG 2025.10); got ${show(value)}.`,
+        ];
+  }
+  // A shadow may be one shadow or several (§9.6); a gradient is always stops (§9.7).
+  if ((type === "shadow" && Array.isArray(value)) || type === "gradient") {
+    if (!Array.isArray(value)) {
+      return [
+        `gradient $value must be an array of { color, position } stops (DTCG 2025.10); got ${describeValue(value)}.`,
+      ];
+    }
+    return value.flatMap((item, i) => objectIssues(type, `$value[${i}]`, item));
+  }
+  if (MEMBERS[type]) return objectIssues(type, "$value", value);
+  const issue = primitiveIssue(type, value);
+  return issue ? [issue] : [];
+}
+
+/** A composite object's members: each checked, none missing, none extra. */
+function objectIssues(type: TokenType, label: string, value: unknown): string[] {
+  if (isRef(value)) return [];
+  const members = MEMBERS[type]!;
+  const at = `${type} ${label}`;
+  const required = Object.keys(members).filter((m) => !OPTIONAL.has(m));
+  if (!isObject(value)) {
+    return [
+      `${at} must be an object { ${required.join(", ")} } (DTCG 2025.10); got ${describeValue(value)}.`,
+    ];
+  }
+  const out = Object.entries(members).flatMap(([name, check]) =>
+    name in value ? check(value[name], `${at}.${name}`) : [],
+  );
+  const missing = required.filter((m) => !(m in value));
+  if (missing.length) out.push(`${at} is missing ${missing.join(", ")} (DTCG 2025.10).`);
+  const extra = Object.keys(value).filter((k) => !(k in members));
+  if (extra.length) {
+    out.push(
+      `${at} has ${extra.length === 1 ? "a member" : "members"} the spec does not define: ${extra.join(", ")} (DTCG 2025.10).`,
+    );
+  }
+  return out;
+}
+
+function primitiveIssue(type: TokenType, value: unknown): string | undefined {
   const scalar = SCALAR_SHAPES[type];
   if (scalar) {
     const [ok, expected] = scalar;
@@ -202,28 +386,54 @@ function valueShapeIssue(type: TokenType, value: unknown): string | undefined {
   if (!shape) return undefined;
   const expected = `{ ${shape.map(([k]) => k).join(", ")} }`;
   const ok =
-    typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value) &&
+    isObject(value) &&
     shape.every(([k, t]) => {
-      const v = (value as Record<string, unknown>)[k];
+      const v = value[k];
       return t === "array" ? Array.isArray(v) : typeof v === t;
     });
-  if (ok) return undefined;
-  const isObject = typeof value === "object" && value !== null && !Array.isArray(value);
-  const got = Array.isArray(value)
-    ? "an array"
-    : isObject
-      ? `an object with ${shape
-          .flatMap(([k, t]) => {
-            const v = (value as Record<string, unknown>)[k];
-            if (v === undefined) return [`${k} missing`];
-            const actual = Array.isArray(v) ? "array" : typeof v;
-            return actual === t ? [] : [`${k} a ${actual} (expected ${t})`];
-          })
-          .join(", ")}`
-      : `a ${typeof value}`;
-  return `${type} $value must be an object ${expected} (DTCG 2025.10); got ${got}.`;
+  if (!ok) {
+    const got = Array.isArray(value)
+      ? "an array"
+      : isObject(value)
+        ? `an object with ${shape
+            .flatMap(([k, t]) => {
+              const v = value[k];
+              if (v === undefined) return [`${k} missing`];
+              const actual = Array.isArray(v) ? "array" : typeof v;
+              return actual === t ? [] : [`${k} a ${actual} (expected ${t})`];
+            })
+            .join(", ")}`
+        : `a ${typeof value}`;
+    return `${type} $value must be an object ${expected} (DTCG 2025.10); got ${got}.`;
+  }
+  const units = UNITS[type];
+  if (units && !units.includes(value.unit as string)) {
+    return `${type} unit must be ${units.map((u) => `"${u}"`).join(" or ")} (DTCG 2025.10); got ${show(value.unit)}.`;
+  }
+  return type === "color" ? colorIssue(value) : undefined;
+}
+
+/** A color object's space, components, alpha and hex (Color Module §4). */
+function colorIssue(color: Record<string, unknown>): string | undefined {
+  if (!(COLOR_SPACES as readonly unknown[]).includes(color.colorSpace)) {
+    return `color colorSpace ${show(color.colorSpace)} is not one the spec defines (${COLOR_SPACES.join(", ")}).`;
+  }
+  const components = color.components as unknown[];
+  const bad = components.find(
+    (c) => !(typeof c === "number" && Number.isFinite(c)) && c !== "none",
+  );
+  if (components.length !== 3 || bad !== undefined) {
+    const got = components.length !== 3 ? describeValue(components) : JSON.stringify(bad);
+    return `color components must be 3 numbers or "none"; got ${got}.`;
+  }
+  const { alpha, hex } = color;
+  if (alpha !== undefined && !(typeof alpha === "number" && alpha >= 0 && alpha <= 1)) {
+    return `color alpha must be a number from 0 to 1; got ${show(alpha)}.`;
+  }
+  if (hex !== undefined && !(typeof hex === "string" && /^#[0-9a-fA-F]{6}$/.test(hex))) {
+    return `color hex must be a 6-digit CSS hex color such as "#ff0000"; got ${show(hex)}.`;
+  }
+  return undefined;
 }
 
 /**
@@ -262,9 +472,7 @@ export function deprecatedReferences(
   external?: Map<string, TokenNode>,
   localScope?: (key: string) => boolean,
 ): DeprecatedReference[] {
-  const index = indexTokens(model);
-  const lookup = (key: string) =>
-    (localScope && !localScope(key) ? undefined : index.get(key)) ?? external?.get(key);
+  const lookup = scopedLookup(indexTokens(model), external, localScope);
   const out: DeprecatedReference[] = [];
   const report = (reference: string | undefined, path: Array<string | number>) => {
     if (reference === undefined) return;
@@ -284,7 +492,7 @@ export function deprecatedReferences(
       for (const [k, v] of Object.entries(value)) walk(v, [...path, k]);
     }
   };
-  for (const token of index.values()) {
+  for (const token of indexTokens(model).values()) {
     // An inherited copy has no key in this document; its origin reports the use.
     if (!token.inheritedFrom)
       walk(token.value, token.valueFromRef ? token.path : [...token.path, "$value"]);

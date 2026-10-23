@@ -66,6 +66,12 @@ export const FONT_WEIGHT_KEYWORDS = [
   "ultra-black",
 ] as const;
 
+/** The units a `dimension` (§8.2) and a `duration` (§8.5) may use. */
+export const UNITS: Partial<Record<TokenType, readonly string[]>> = {
+  dimension: ["px", "rem"],
+  duration: ["ms", "s"],
+};
+
 /** A leaf token (any object carrying `$value`). */
 export interface TokenNode {
   kind: "token";
@@ -131,6 +137,8 @@ export interface GroupNode {
 
 export interface TokenDocumentModel {
   root: GroupNode;
+  /** What parsing found wrong with the text itself: syntax errors, unknown `$` keys. */
+  issues?: ValidationIssue[];
 }
 
 export type Severity = "error" | "warning";
@@ -141,6 +149,8 @@ export interface ValidationIssue {
   message: string;
   /** Rule id, for lint findings (`token-atlas/name-case`); unset for validation. */
   code?: string;
+  /** Set for a JSON syntax error, which has a position but no path. */
+  offset?: number;
 }
 
 export interface ValidationResult {

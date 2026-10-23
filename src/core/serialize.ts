@@ -22,24 +22,43 @@ import {
 import { parsePointer, parseTokens, referenceTarget } from "./parse";
 import { indexTokens } from "./resolve";
 import { toPointer } from "./resolver";
+import { ILLEGAL_NAME } from "./validate";
 
 export type { Edit } from "jsonc-parser";
 
-const DEFAULT_FORMAT: FormattingOptions = {
-  tabSize: 2,
-  insertSpaces: true,
-  eol: "\n",
-};
+/**
+ * The file's own indentation and line ending: the first indented line says
+ * tabs or spaces, the smallest space indent is one level, and any CRLF means
+ * CRLF. A file with no indented line gets two spaces.
+ */
+function inferFormat(text: string): FormattingOptions {
+  const indents = text.match(/^[ \t]+(?=\S)/gm) ?? [];
+  const eol = text.includes("\r\n") ? "\r\n" : "\n";
+  if (indents[0]?.startsWith("\t")) return { tabSize: 4, insertSpaces: false, eol };
+  const widths = indents.filter((i) => !i.includes("\t")).map((i) => i.length);
+  return { tabSize: widths.length ? Math.min(...widths) : 2, insertSpaces: true, eol };
+}
 
-/** Set (or, if `value === undefined`, remove) a `$`-property on a token/group. */
+/**
+ * Set (or, if `value === undefined`, remove) a `$`-property on a token/group.
+ * Adding and removing go through computeAddEdits and computeDeleteEdits, so a
+ * one-line token stays on its line; replacing rewrites only the value.
+ */
 export function computeSetEdits(
   text: string,
   nodePath: string[],
   property: string,
   value: unknown,
-  format: FormattingOptions = DEFAULT_FORMAT,
+  format: FormattingOptions = inferFormat(text),
 ): Edit[] {
-  return modify(text, [...nodePath, property], value, { formattingOptions: format });
+  const path = [...nodePath, property];
+  const root = parseTree(text);
+  const exists = root !== undefined && findNodeAtLocation(root, path) !== undefined;
+  if (value === undefined) return exists ? computeDeleteEdits(text, path, format) : [];
+  if (!exists && objectAt(text, nodePath)) {
+    return computeAddEdits(text, nodePath, property, value, format);
+  }
+  return modify(text, path, value, { formattingOptions: format });
 }
 
 export function setTokenProperty(
@@ -47,7 +66,7 @@ export function setTokenProperty(
   nodePath: string[],
   property: string,
   value: unknown,
-  format: FormattingOptions = DEFAULT_FORMAT,
+  format: FormattingOptions = inferFormat(text),
 ): string {
   return applyEdits(text, computeSetEdits(text, nodePath, property, value, format));
 }
@@ -62,6 +81,20 @@ export class NameTakenError extends Error {
     const group = parentPath.length ? `"${parentPath.join(".")}"` : "The file";
     super(`${group} already has a token or group named "${name}".`);
     this.name = "NameTakenError";
+  }
+}
+
+/**
+ * A rename to a name a token or group cannot have: empty, holding `{`, `}` or
+ * `.` (§5.1.1), or starting with `$`, which is the spec's own (§6.8) — except
+ * `$root`, the reserved root token name (§6.2). Thrown, like NameTakenError.
+ */
+export class InvalidNameError extends Error {
+  constructor(name: string) {
+    super(
+      `"${name}" is not a valid name: token names may not be empty or contain "{", "}" or ".", and only "$root" may start with "$".`,
+    );
+    this.name = "InvalidNameError";
   }
 }
 
@@ -86,11 +119,17 @@ export function computeAddEdits(
   parentPath: string[],
   name: string,
   value: unknown,
-  format: FormattingOptions = DEFAULT_FORMAT,
+  format: FormattingOptions = inferFormat(text),
 ): Edit[] {
   assertNameFree(text, parentPath, name);
   const parent = objectAt(text, parentPath);
   const last = parent?.children?.[parent.children.length - 1];
+  // A parent written on one line stays on it.
+  if (parent && last && !/[\r\n]/.test(text.slice(parent.offset, end(parent)))) {
+    return [
+      { offset: end(last), length: 0, content: `, ${JSON.stringify(name)}: ${inline(value)}` },
+    ];
+  }
   const indent = last && indentOf(text, last);
   if (!parent || !last || indent === undefined || !isBlank(text, end(last), end(parent) - 1)) {
     return modify(text, [...parentPath, name], value, { formattingOptions: format });
@@ -114,7 +153,7 @@ export function computeAddEdits(
 export function computeDeleteEdits(
   text: string,
   nodePath: string[],
-  format: FormattingOptions = DEFAULT_FORMAT,
+  format: FormattingOptions = inferFormat(text),
 ): Edit[] {
   const parent = objectAt(text, nodePath.slice(0, -1));
   const props = parent?.children ?? [];
@@ -148,6 +187,16 @@ const isBlank = (text: string, from: number, to: number): boolean =>
 const isSeparator = (text: string, from: number, to: number): boolean =>
   /^\s*,\s*$/.test(text.slice(from, to));
 
+/** JSON on one line, spaced the way a person writes an inline object. */
+export function inline(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(inline).join(", ")}]`;
+  if (v && typeof v === "object") {
+    const members = Object.entries(v).map(([k, x]) => `${JSON.stringify(k)}: ${inline(x)}`);
+    return members.length ? `{ ${members.join(", ")} }` : "{}";
+  }
+  return JSON.stringify(v);
+}
+
 /** The whitespace before `node` on its line, or undefined if anything else is there. */
 function indentOf(text: string, node: Node): string | undefined {
   const lineStart = text.lastIndexOf("\n", node.offset - 1) + 1;
@@ -165,6 +214,9 @@ function indentOf(text: string, node: Node): string | undefined {
  * References in other files are the host's job: see computeReferenceRenameEdits.
  */
 export function computeRenameEdits(text: string, nodePath: string[], newName: string): Edit[] {
+  if (!newName || ILLEGAL_NAME.test(newName) || (newName.startsWith("$") && newName !== "$root")) {
+    throw new InvalidNameError(newName);
+  }
   const oldName = nodePath[nodePath.length - 1];
   if (oldName === newName) return [];
   const root = parseTree(text);

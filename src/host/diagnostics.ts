@@ -506,7 +506,10 @@ function toDiagnostic(
   root: Node | undefined,
   issue: ValidationIssue,
 ): vscode.Diagnostic {
-  const range = rangeForPath(document, root, issue.path);
+  const range =
+    issue.offset !== undefined
+      ? new vscode.Range(document.positionAt(issue.offset), document.positionAt(issue.offset + 1))
+      : rangeForPath(document, root, issue.path);
   const diagnostic = new vscode.Diagnostic(
     range,
     issue.message,

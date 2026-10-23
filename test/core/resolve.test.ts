@@ -212,3 +212,24 @@ describe("local scope", () => {
     expect(index.get("semantic.page")?.resolvedValue).toBe(2);
   });
 });
+
+describe("core model fixes — an alias's type", () => {
+  it("is its target's resolved type, not its group's, when it declares none (§5.2.2)", () => {
+    const index = resolveAliases(
+      parseTokens(
+        JSON.stringify({
+          base: { ratio: { $type: "number", $value: 1.5 } },
+          spacing: { $type: "dimension", ratio: { $value: "{base.ratio}" } },
+          chain: { $type: "color", hop: { $value: "{spacing.ratio}" } },
+          own: { $type: "dimension", $value: "{base.ratio}" },
+          dangling: { $type: "dimension", x: { $value: "{nowhere}" } },
+        }),
+      ),
+    );
+    expect(index.get("spacing.ratio")!.resolvedType).toBe("number");
+    expect(index.get("chain.hop")!.resolvedType).toBe("number");
+    // A declared $type still wins, and a group type is the fallback when the target has none.
+    expect(index.get("own")!.resolvedType).toBe("dimension");
+    expect(index.get("dangling.x")!.resolvedType).toBe("dimension");
+  });
+});
