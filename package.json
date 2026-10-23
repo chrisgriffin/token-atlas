@@ -360,7 +360,7 @@
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
     "test": "vitest run",
-    "test:integration": "node -e \"require('node:fs').rmSync('out',{recursive:true,force:true})\" && node esbuild.mjs --integration && node test/integration/run.mjs",
+    "test:integration": "node -e \"require('node:fs').rmSync('out',{recursive:true,force:true})\" && node esbuild.mjs --integration && node test/integration-run.mjs",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
