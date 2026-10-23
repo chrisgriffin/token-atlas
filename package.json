@@ -371,7 +371,7 @@
   "devDependencies": {
     "@testing-library/react": "^16.3.3",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^20.14.0",
+    "@types/node": "^22.0.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@types/vscode": "^1.90.0",
@@ -381,11 +381,11 @@
     "conventional-changelog-cli": "^5.0.0",
     "conventional-changelog-conventionalcommits": "^8.0.0",
     "conventional-recommended-bump": "^10.0.0",
-    "esbuild": "^0.23.0",
+    "esbuild": "^0.28.2",
     "jsdom": "^25.0.1",
     "prettier": "^3.8.1",
     "typescript": "^5.5.0",
-    "vitest": "^2.0.0"
+    "vitest": "^5.0.5"
   },
   "dependencies": {
     "colorjs.io": "^0.5.2",
