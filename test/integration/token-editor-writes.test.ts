@@ -225,6 +225,34 @@ describe("Visual editor writes", () => {
     );
   });
 
+  it("renameNode refuses a name F2 refuses, leaves the file alone and says why", async () => {
+    // The extension and this suite share one `vscode` API object, so the
+    // message the host shows lands here.
+    const shown: string[] = [];
+    const original = vscode.window.showErrorMessage;
+    vscode.window.showErrorMessage = (async (message: string) => {
+      shown.push(message);
+      return undefined;
+    }) as typeof vscode.window.showErrorMessage;
+    try {
+      for (const newName of ["ink.dark", "$description", "{x}", ""]) {
+        const { before, after } = await apply({
+          type: "renameNode",
+          path: ["palette", "ink"],
+          newName,
+        });
+        assert.equal(after, before, `${JSON.stringify(newName)} was written`);
+      }
+    } finally {
+      vscode.window.showErrorMessage = original;
+    }
+    assert.equal(shown.length, 4, `messages shown: ${JSON.stringify(shown)}`);
+    assert.ok(
+      shown.every((m) => /may not be empty, start with "\$"/.test(m)),
+      shown.join("\n"),
+    );
+  });
+
   it("deleteNode removes the token's own lines and no other", async () => {
     const { before, after } = await apply({ type: "deleteNode", path: ["palette", "stale"] });
     assert.deepEqual(changed(before, after), {
