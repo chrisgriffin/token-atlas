@@ -31,6 +31,8 @@ describe("parseTokens", () => {
 
   it("treats empty / malformed input as an empty document", () => {
     expect(parseTokens("").root.children).toHaveLength(0);
+    expect(validate(parseTokens("")).issues).toEqual([]);
+    expect(validate(parseTokens("\n  ")).issues).toEqual([]);
     expect(parseTokens("{ not json").root.children).toHaveLength(0);
   });
 });

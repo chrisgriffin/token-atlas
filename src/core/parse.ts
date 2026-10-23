@@ -98,11 +98,12 @@ export function tokenReferenceAtOffset(text: string, offset: number): string | u
  * Comments and trailing commas are accepted, as the `jsonc` language allows
  * them. Text with a real syntax error is an empty document, as a guess at
  * what half-typed JSON meant can put tokens at the wrong paths; the error is
- * reported in `issues` at its offset.
+ * reported in `issues` at its offset. Blank text is an empty document with
+ * no issue: a new `.tokens.json` file starts that way.
  */
 export function parseTokens(text: string): TokenDocumentModel {
   const errors: ParseError[] = [];
-  const data: unknown = parse(text, errors, { allowTrailingComma: true });
+  const data: unknown = text.trim().length ? parse(text, errors, { allowTrailingComma: true }) : {};
   const issues: ValidationIssue[] = errors.map((e) => ({
     severity: "error",
     path: [],
