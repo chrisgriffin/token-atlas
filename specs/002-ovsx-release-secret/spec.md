@@ -28,7 +28,7 @@ A merged release PR publishes the `.vsix` to Open VSX as well as the Marketplace
 ## Success criteria
 
 - [ ] The release stub passes `OVSX_PAT` by name beside `VSCE_PAT`, never `secrets: inherit`.
-- [ ] (after merge) The stub merges only after the workflows release that moves `v1` to a version declaring `OVSX_PAT`; before that, a stub passing it would fail the release run.
+- [ ] The stub merges only after the workflows release that moves `v1` to a version declaring `OVSX_PAT`; before that, a stub passing it would fail the release run.
 - [ ] **Runnable:** `npx vitest run test/ci/workflow-stubs.test.ts -t 'create-github-release'` passes on the PR head; on `develop` it fails.
 
 ## Needs from Chris
