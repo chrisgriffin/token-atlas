@@ -80,6 +80,12 @@ export const css = `
     background: var(--vscode-list-activeSelectionBackground);
     color: var(--vscode-list-activeSelectionForeground);
   }
+  /* High Contrast themes leave the selection colours unset; their contrast
+     border is unset everywhere else, so other themes draw nothing here. */
+  .row.active, table.tokens tr.token.active {
+    outline: 1px solid var(--vscode-contrastActiveBorder, transparent);
+    outline-offset: -1px;
+  }
   .row.focused, .row.highlighted { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
 
   .toolbar .scope-chip {
@@ -118,6 +124,8 @@ export const css = `
   table.tokens th.mode-head { text-transform: none; letter-spacing: normal; }
 
   .table-wrap:focus { outline: none; }
+  /* Tabbing in, before any row has focus, still shows where focus is. */
+  .table-wrap:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
   table.tokens { width: 100%; border-collapse: collapse; table-layout: fixed; }
   table.tokens th {
     position: sticky;
@@ -156,6 +164,9 @@ export const css = `
     color: var(--vscode-descriptionForeground);
   }
   table.tokens .section-sep { margin: 0 6px; }
+  /* A group's name opens its panel; drawn as the heading text it replaces. */
+  table.tokens tr.section .section-name { all: unset; cursor: pointer; }
+  table.tokens tr.section .section-name:hover { text-decoration: underline; }
   /* Column resize handle, straddling a header cell's right border. */
   table.tokens .col-resizer {
     position: absolute;
@@ -387,7 +398,17 @@ export const css = `
     border-bottom: 1px dashed transparent;
   }
   .node-header-name h2:hover { border-bottom-color: var(--vscode-descriptionForeground); }
+  /* The name is a button for the keyboard, drawn as the heading's text. */
+  .node-header-name h2 button.node-name {
+    all: unset;
+    cursor: text;
+  }
+  .node-header-name h2 button.node-name:focus-visible {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: 2px;
+  }
   .node-header-name input { font-size: 1.55em; font-weight: 600; max-width: 320px; }
+  .node-header-name input.bad { outline: 1px solid var(--vscode-errorForeground); }
   .node-header-meta {
     display: flex;
     align-items: center;

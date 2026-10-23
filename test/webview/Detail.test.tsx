@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { Detail } from "../../src/webview/components/Detail";
 import type { TokenNode, TokenType } from "../../src/core/types";
 import { token } from "./fixtures";
@@ -140,5 +140,123 @@ describe("Detail", () => {
     const props = renderDetail(plain());
     fireEvent.click(screen.getByLabelText("Mark as deprecated"));
     expect(props.onChangeDeprecated).toHaveBeenCalledWith(true);
+  });
+
+  it("disables Unlink for an alias that does not resolve, so it never writes nothing (#8)", () => {
+    const props = renderDetail(token(["x"], "{missing.token}", { type: "color" as TokenType }));
+    expect((unlinkButton() as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(unlinkButton());
+    expect(props.onChangeValue).not.toHaveBeenCalled();
+  });
+
+  it("starts a rename from the keyboard: the name is a button (#8)", () => {
+    const props = renderDetail(plain());
+    const name = within(screen.getByRole("heading", { level: 2 })).getByRole("button");
+    expect(name.textContent).toBe("primary");
+    fireEvent.click(name);
+    const input = screen.getByDisplayValue("primary");
+    fireEvent.change(input, { target: { value: "secondary" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(props.onRename.mock.calls).toEqual([["secondary"]]);
+  });
+
+  it("keeps the rename box open on Enter when the name is refused (#8)", () => {
+    renderDetail(plain(), { onRename: vi.fn(() => false) });
+    fireEvent.click(screen.getByRole("heading", { level: 2 }));
+    const input = screen.getByDisplayValue("primary");
+    fireEvent.change(input, { target: { value: "taken" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(screen.getByDisplayValue("taken")).toBeTruthy();
+  });
+
+  it("ignores the Enter that confirms an IME composition in the rename box (#8)", () => {
+    const props = renderDetail(plain());
+    fireEvent.click(screen.getByRole("heading", { level: 2 }));
+    const input = screen.getByDisplayValue("primary");
+    fireEvent.change(input, { target: { value: "にほ" } });
+    fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+    expect(props.onRename).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue("にほ")).toBeTruthy();
+  });
+
+  it("cancels a rename on Escape without the key reaching the panel (#8)", () => {
+    const outer = vi.fn();
+    const props = handlers();
+    render(
+      <div onKeyDown={(e) => outer(e.key)}>
+        <Detail token={plain()} allTokens={[]} externalTokens={[]} {...props} />
+      </div>,
+    );
+    fireEvent.click(screen.getByRole("heading", { level: 2 }));
+    fireEvent.keyDown(screen.getByDisplayValue("primary"), { key: "Escape" });
+    expect(outer).not.toHaveBeenCalled();
+    expect(props.onRename).not.toHaveBeenCalled();
+    expect(screen.queryByDisplayValue("primary")).toBeNull();
+  });
+});
+
+describe("Detail value edits", () => {
+  const number = (v: number) => token(["n"], v, { type: "number" as TokenType });
+  const others = () => ({ allTokens: [], externalTokens: [] });
+
+  it("Edit as JSON follows a value that changes while it is untouched (#8)", () => {
+    const props = handlers();
+    const { rerender } = render(<Detail token={number(1)} {...others()} {...props} />);
+    rerender(<Detail token={number(5)} {...others()} {...props} />);
+    expect((document.querySelector("textarea") as HTMLTextAreaElement).value).toBe("5");
+    fireEvent.click(screen.getByText("Save value"));
+    expect(props.onChangeValue).toHaveBeenCalledWith(5);
+  });
+
+  it("Edit as JSON refuses to save over a value that changed under an edit (#8)", () => {
+    const props = handlers();
+    const { rerender } = render(<Detail token={number(1)} {...others()} {...props} />);
+    const box = () => document.querySelector("textarea") as HTMLTextAreaElement;
+    fireEvent.change(box(), { target: { value: "2" } });
+    rerender(<Detail token={number(5)} {...others()} {...props} />);
+    expect(box().value).toBe("2");
+    expect(screen.getByText(/changed since/)).toBeTruthy();
+    expect((screen.getByText("Save value") as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByText("Reload"));
+    expect(box().value).toBe("5");
+    expect(props.onChangeValue).not.toHaveBeenCalled();
+  });
+
+  it("Edit as JSON saves an edit and then follows the value it saved (#8)", () => {
+    const props = handlers();
+    const { rerender } = render(<Detail token={number(1)} {...others()} {...props} />);
+    const box = () => document.querySelector("textarea") as HTMLTextAreaElement;
+    fireEvent.change(box(), { target: { value: "2" } });
+    fireEvent.click(screen.getByText("Save value"));
+    rerender(<Detail token={number(2)} {...others()} {...props} />);
+    expect(screen.queryByText(/changed since/)).toBeNull();
+    rerender(<Detail token={number(7)} {...others()} {...props} />);
+    expect(box().value).toBe("7");
+    expect(props.onChangeValue.mock.calls).toEqual([[2]]);
+  });
+
+  it("builds a second edit on the first when both land before the host replies (#8)", () => {
+    const props = renderDetail(
+      token(
+        ["s"],
+        {
+          color: { colorSpace: "srgb", components: [0, 0, 0] },
+          offsetX: { value: 0, unit: "px" },
+          offsetY: { value: 2, unit: "px" },
+          blur: { value: 4, unit: "px" },
+          spread: { value: 0, unit: "px" },
+        },
+        { type: "shadow" as TokenType },
+      ),
+    );
+    const blur = screen.getAllByRole("spinbutton")[2];
+    fireEvent.focus(blur);
+    fireEvent.change(blur, { target: { value: "12" } });
+    fireEvent.blur(blur);
+    fireEvent.click(screen.getByLabelText("Inset", { selector: "input" }));
+    expect(props.onChangeValue.mock.lastCall![0]).toMatchObject({
+      blur: { value: 12, unit: "px" },
+      inset: true,
+    });
   });
 });

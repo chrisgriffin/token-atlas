@@ -71,6 +71,7 @@ export function AliasPicker({
           setActive(0);
         }}
         onKeyDown={(e) => {
+          if (e.nativeEvent.isComposing) return;
           const last = candidates.length - 1;
           if (e.key === "ArrowDown") setActive((i) => Math.min(i + 1, last));
           else if (e.key === "ArrowUp") setActive((i) => Math.max(i - 1, 0));
