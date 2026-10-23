@@ -135,8 +135,8 @@ This isn't either/or, which is why "not sure" was the right instinct: start with
 
 - A **token** is any object with a `$value`. A **group** is any object without one. Groups nest arbitrarily and may carry `$type`, `$description`, `$extensions` that descendants inherit.
 - Token member props: `$value` (required), `$type`, `$description`, `$deprecated`, `$extensions`.
-- **Names** may not contain `{`, `}`, or `.` and may not begin with `$`. The `.` is reserved as the reference path separator.
-- File extension `.tokens` or `.tokens.json`; media type `application/design-tokens+json`. Plain JSON — **no comments, no JSON5** (don't offer comment preservation; it isn't valid DTCG).
+- **Names** may not contain `{`, `}`, or `.` and may not begin with `$`, except `$root`, a group's root token (§6.2), referenced as `{group.$root}`. The `.` is reserved as the reference path separator.
+- File extension `.tokens` or `.tokens.json`; media type `application/design-tokens+json`. Plain JSON — **no comments, no JSON5** (don't offer comment preservation; it isn't valid DTCG). Token Atlas still reads a file with comments or trailing commas, as VS Code's `jsonc` language allows them, so such a file keeps its tokens.
 
 ### 4.2 Types to support for "full" conformance
 
@@ -191,7 +191,7 @@ If the visual editor does `JSON.stringify(model)` on save, it will reorder keys 
 
 **Use `jsonc-parser`'s `modify()` / `applyEdits()`** to compute _surgical_ edits against the existing text: change only the bytes that actually changed, preserve key order and indentation everywhere else. The host adapter turns those into a `WorkspaceEdit`. Net effect: editing one color in the UI produces a one-line git diff.
 
-Adding or deleting a property beside a sibling is the exception: `modify()` reformats every line its edit touches, a one-line neighbour such as `"lg": { "$value": 2 }` included, so `computeAddEdits` and `computeDeleteEdits` in `src/core/serialize.ts` write that edit themselves and fall back to `modify()` everywhere else (#304).
+Adding or deleting a property beside a sibling is the exception: `modify()` reformats every line its edit touches, a one-line neighbour such as `"lg": { "$value": 2 }` included, so `computeAddEdits` and `computeDeleteEdits` in `src/core/serialize.ts` write that edit themselves and fall back to `modify()` everywhere else (#304). Setting or removing a `$` property goes through the same two, so a one-line token stays on one line. Every new line takes the file's own indentation (tabs, or its smallest space indent) and line ending, read from the text when the caller passes no formatting options.
 
 ---
 

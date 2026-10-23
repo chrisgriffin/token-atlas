@@ -19,6 +19,7 @@ import {
   computeSetEdits,
   computeSwapEdits,
   computeReorderEdits,
+  InvalidNameError,
   NameTakenError,
   parseTokens,
   resolveAliases,
@@ -44,7 +45,7 @@ import {
   localScopeFor,
   onDidInvalidateWorkspaceIndex,
 } from "./workspaceIndex";
-import { buildRenameEdit, IllegalNameError } from "./rename";
+import { buildRenameEdit } from "./rename";
 
 export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
   /**
@@ -215,7 +216,7 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
         .then(() => handle(msg))
         .catch((err) => {
           // A refused name leaves the file as it was: say why, keep the editor.
-          if (err instanceof NameTakenError || err instanceof IllegalNameError) {
+          if (err instanceof NameTakenError || err instanceof InvalidNameError) {
             void vscode.window.showErrorMessage(err.message);
           } else post({ type: "error", message: String(err) });
         }));

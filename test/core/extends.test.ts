@@ -62,7 +62,7 @@ describe("$extends (§6.4)", () => {
       input: {
         $type: "dimension",
         field: {
-          width: { $value: { value: 100, unit: "%" } },
+          width: { $value: { value: 100, unit: "rem" } },
           background: { $type: "color", $value: color("#ffffff") },
         },
       },
@@ -85,7 +85,7 @@ describe("$extends (§6.4)", () => {
 
   it("gives a new typeless token the target group's $type (§6.7.3)", () => {
     const { index, issues } = resolve({
-      input: { $type: "dimension", field: { width: { $value: { value: 100, unit: "%" } } } },
+      input: { $type: "dimension", field: { width: { $value: { value: 100, unit: "rem" } } } },
       "input-amount": {
         $extends: "{input}",
         field: { height: { $value: { value: 40, unit: "px" } } },
@@ -267,5 +267,18 @@ describe("$extends (§6.4)", () => {
     expect(applyEdits(user, computeReferenceRenameEdits(user, "button", "control"))).toBe(
       '{ "x": { "$extends": "#/control" } }',
     );
+  });
+});
+
+describe("core model fixes — a cached model re-resolved", () => {
+  it("takes the type its $extends target has now, not the one it had last time", () => {
+    const model = parseTokens(JSON.stringify({ theme: { $extends: "{base}", x: { $value: 4 } } }));
+    const base = (type: string) =>
+      indexTokens(parseTokens(JSON.stringify({ base: { $type: type, x: { $value: 1 } } })));
+    expect(resolveAliases(model, base("number")).get("theme.x")!.type).toBe("number");
+    expect(resolveAliases(model, base("fontWeight")).get("theme.x")!.type).toBe("fontWeight");
+    const gone = resolveAliases(model, new Map()).get("theme.x")!;
+    expect(gone.type).toBeUndefined();
+    expect(gone.typeIsInherited).toBe(false);
   });
 });

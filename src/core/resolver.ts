@@ -23,8 +23,11 @@ import {
   type ParseError,
 } from "jsonc-parser";
 
-/** The versions the spec names: its table says one, §4.1.2 the other. */
-const VERSIONS = ["2025-11-01", "2025-10-01"];
+/**
+ * The version §4.1.2 requires, first; the date forms earlier drafts used are
+ * still read, without a message, so existing files keep working.
+ */
+const VERSIONS = ["2025.10", "2025-11-01", "2025-10-01"];
 
 export interface ResolverIssue {
   message: string;
@@ -60,7 +63,7 @@ type Step = { files: Source[] } | { modifier: ResolverModifier };
 export interface Resolver {
   name?: string;
   steps: Step[];
-  /** Every modifier the order uses, in order. */
+  /** Every modifier the order uses, once each, in order. */
   modifiers: ResolverModifier[];
 }
 
@@ -83,12 +86,12 @@ const isObject = (v: unknown): v is Json => !!v && typeof v === "object" && !Arr
 export const toPointer = (path: Array<string | number>) =>
   path.map((p) => `/${String(p).replace(/~/g, "~0").replace(/\//g, "~1")}`).join("");
 
-/** `/a~1b/0` → `["a/b", "0"]` (RFC 6901 unescaping). */
+/** `a~1b` → `a/b` (RFC 6901 unescaping of one segment). */
+const unescape = (segment: string) => segment.replace(/~1/g, "/").replace(/~0/g, "~");
+
+/** `/a~1b/0` → `["a/b", "0"]`. */
 export const pointerSegments = (pointer: string): string[] =>
-  pointer
-    .split("/")
-    .slice(1)
-    .map((raw) => raw.replace(/~1/g, "/").replace(/~0/g, "~"));
+  pointer.split("/").slice(1).map(unescape);
 
 /**
  * The JSON a pointer names in `text`: its own text, to parse as a token
@@ -203,7 +206,8 @@ export function parseResolver(text: string): { resolver?: Resolver; issues: Reso
       return [];
     }
     if (ref.startsWith("#")) {
-      const set = /^#\/sets\/([^/]+)$/.exec(ref)?.[1]?.replace(/~1/g, "/").replace(/~0/g, "~");
+      const raw = /^#\/sets\/([^/]+)$/.exec(ref)?.[1];
+      const set = raw === undefined ? undefined : unescape(raw);
       if (ref.startsWith("#/modifiers/")) {
         error("A set or modifier must not reference a modifier.", refPath);
       } else if (ref.startsWith("#/resolutionOrder")) {
@@ -303,13 +307,14 @@ export function parseResolver(text: string): { resolver?: Resolver; issues: Reso
     }
     if (typeof item.$ref === "string") {
       const ref = item.$ref;
-      const modifier = /^#\/modifiers\/(.+)$/.exec(ref)?.[1];
+      const raw = /^#\/modifiers\/(.+)$/.exec(ref)?.[1];
+      const modifier = raw === undefined ? undefined : unescape(raw);
       if (modifier !== undefined) {
         if (!named.has(modifier)) error(`No modifier named "${modifier}".`, [...at, "$ref"]);
         const found = named.get(modifier);
         if (found) {
           steps.push({ modifier: found });
-          used.push(found);
+          if (!used.includes(found)) used.push(found);
         }
       } else if (ref.startsWith("#")) {
         steps.push({ files: expandOne(item, at, []) });

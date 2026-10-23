@@ -1,6 +1,6 @@
 {
   "name": "Fixture themes",
-  "version": "2025-11-01",
+  "version": "2025.10",
   "sets": {
     "base": { "sources": [{ "$ref": "primitives.tokens.json" }] }
   },

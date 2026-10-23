@@ -95,7 +95,7 @@ describe("Deprecated token uses", () => {
       resolver.fsPath,
       JSON.stringify(
         {
-          version: "2025-11-01",
+          version: "2025.10",
           resolutionOrder: [
             {
               type: "set",

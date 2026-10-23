@@ -7,6 +7,7 @@ import {
   computeReferenceRenameEdits,
   computeRenameEdits,
   computeSwapEdits,
+  InvalidNameError,
   NameTakenError,
 } from "../../src/core/serialize";
 
@@ -265,5 +266,14 @@ describe("multi-line files edit exactly as jsonc-parser's formatter does", () =>
         modify(tabbed, ["color", "d"], { $value: "#444444" }, { formattingOptions: tabs }),
       ),
     );
+  });
+});
+
+describe("core model fixes — rename refuses an illegal name", () => {
+  const text = `{\n  "a": { "$type": "number", "$value": 1 },\n  "b": { "$type": "number", "$value": "{a}" }\n}`;
+
+  it.each(["x.y", "{x}", "x}", "$a", "$root", ""])("refuses %j and returns no edits", (name) => {
+    expect(() => computeRenameEdits(text, ["a"], name)).toThrow(InvalidNameError);
+    expect(() => computeRenameEdits(text, ["a"], name)).toThrow(/may not/);
   });
 });

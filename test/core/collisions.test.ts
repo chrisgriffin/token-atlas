@@ -47,7 +47,7 @@ describe("findPathCollisions", () => {
 
 describe("findPathCollisions with a resolver's modifier files", () => {
   const resolver = (doc: Record<string, unknown>) => {
-    const { resolver } = parseResolver(JSON.stringify({ version: "2025-11-01", ...doc }));
+    const { resolver } = parseResolver(JSON.stringify({ version: "2025.10", ...doc }));
     if (!resolver) throw new Error("fixture resolver did not parse");
     return resolver;
   };
