@@ -92,6 +92,7 @@ const CODE: Record<string, string> = {
 .card {
   border-color: var(--swatch-primary);
   outline-color: var(--ds-swatch-primary);
+  grid-area: swatch-primary;
 }
 `,
   [JS]: `// Hand-written: the camelCase export and the dotted object path.
@@ -241,8 +242,10 @@ describe("Cross-file rename", () => {
       assert.equal(await textOf(OWN), FIXTURES[OWN]);
     });
 
-    it("rewrites CSS usages and declarations, prefix kept", async () => {
-      assert.equal(await textOf(CSS), CODE[CSS].replaceAll("swatch-primary", "swatch-brand"));
+    it("rewrites CSS usages and declarations, prefix kept, and no bare word that spells the token", async () => {
+      // `grid-area: swatch-primary` names a grid area, not the token: in a
+      // stylesheet only a variable (`--x`, `$x`, `@x`) can be one.
+      assert.equal(await textOf(CSS), CODE[CSS].replaceAll("-swatch-primary", "-swatch-brand"));
     });
 
     it("rewrites JS camelCase and dotted-path usages", async () => {

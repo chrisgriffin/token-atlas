@@ -9,6 +9,7 @@
  */
 import * as vscode from "vscode";
 import {
+  canNameToken,
   cssVarUsages,
   describeValue,
   EXPORT_IDENTIFIER,
@@ -56,6 +57,9 @@ async function tokenAt(
 ): Promise<{ hit: IndexedToken; range: vscode.Range } | undefined> {
   const range = document.getWordRangeAtPosition(position, EXPORT_IDENTIFIER);
   if (!range) return;
+  const { line, character } = range.start;
+  const before = document.lineAt(line).text[character - 1];
+  if (!canNameToken(document.getText(range), document.languageId, before)) return;
   const ws = await buildWorkspaceIndex();
   if (cancel.isCancellationRequested || ws.size === 0) return;
   const key = findTokenForIdentifier(document.getText(range), ws.keys());

@@ -17,8 +17,9 @@ export interface Literal {
   kind: "color" | "dimension";
 }
 
+// `url(#id)` points at an SVG element, so a hex right after `url(` is no color.
 const COLOR =
-  /#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![\w-])|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\([^()]*\)/gi;
+  /(?<!url\(\s*["']?)#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})(?![\w-])|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\([^()]*\)/gi;
 const DIMENSION = /(?<![\w.#$@-])-?(?:\d+\.?\d*|\.\d+)(?:px|rem)(?![\w-])/gi;
 
 const indentOf = (line: string) => /^[ \t]*/.exec(line)![0].length;
