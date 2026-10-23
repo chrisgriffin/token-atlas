@@ -19,7 +19,13 @@ The tests prove that the pure token logic — parsing, alias resolution, validat
 - `npm run typecheck` — `tsc --noEmit`.
 - `npm test` — `vitest run`, the whole vitest suite. Needs no build.
 - `npm run build` — `node esbuild.mjs`, producing `dist/extension.js` and `dist/webview.js`.
-- `npm run test:integration` — compiles the integration suite to `out/` and launches a downloaded VS Code through `vscode-test`. It needs a display, so CI runs it as `xvfb-run -a npm run test:integration`.
+- `npm run test:integration` — compiles the integration suite to `out/` and launches a downloaded VS Code through `vscode-test`, run by `test/integration/run.mjs`. It needs a display, so CI runs it as `xvfb-run -a npm run test:integration`.
+
+A failed integration run ends with one labelled line (and a matching `::error` annotation on the job page), so it is clear without the raw log:
+
+- `test-failure`, exit 1 — mocha reported and a test failed; its summary is above the label.
+- `startup-hang`, exit 75 — VS Code's window went unresponsive (`CodeWindow: detected unresponsive`) before any test reported. Not a test failure: re-run the job.
+- `no-tests-ran`, exit 70 — VS Code exited before any test reported, without that hang (a failed download, a crash).
 
 Narrower runs while working: `npx vitest run test/core/parse.test.ts` for one file, `npx vitest` to watch. `VSCODE_VERSION=1.90.0 npm run test:integration` checks the extension against an older VS Code instead of `stable`.
 
@@ -28,7 +34,7 @@ Narrower runs while working: `npx vitest run test/core/parse.test.ts` for one fi
 - `test/core/` — the pure TypeScript in `src/core/`: parsing, alias resolution and cycles, cross-file collisions, colour math, unit conversion, validation, hovers and format-preserving serialisation. Runs in vitest's `node` environment.
 - `test/webview/` — the React visual editor's components and its render logic, in a `jsdom` environment (the `webview` project in `vitest.config.ts`). It exercises the webview in isolation; it never talks to a real extension host.
 - `test/host/` — the `src/host/` modules that load without the `vscode` module, such as the Tokens tree's codicon per type, and the ones that load against `vscode-stub.ts`, a stand-in just big enough for the workspace index, diagnostics and hover to count searches and file reads or fire a close by hand. Runs in vitest's `node` environment; anything that needs real VS Code behavior — tabs, custom editors, tree views, settings — belongs in `test/integration/`.
-- `test/ci/` — repo-shape guards that read files off disk rather than running code: the `package.json` ↔ `src/` identifier couplings, `contributes.configuration` defaults, what `.vscodeignore` keeps out of a packaged `.vsix`, the README's settings table, the Marketplace listing fields, that every path CLAUDE.md's couplings table names still exists, and the workflow stubs' guards and `timeout-minutes`.
+- `test/ci/` — repo-shape guards that read files off disk rather than running code: the `package.json` ↔ `src/` identifier couplings, `contributes.configuration` defaults, what `.vscodeignore` keeps out of a packaged `.vsix`, the README's settings table, the Marketplace listing fields, that every path CLAUDE.md's couplings table names still exists, and the workflow stubs' guards and `timeout-minutes`. It also holds the integration runner's failure labels (`integration-runner.test.ts`), which run against a stand-in for `vscode-test` rather than a real VS Code.
 - `test/integration/` — mocha running _inside_ a downloaded VS Code via `@vscode/test-cli`, configured in `.vscode-test.mjs` against the token workspace in `test/integration/workspace/`. It reaches the extension only through the `vscode` API and the `TokenAtlasTestHooks` value `activate()` returns; those are test hooks, not a public API, and nothing outside the tests may depend on them.
 - Vitest cannot load the `vscode` module at all, so `vitest.config.ts` excludes `test/integration/**`. Anything about tabs, custom editors, tree views or settings can only be tested in the integration layer.
 
