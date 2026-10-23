@@ -15,6 +15,7 @@ import {
   sigilFor,
   type TokenValueIndex,
 } from "../core";
+import { diagnosable } from "./diagnostics";
 import { STYLESHEET_LANGUAGES as LANGUAGES } from "./exportFeatures";
 import { buildWorkspaceIndex, onDidInvalidateWorkspaceIndex } from "./workspaceIndex";
 
@@ -36,11 +37,16 @@ function severity(): vscode.DiagnosticSeverity | undefined {
 
 let cached: { from: unknown; rootPx: number; index: TokenValueIndex } | undefined;
 
-/** The active set's values, rebuilt only when the workspace index or root size changes. */
-async function valueIndex(): Promise<TokenValueIndex | undefined> {
+/**
+ * The active set's values, rebuilt only when the workspace index or root size
+ * changes. The root size is `uri`'s folder's: each root of a multi-root
+ * workspace may set its own.
+ */
+async function valueIndex(uri: vscode.Uri): Promise<TokenValueIndex | undefined> {
   const ws = await buildWorkspaceIndex();
   if (ws.size === 0) return undefined;
-  const rootPx = vscode.workspace.getConfiguration("tokenAtlas").get<number>("rootFontSize") ?? 16;
+  const rootPx =
+    vscode.workspace.getConfiguration("tokenAtlas", uri).get<number>("rootFontSize") ?? 16;
   if (cached?.from !== ws || cached.rootPx !== rootPx) {
     const tokens = [...ws].map(([key, hit]) => [key, hit.token] as [string, typeof hit.token]);
     cached = { from: ws, rootPx, index: indexTokenValues(tokens, rootPx) };
@@ -58,9 +64,10 @@ export function registerHardcodedValues(context: vscode.ExtensionContext): void 
   };
 
   const refresh = async (document: vscode.TextDocument) => {
-    if (!LANGUAGES.includes(document.languageId)) return;
+    if (!LANGUAGES.includes(document.languageId) || !diagnosable(document)) return;
     const level = severity();
-    const index = level === undefined ? undefined : await valueIndex();
+    const index = level === undefined ? undefined : await valueIndex(document.uri);
+    if (document.isClosed) return; // closed while the index was read
     if (level === undefined || !index) return clear(document.uri);
     const text = document.getText();
     const entries: Array<{ range: vscode.Range; keys: string[] }> = [];
@@ -87,6 +94,7 @@ export function registerHardcodedValues(context: vscode.ExtensionContext): void 
     const prefix = entries.length
       ? learnPrefix(text, sigilFor(document.languageId), (await buildWorkspaceIndex()).keys())
       : "";
+    if (document.isClosed) return;
     // Fixes before diagnostics: a lightbulb asked for between the two would
     // otherwise find the diagnostic but no fix for it.
     found.set(document.uri.toString(), { prefix, entries });

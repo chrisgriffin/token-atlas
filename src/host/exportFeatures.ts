@@ -9,6 +9,7 @@
  */
 import * as vscode from "vscode";
 import {
+  canNameToken,
   cssVarUsages,
   describeValue,
   EXPORT_IDENTIFIER,
@@ -56,6 +57,9 @@ async function tokenAt(
 ): Promise<{ hit: IndexedToken; range: vscode.Range } | undefined> {
   const range = document.getWordRangeAtPosition(position, EXPORT_IDENTIFIER);
   if (!range) return;
+  const { line, character } = range.start;
+  const before = document.lineAt(line).text[character - 1];
+  if (!canNameToken(document.getText(range), document.languageId, before)) return;
   const ws = await buildWorkspaceIndex();
   if (cancel.isCancellationRequested || ws.size === 0) return;
   const key = findTokenForIdentifier(document.getText(range), ws.keys());
@@ -73,7 +77,7 @@ class ExportHoverProvider implements vscode.HoverProvider {
     if (!found) return;
     const ws = await buildWorkspaceIndex();
     if (cancel.isCancellationRequested) return;
-    return buildTokenHover(found.hit.token, NO_LOCAL, ws, undefined, found.range, found.hit.uri);
+    return buildTokenHover(found.hit.token, NO_LOCAL, ws, document.uri, found.range, found.hit.uri);
   }
 }
 
@@ -182,7 +186,7 @@ class CodeInlayHintsProvider implements vscode.InlayHintsProvider {
       this.tooltips.set(
         hint,
         () =>
-          buildTokenHover(hit.token, NO_LOCAL, ws, undefined, undefined, hit.uri)
+          buildTokenHover(hit.token, NO_LOCAL, ws, document.uri, undefined, hit.uri)
             .contents[0] as vscode.MarkdownString,
       );
       hints.push(hint);

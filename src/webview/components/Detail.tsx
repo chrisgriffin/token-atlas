@@ -54,6 +54,20 @@ export function Detail({
   // section showing whichever it is, and a link button that swaps between them.
   // `picking` is the token list, open while choosing a target.
   const [picking, setPicking] = useState(false);
+  // Two edits can be sent before the host answers the first (a field's blur
+  // commit, then the click that caused it), so the editors build on the value
+  // last sent until the host's next update replaces it.
+  const [sent, setSent] = useState<{ value: unknown } | null>(null);
+  const [answered, setAnswered] = useState(token);
+  if (answered !== token) {
+    setAnswered(token);
+    setSent(null);
+  }
+  const value = sent ? sent.value : token.value;
+  const changeValue = (next: unknown) => {
+    setSent({ value: next });
+    onChangeValue(next);
+  };
   const referenceCandidates = useMemo(
     () => [...allTokens, ...externalTokens],
     [allTokens, externalTokens],
@@ -67,14 +81,20 @@ export function Detail({
   // takes the referenced token's type.
   const typeViaReference = !token.type && token.isAlias ? token.resolvedType : undefined;
 
+  const unresolved = token.resolvedValue === undefined;
   const linkButton = token.isAlias ? (
     <button
       className="ghost"
-      title="Use the value it resolves to instead of the reference"
+      disabled={unresolved}
+      title={
+        unresolved
+          ? "Unresolved: there is no value to unlink to"
+          : "Use the value it resolves to instead of the reference"
+      }
       aria-label="Unlink from token"
       onClick={() => {
         // Materialize the alias into a concrete value.
-        onChangeValue(token.resolvedValue ?? "");
+        onChangeValue(token.resolvedValue);
         setPicking(false);
       }}
     >
@@ -174,11 +194,11 @@ export function Detail({
           <>
             {TypeEditor ? (
               <>
-                <TypeEditor value={token.value} onChange={onChangeValue} />
-                <AdvancedJson value={token.value} onChange={onChangeValue} />
+                <TypeEditor value={value} resolved={token.resolvedValue} onChange={changeValue} />
+                <AdvancedJson value={value} onChange={changeValue} />
               </>
             ) : (
-              <RawJsonEditor value={token.value} onChange={onChangeValue} />
+              <RawJsonEditor value={value} onChange={changeValue} />
             )}
             {picking && aliasPicker}
           </>
@@ -199,10 +219,32 @@ export function Detail({
   );
 }
 
-/** Raw JSON editor used for any type without a dedicated editor. */
+const pretty = (v: unknown) => JSON.stringify(v, null, 2);
+
+/** True when `text` parses to JSON that prints as `json`. */
+const sameJson = (text: string, json: string) => {
+  try {
+    return pretty(JSON.parse(text)) === json;
+  } catch {
+    return false;
+  }
+};
+
+/** Raw JSON editor used for any type without a dedicated editor. Untouched,
+ *  it follows the value; edited, a change to the value underneath it is
+ *  flagged and Save refused until the box is reloaded, so a save never puts
+ *  back a value older than the current one. */
 function RawJsonEditor({ value, onChange }: { value: unknown; onChange: (v: unknown) => void }) {
-  const [text, setText] = useState(() => JSON.stringify(value, null, 2));
+  const current = pretty(value);
+  // `base` is the value the text was last loaded from.
+  const [base, setBase] = useState(current);
+  const [text, setText] = useState(current);
   const [error, setError] = useState<string | null>(null);
+  if (current !== base && (text === base || sameJson(text, current))) {
+    setBase(current);
+    setText(current);
+  }
+  const stale = current !== base;
   return (
     <div>
       <textarea
@@ -211,8 +253,26 @@ function RawJsonEditor({ value, onChange }: { value: unknown; onChange: (v: unkn
         spellCheck={false}
         onChange={(e) => setText(e.target.value)}
       />
+      {stale && (
+        <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ color: "var(--vscode-editorWarning-foreground)" }}>
+            The value changed since you started editing.
+          </span>
+          <button
+            className="secondary"
+            onClick={() => {
+              setBase(current);
+              setText(current);
+              setError(null);
+            }}
+          >
+            Reload
+          </button>
+        </div>
+      )}
       <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10 }}>
         <button
+          disabled={stale}
           onClick={() => {
             try {
               const parsed = JSON.parse(text);

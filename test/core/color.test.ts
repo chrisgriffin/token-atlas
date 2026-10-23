@@ -7,7 +7,12 @@ import {
   isDtcgColor,
   cssColorStrings,
   wcagContrast,
+  buildFromComponents,
+  fromCssColor,
+  rgba01ToHex,
+  toColor,
 } from "../../src/core/color";
+import { upgradeLegacyValue } from "../../src/core/legacy";
 
 describe("color conversions", () => {
   it("converts a DTCG sRGB color to RGBA 0..1", () => {
@@ -86,5 +91,64 @@ describe("wcagContrast", () => {
   it("returns null when either side is not a color", () => {
     expect(wcagContrast("nope", "#ffffff")).toBeNull();
     expect(wcagContrast("#ffffff", { value: 4, unit: "px" })).toBeNull();
+  });
+});
+
+describe("the hex fallback written into a token file", () => {
+  // DTCG 2025.10 says `hex` MUST be 6-digit; the alpha lives in `alpha` alone.
+  it("is 6-digit even when the color is translucent", () => {
+    expect(buildFromComponents("srgb", [0, 0, 0], 0.5)!.hex).toBe("#000000");
+    expect(fromRgba01({ r: 1, g: 0, b: 0, a: 0.5 }, "oklch")!.hex).toBe("#ff0000");
+    expect(fromCssColor("rgb(0 0 0 / 50%)")).toEqual({
+      colorSpace: "srgb",
+      components: [0, 0, 0],
+      alpha: 0.5,
+      hex: "#000000",
+    });
+    expect(upgradeLegacyValue("color", "#ff000080")).toMatchObject({ hex: "#ff0000" });
+  });
+});
+
+describe("a color value with the wrong components", () => {
+  it.each([[[1, 0]], [[1]], [[]], [[1, 0, 0, 0]], [[NaN, 0, 0]], [["red", 0, 0]], [[null, 0, 0]]])(
+    "is no color at all: %j",
+    (components) => {
+      const value = { colorSpace: "srgb", components };
+      expect(toColor(value)).toBeNull();
+      expect(toHex(value)).toBeNull();
+      expect(toRgba01(value)).toBeNull();
+    },
+  );
+
+  it("reads a `none` component, and rejects an alpha that is not a number", () => {
+    expect(toHex({ colorSpace: "hsl", components: ["none", 0, 100] })).toBe("#ffffff");
+    expect(toRgba01({ colorSpace: "srgb", components: [1, 0, 0], alpha: "0.5" })).toBeNull();
+  });
+});
+
+describe("an alpha that rounds to opaque", () => {
+  it("is shown as opaque, in the CSS notations and the hex alike", () => {
+    const css = cssColorStrings({ colorSpace: "srgb", components: [1, 0, 0], alpha: 0.999 })!;
+    expect(css.rgb).toBe("rgb(255 0 0)");
+    expect(css.oklch).not.toContain("/");
+    expect(css.hex).toBe("#ff0000");
+  });
+});
+
+describe("an out-of-sRGB color", () => {
+  it("gets the same gamut-mapped color in the swatch as in the hover", () => {
+    const p3green = { colorSpace: "display-p3", components: [0, 1, 0] };
+    expect(rgba01ToHex(toRgba01(p3green)!)).toBe(toHex(p3green));
+    expect(rgba01ToHex(toRgba01(p3green)!)).toBe(cssColorStrings(p3green)!.hex);
+  });
+});
+
+describe("wcagContrast with a translucent foreground", () => {
+  it("blends the foreground over the background first", () => {
+    // Black at 10% over white is #e6e6e6, black at 50% is #808080.
+    const black = (alpha: number) => ({ colorSpace: "srgb", components: [0, 0, 0], alpha });
+    expect(wcagContrast(black(0.1), "#ffffff")).toBe(1.25);
+    expect(wcagContrast(black(0.5), "#ffffff")).toBe(3.97);
+    expect(wcagContrast(black(1), "#ffffff")).toBe(21);
   });
 });

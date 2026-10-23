@@ -4,6 +4,9 @@ import type { TokenType } from "../../core/types";
 export interface EditorProps {
   value: unknown;
   onChange: (value: unknown) => void;
+  /** `value` with its references resolved (`TokenNode.resolvedValue`): what
+   *  Unlink writes for a composite sub-value that references another token. */
+  resolved?: unknown;
 }
 
 import {

@@ -314,6 +314,14 @@ describe("lint — token-atlas/name-case", () => {
     expect(issues).toEqual([]);
   });
 
+  it("lets a PascalCase name start with a digit too", () => {
+    const issues = lint(
+      { Space: { "2xl": n(1), "2Xl": n(2) } },
+      { naming: { case: "PascalCase" } },
+    );
+    expect(issues).toEqual([]);
+  });
+
   it("checks each part of a mode-scoped name on its own", () => {
     const doc = { "system/dark": { a: n(1) }, "system/Dark": { b: n(2) } };
     const issues = lint(doc, { naming: { case: "camelCase" } });
@@ -390,7 +398,33 @@ describe("lint — token-atlas/contrast-insufficient", () => {
   });
 
   it("is silent where the foreground is defined elsewhere", () => {
-    expect(lint({ color: { surface: { default: srgb(1) } } }, pair("AA"))).toEqual([]);
+    const external = indexTokens(parseTokens(JSON.stringify(doc(0.6))));
+    expect(lint({ color: { surface: { default: srgb(1) } } }, pair("AA"), external)).toEqual([]);
+  });
+
+  it("reports a foreground no file defines on the background, as a missing background is reported on the foreground", () => {
+    const issues = lint(doc(0.6), {
+      contrastPairs: [{ foreground: "color.txt.default", background: "color.surface.default" }],
+    });
+    expect(codes(issues)).toEqual(["token-atlas/contrast-insufficient"]);
+    expect(issues[0].path).toEqual(["color", "surface", "default"]);
+    expect(issues[0].message).toBe(
+      'Contrast of "color.txt.default" on "color.surface.default" could not be checked: "color.txt.default" does not resolve to a color.',
+    );
+  });
+
+  it("judges a translucent foreground by what shows through it", () => {
+    // Black at 10% over white is #e6e6e6: 1.25:1, far below AA.
+    const faint = {
+      $type: "color",
+      $value: { colorSpace: "srgb", components: [0, 0, 0], alpha: 0.1 },
+    };
+    const issues = lint(
+      { color: { text: { default: faint }, surface: { default: srgb(1) } } },
+      pair("AA"),
+    );
+    expect(codes(issues)).toEqual(["token-atlas/contrast-insufficient"]);
+    expect(issues[0].message).toContain("1.25:1");
   });
 
   it("says so, once, when a side does not resolve to a color", () => {

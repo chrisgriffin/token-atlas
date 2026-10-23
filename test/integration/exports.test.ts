@@ -199,6 +199,12 @@ describe("Exported code", () => {
     assert.deepEqual(await tokenDefinitionsAt("exported.css", "--not-a-token-at-all"), []);
   });
 
+  it("stays silent on a bare word in a stylesheet, even one that spells a token", async () => {
+    // `grid-area: color-base-white` names a grid area: in CSS only `--x` is a variable.
+    assert.equal(await tokenAtlasHoverAt("exported.css", " color-base-white;"), "");
+    assert.deepEqual(await tokenDefinitionsAt("exported.css", " color-base-white;"), []);
+  });
+
   it("completes a token as a custom property, a Sass variable and an object path", async () => {
     // The workspace index is built lazily, so wait for the first non-empty list.
     const css = (await waitFor(async () => {

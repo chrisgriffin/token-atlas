@@ -319,6 +319,42 @@ describe("Tokens view rows", () => {
     await waitFor(async () => (await darkChildren()) > 0, "dark.tokens.json parsed again");
   });
 
+  // Rows a hand-edited file can produce: a $type no DTCG type matches, and a
+  // dotted key (invalid, so validation reports it) beside the group path it
+  // spells. Each still needs an icon and an id of its own, or VS Code throws
+  // on the duplicate and the whole panel stops drawing.
+  describe("odd rows", () => {
+    const odd = file("odd.tokens.json");
+
+    before(async () => {
+      writeFileSync(
+        odd.fsPath,
+        JSON.stringify({
+          mystery: { $type: "sparkle", $value: 1 },
+          "a.b": { $type: "number", $value: 1 },
+          a: { b: { $type: "number", $value: 2 } },
+        }),
+      );
+      await fileRow("odd.tokens.json");
+    });
+
+    after(async () => {
+      rmSync(odd.fsPath, { force: true });
+      await waitFor(async () => !(await rootNames()).includes("odd.tokens.json"), "it gone");
+    });
+
+    it("gives a token of an unknown $type the plain token icon", async () => {
+      assert.equal(await iconOf(await row("odd.tokens.json", "mystery")), "symbol-field");
+    });
+
+    it("gives a dotted key and the group path it spells different ids", async () => {
+      const dotted = (await itemFor(await row("odd.tokens.json", "a.b"))).id;
+      const nested = (await itemFor(await row("odd.tokens.json", "a", "b"))).id;
+      assert.ok(dotted && nested, "a row has no id");
+      assert.notEqual(dotted, nested);
+    });
+  });
+
   // What clicking a token in the editor leans on to find its row. No fixture
   // has a token at the top of a file, or two siblings at the top to tell the
   // first from the rest, so this one is written for the purpose.
@@ -438,6 +474,22 @@ describe("Visual editor", () => {
     await vscode.window.showTextDocument(light);
     await vscode.commands.executeCommand("tokenAtlas.openCurrent");
     await waitFor(() => kinds(light).join() === "visual", "one visual tab, no text tab");
+  });
+
+  it("opens the file whose title button was pressed, not the active one", async () => {
+    // Split editors: each group has its own title bar, and its button names
+    // its own file whichever group has focus.
+    const light = file("light.tokens.json");
+    const dark = file("dark.tokens.json");
+    await vscode.window.showTextDocument(dark, { viewColumn: vscode.ViewColumn.Two });
+    await vscode.window.showTextDocument(light, { viewColumn: vscode.ViewColumn.One });
+    await waitFor(
+      () => vscode.window.activeTextEditor?.document.uri.toString() === light.toString(),
+      "light the active editor",
+    );
+    await vscode.commands.executeCommand("tokenAtlas.openCurrent", dark);
+    await waitFor(() => kinds(dark).includes("visual"), "dark in the visual editor");
+    assert.deepEqual(kinds(light), ["text"]);
   });
 
   // Both starting points: the side bar closed, and the side bar open on
