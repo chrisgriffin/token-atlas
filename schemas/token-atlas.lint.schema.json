@@ -62,7 +62,7 @@
         "patternProperties": { "^_": {} },
         "properties": {
           "foreground": {
-            "description": "The text or icon color's token path, e.g. \"color.text.default\". Findings appear on its definition.",
+            "description": "The text or icon color's token path, e.g. \"color.text.default\". Findings appear on its definition; a foreground no file defines is reported on the background's.",
             "type": "string",
             "minLength": 1
           },

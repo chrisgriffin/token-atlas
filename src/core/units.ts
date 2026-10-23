@@ -36,7 +36,7 @@ export function dimensionConversions(
   };
 }
 
-/** Trim to at most 3 decimals, without trailing zeros. */
+/** Trim to at most 4 decimals (1px is 0.0625rem), without trailing zeros. */
 function fmt(n: number): string {
-  return String(Math.round(n * 1000) / 1000);
+  return String(Math.round(n * 10000) / 10000);
 }
