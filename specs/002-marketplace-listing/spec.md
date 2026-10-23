@@ -6,7 +6,7 @@
 
 ## Summary
 
-Token Atlas 1.0.0 is published to the VS Code Marketplace as `chrisgriffin.token-atlas` when the release PR merges, and the README becomes the listing page. The README and docs still say it is not on the Marketplace, vsce points the listing's screenshots at the default branch (`develop`), the `.vsix` carries 1.4 MB of screenshots the listing never reads from it, and the manifest has no banner color or lint category. Chris requested the pre-1.0 audit findings be fixed before the release on 2026-10-22.
+Token Atlas 1.0.0 is published to the VS Code Marketplace as `chrisgriffinio.token-atlas` when the release PR merges, and the README becomes the listing page. The README and docs still say it is not on the Marketplace, vsce points the listing's screenshots at the default branch (`develop`), the `.vsix` carries 1.4 MB of screenshots the listing never reads from it, and the manifest has no banner color or lint category. Chris requested the pre-1.0 audit findings be fixed before the release on 2026-10-22.
 
 ## User Scenarios & Testing
 
@@ -18,7 +18,7 @@ Someone reads the listing or the GitHub README and installs Token Atlas the norm
 
 **Acceptance Scenarios**:
 
-1. **Given** the README, **When** a reader opens Install, **Then** it names the Extensions view search, `ext install chrisgriffin.token-atlas` and `code --install-extension chrisgriffin.token-atlas`, then the release `.vsix`.
+1. **Given** the README, **When** a reader opens Install, **Then** it names the Extensions view search, `ext install chrisgriffinio.token-atlas` and `code --install-extension chrisgriffinio.token-atlas`, then the release `.vsix`.
 2. **Given** the listing, **When** it renders, **Then** every screenshot and relative link resolves on `main`, the branch a release is cut from.
 
 ### User Story 2 - A lean, well-labeled package (Priority: P2)
@@ -44,7 +44,7 @@ Someone reads the listing or the GitHub README and installs Token Atlas the norm
 
 ## Success criteria
 
-- [x] The README's Install section leads with the Marketplace (Extensions view search, `ext install chrisgriffin.token-atlas`, `code --install-extension chrisgriffin.token-atlas`), with the GitHub Release `.vsix` as the fallback, and no doc (README, CLAUDE.md, `docs/`) says the extension is not on the Marketplace.
+- [x] The README's Install section leads with the Marketplace (Extensions view search, `ext install chrisgriffinio.token-atlas`, `code --install-extension chrisgriffinio.token-atlas`), with the GitHub Release `.vsix` as the fallback, and no doc (README, CLAUDE.md, `docs/`) says the extension is not on the Marketplace.
 - [x] A packaged `.vsix`'s README points every relative link and screenshot at `main` and every one returns 200, and the `.vsix` ships no README screenshot and no unused SVG.
 - [x] `package.json` sets a `galleryBanner` in the icon's background color, lists the extension under `Linters`, and adds honest search keywords.
 - [x] The README links the stable 2025.10 DTCG format and resolver specs, not the drafts.

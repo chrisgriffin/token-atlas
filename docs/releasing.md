@@ -1,6 +1,6 @@
 # Releasing
 
-A release of Token Atlas is a packaged `.vsix` extension, attached to a GitHub Release and published to the VS Code Marketplace as `chrisgriffin.token-atlas`.
+A release of Token Atlas is a packaged `.vsix` extension, attached to a GitHub Release and published to the VS Code Marketplace as `chrisgriffinio.token-atlas`.
 
 ## How a release happens
 
@@ -45,7 +45,7 @@ through `release-pr.yml`. Merging it runs steps 4 and 5 above.
 - `--githubBranch main` points the README's relative links and screenshots at `main`, so the listing shows what was released rather than whatever is on `develop`. The screenshots are not in the `.vsix`; the listing loads them from GitHub.
 - Every `./*.vsix` the package step produces is attached to the GitHub Release, and the same file is published to the VS Code Marketplace in that job, with the publisher credential `create-github-release.yml` passes in. Without one, the publish step logs a notice and skips. Nothing is published to npm or GitHub Packages.
 - Because the package runs with `--no-dependencies`, `dist/extension.js` must already inline everything it needs; `esbuild.mjs`'s post-build guard is what catches a dependency that did not bundle.
-- To install a release, install `chrisgriffin.token-atlas` from the Marketplace, or download its `.vsix` and run `code --install-extension token-atlas-<version>.vsix --force`, then reload the window.
+- To install a release, install `chrisgriffinio.token-atlas` from the Marketplace, or download its `.vsix` and run `code --install-extension token-atlas-<version>.vsix --force`, then reload the window.
 
 ## Manual steps
 

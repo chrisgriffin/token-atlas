@@ -67,7 +67,7 @@ function kinds(uri: vscode.Uri): string[] {
 const config = () => vscode.workspace.getConfiguration("tokenAtlas");
 
 before(async () => {
-  const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffin.token-atlas");
+  const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffinio.token-atlas");
   assert.ok(ext, "extension not found");
   hooks = await ext.activate();
 });

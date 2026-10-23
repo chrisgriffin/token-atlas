@@ -6,10 +6,10 @@ Design tokens in VS Code. Open a [W3C/DTCG token file](https://www.designtokens.
 
 ## Install
 
-Search for **Token Atlas** in the Extensions view and click Install. Or press Cmd+P (Ctrl+P) and run `ext install chrisgriffin.token-atlas`, or from a terminal:
+Search for **Token Atlas** in the Extensions view and click Install. Or press Cmd+P (Ctrl+P) and run `ext install chrisgriffinio.token-atlas`, or from a terminal:
 
 ```
-code --install-extension chrisgriffin.token-atlas
+code --install-extension chrisgriffinio.token-atlas
 ```
 
 Needs VS Code 1.90 or newer.
