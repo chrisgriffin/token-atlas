@@ -142,6 +142,10 @@ Token Atlas targets the Design Tokens Format Module **2025.10**, the first stabl
 
 How the code is laid out: [docs/architecture.md](docs/architecture.md). Press F5 to run the extension against `examples/` in a development host.
 
+## Author
+
+Made by [Chris Griffin](https://chrisgriffin.io).
+
 ## License
 
 MIT © 2026 Chris Griffin
