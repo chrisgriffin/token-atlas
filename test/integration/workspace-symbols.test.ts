@@ -36,7 +36,7 @@ async function textAt(symbol: vscode.SymbolInformation): Promise<string> {
 
 describe("Token workspace symbols", () => {
   before(async () => {
-    const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffin.token-atlas");
+    const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffinio.token-atlas");
     assert.ok(ext, "extension not found");
     await ext.activate();
   });

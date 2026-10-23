@@ -58,7 +58,7 @@ const setting = (value: string | undefined) =>
 
 describe("Hard-coded values", () => {
   before(async () => {
-    const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffin.token-atlas");
+    const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffinio.token-atlas");
     assert.ok(ext, "extension not found");
     await ext.activate();
     await vscode.workspace.openTextDocument(file("hardcoded.css"));

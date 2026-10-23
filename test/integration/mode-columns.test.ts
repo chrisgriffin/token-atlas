@@ -63,7 +63,7 @@ async function hoverOf(ref: string): Promise<string> {
 }
 
 before(async () => {
-  const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffin.token-atlas");
+  const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffinio.token-atlas");
   assert.ok(ext, "extension not found");
   hooks = await ext.activate();
 });

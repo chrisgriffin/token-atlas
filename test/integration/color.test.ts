@@ -120,7 +120,7 @@ async function offersFor(doc: vscode.TextDocument, range: vscode.Range): Promise
 }
 
 before(async () => {
-  const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffin.token-atlas");
+  const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffinio.token-atlas");
   assert.ok(ext, "extension not found");
   await ext.activate();
 });

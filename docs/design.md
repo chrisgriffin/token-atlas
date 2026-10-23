@@ -255,7 +255,7 @@ than a message anyone sends.
 - **M6 — Structure & theming.** Group/token CRUD, rename, reorder, search/filter; implement the chosen multi-file theming model.
 - **M7 — Polish.** Theme-matched styling, large-file performance (virtualized tree), packaging, README, publish to Marketplace.
 
-M0 to M6 have shipped, and so has most of M7. The virtualized tree and the Marketplace publish have not (§10).
+M0 to M6 have shipped, and so has most of M7, including the Marketplace publish. The virtualized tree has not (§10).
 
 A natural **first runnable target is M2** — it proves the whole loop (parse → render → edit → clean save → undo) end to end; everything after is breadth.
 
@@ -276,7 +276,7 @@ These were open before coding; each is now settled in the code.
 
 ### Sources
 
-- [Design Tokens Format Module 2025.10 (draft)](https://www.designtokens.org/tr/drafts/format/)
+- [Design Tokens Format Module 2025.10](https://www.designtokens.org/tr/2025.10/format/)
 - [Design Tokens specification reaches first stable version — DTCG / W3C](https://www.w3.org/community/design-tokens/2025/10/28/design-tokens-specification-reaches-first-stable-version/)
 - [Design Tokens Community Group](https://www.designtokens.org/)
 - [Style Dictionary — DTCG support](https://styledictionary.com/info/dtcg/)
@@ -289,4 +289,3 @@ These were open before coding; each is now settled in the code.
   severity (`information` by default), except paths the active document
   defines itself and paths shared only by one resolver modifier's files.
 - No virtualized tree in the visual editor (filter and panel scoping instead).
-- Not yet published to the Marketplace: the icon is in, the publisher account and its `VSCE_PAT` are not (#18).

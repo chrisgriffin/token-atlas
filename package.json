@@ -3,14 +3,23 @@
   "displayName": "Token Atlas",
   "description": "Language features for W3C/DTCG design tokens in VS Code: hovers, completion, go-to-definition, rename and validation on token JSON and on exported CSS/Sass/JS, plus an opt-in visual editor.",
   "version": "0.30.2",
-  "publisher": "chrisgriffin",
+  "publisher": "chrisgriffinio",
+  "author": {
+    "name": "Chris Griffin",
+    "url": "https://chrisgriffin.io"
+  },
   "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1C1F3F",
+    "theme": "dark"
+  },
   "license": "MIT",
   "engines": {
     "vscode": "^1.90.0",
     "node": ">=22"
   },
   "categories": [
+    "Linters",
     "Visualization",
     "Other"
   ],
@@ -19,7 +28,12 @@
     "dtcg",
     "design system",
     "tokens",
-    "theming"
+    "theming",
+    "w3c",
+    "tokens studio",
+    "style dictionary",
+    "css variables",
+    "color"
   ],
   "repository": {
     "type": "git",
@@ -350,7 +364,7 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "package": "vsce package --no-dependencies",
+    "package": "vsce package --no-dependencies --githubBranch main",
     "vscode:prepublish": "node esbuild.mjs --production",
     "version:recommend": "conventional-recommended-bump -p conventionalcommits"
   },
