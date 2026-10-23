@@ -37,6 +37,7 @@ import type {
 } from "../shared/protocol";
 import type { ContrastTarget } from "../core/color";
 import {
+  activeResolution,
   externalIndexFor,
   findResolverFiles,
   findTokenFiles,
@@ -44,8 +45,7 @@ import {
   localScopeFor,
   onDidInvalidateWorkspaceIndex,
 } from "./workspaceIndex";
-import { activeResolution } from "./activeSet";
-import { buildRenameEdit } from "./rename";
+import { buildRenameEdit, IllegalNameError } from "./rename";
 
 export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
   /**
@@ -216,9 +216,13 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
         .then(() => handle(msg))
         .catch((err) => {
           // A refused name leaves the file as it was: say why, keep the editor.
-          if (err instanceof NameTakenError || err instanceof InvalidNameError)
+          if (
+            err instanceof NameTakenError ||
+            err instanceof IllegalNameError ||
+            err instanceof InvalidNameError
+          ) {
             void vscode.window.showErrorMessage(err.message);
-          else post({ type: "error", message: String(err) });
+          } else post({ type: "error", message: String(err) });
         }));
     webviewPanel.webview.onDidReceiveMessage(receive);
     TokenEditorProvider.receivers.set(key, receive);
@@ -336,11 +340,19 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
           );
           break;
         }
-        case "setModeView":
-          await vscode.workspace
-            .getConfiguration("tokenAtlas")
-            .update("modeView", msg.view, vscode.ConfigurationTarget.Global);
+        case "setModeView": {
+          // Where a value already decides it: a workspace value beats a user
+          // one. Window-scoped, so no folder can hold its own.
+          const config = vscode.workspace.getConfiguration("tokenAtlas");
+          await config.update(
+            "modeView",
+            msg.view,
+            config.inspect("modeView")?.workspaceValue !== undefined
+              ? vscode.ConfigurationTarget.Workspace
+              : vscode.ConfigurationTarget.Global,
+          );
           break;
+        }
         case "openAsText":
           TokenEditorProvider.textPreferred.add(key);
           await vscode.commands.executeCommand("vscode.openWith", document.uri, "default");

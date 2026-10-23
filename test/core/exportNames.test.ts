@@ -34,6 +34,8 @@ describe("findTokenForIdentifier — exported spellings", () => {
 
   it("drops leading segments so an export prefix still matches", () => {
     expect(findTokenForIdentifier("--ds-color-brand-primary", KEYS)).toBe("color.brand.primary");
+    expect(findTokenForIdentifier("dsColorBrandPrimary", KEYS)).toBe("color.brand.primary");
+    expect(findTokenForIdentifier("DSColorBrandPrimary", KEYS)).toBe("color.brand.primary");
     expect(findTokenForIdentifier("$tokens-space-md", KEYS)).toBe("space.md");
     expect(findTokenForIdentifier("theme.tokens.fontSizeBase", KEYS)).toBe("font.size.base");
   });
@@ -85,6 +87,26 @@ describe("scanIdentifiers", () => {
     const sass = scanIdentifiers("$space-md: 4px;\n.a { margin: $space-md; }\na::before {}");
     expect(sass.get("$space-md")!.map((h) => h.declaration)).toEqual([true, false]);
     expect(sass.get("a")![0].declaration).toBe(false); // `::` is a pseudo-element
+  });
+
+  it("in a stylesheet, keeps only the names a variable can have: a bare word is a property or keyword", () => {
+    const keys = ["border.width", "white"];
+    const text = ".a { border-width: var(--border-width); color: white; b: $white; c: @white; }";
+    const names = (languageId: string) =>
+      [...scanIdentifiers(text, languageId).keys()].filter((n) => tokenMatcher(keys)(n));
+    expect(names("css")).toEqual(["--border-width"]);
+    expect(names("scss")).toEqual(["--border-width", "$white"]);
+    expect(names("sass")).toEqual(["--border-width", "$white"]);
+    expect(names("less")).toEqual(["--border-width", "white"]);
+    expect(
+      scanIdentifiers(text, "less")
+        .get("white")!
+        .map((o) => o.character),
+    ).toEqual([text.indexOf("@white") + 1]);
+    expect(names("javascript")).toEqual(["border-width", "--border-width", "white", "$white"]);
+    expect([...scanIdentifiers("a { b: tokens.$white; }", "scss").keys()]).toEqual([
+      "tokens.$white",
+    ]);
   });
 
   it("skips numbers and keeps dotted paths whole", () => {
@@ -160,6 +182,24 @@ describe("tokenUsages", () => {
     },
   );
 
+  it("in a stylesheet, gives no color to a property or keyword that spells a token", () => {
+    const keys = ["white"];
+    const text = ".a { color: white; background: var(--white); }";
+    expect(tokenUsages(text, keys, () => "#ffffff", "css")).toEqual([
+      { line: 0, character: 35, length: 7, value: "#ffffff" },
+    ]);
+  });
+
+  it.each(["scss", "less"])(
+    'in %s, a quoted url("//…") is a string, so the line after it is still read',
+    (languageId) => {
+      const text = 'a { background: url("//cdn.example.com/a.png") var(--color-brand-primary); }';
+      expect(tokenUsages(text, KEYS, colorOf, languageId)).toEqual([
+        { line: 0, character: 51, length: 21, value: "#ff0000" },
+      ]);
+    },
+  );
+
   it("in JavaScript, a url(// outside a string is still a comment", () => {
     const text = "url(//cdn.example.com/a.png) tokens.color.brand.primary";
     expect(tokenUsages(text, KEYS, colorOf, "javascript")).toEqual([]);
@@ -217,6 +257,10 @@ describe("renameInIdentifier — the new spelling in the identifier's own conven
     expect(
       renameInIdentifier("--ds-color-brand-primary", "color.brand.primary", 2, "main"),
     ).toEqual({ start: 17, end: 24, text: "main" });
+  });
+
+  it("finds the key behind a capitalized acronym prefix", () => {
+    expect(apply("DSColorBrandPrimary", "color.brand.primary", 2, "main")).toBe("DSColorBrandMain");
   });
 
   it("is undefined for an identifier that does not end in the key", () => {

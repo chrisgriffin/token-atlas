@@ -37,6 +37,7 @@ export {
   pointersIn,
 } from "./resolve";
 export {
+  canNameToken,
   cssVarUsages,
   EXPORT_IDENTIFIER,
   exportCompletionContext,

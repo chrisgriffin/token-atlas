@@ -37,7 +37,8 @@ function defaultWidth(col: Column, w: number, showDescription: boolean): number 
 }
 
 export interface TableEdits {
-  rename: (path: string[], newName: string) => void;
+  /** False refuses the name (a sibling has it): the cell stays open. */
+  rename: (path: string[], newName: string) => boolean | void;
   setValue: (path: string[], value: unknown) => void;
   setDescription: (path: string[], description: string) => void;
   /** Full new order of the keys under `parentPath`. */
@@ -194,33 +195,28 @@ export function Table({
   // The panel does the navigating, so the table never nests: every token
   // under the scope, one section per group, as Figma's variables table does.
   // A group's own tokens come before its subgroups, so each section's rows
-  // are contiguous siblings and a row shows only the name you edit.
-  const rows = useMemo(() => {
-    const out: Row[] = [];
+  // are contiguous siblings and a row shows only the name you edit. A group
+  // with nothing in it gets an empty section, or it could not be seen or
+  // opened at all.
+  const sections = useMemo(() => {
+    const out: { group: string[]; rows: Row[] }[] = [];
     const walk = (group: GroupNode, prefix: string[]) => {
+      const rows: Row[] = [];
       for (const child of group.children) {
         if (child.kind !== "token") continue;
         const key = child.path.join(".");
         if (q && !key.toLowerCase().includes(q)) continue;
-        out.push({ node: child, key, group: prefix });
+        rows.push({ node: child, key, group: prefix });
       }
+      if (rows.length || (!q && prefix.length && !group.children.length))
+        out.push({ group: prefix, rows });
       for (const child of group.children)
         if (child.kind === "group") walk(child, [...prefix, child.name]);
     };
     walk(scopeRoot, []);
     return out;
   }, [scopeRoot, q]);
-
-  // Runs of rows that share a group, each rendered under its heading.
-  const sections = useMemo(() => {
-    const out: { group: string[]; rows: Row[] }[] = [];
-    for (const row of rows) {
-      const last = out[out.length - 1];
-      if (last && last.group.join(".") === row.group.join(".")) last.rows.push(row);
-      else out.push({ group: row.group, rows: [row] });
-    }
-    return out;
-  }, [rows]);
+  const rows = useMemo(() => sections.flatMap((s) => s.rows), [sections]);
 
   // Drag and Alt+Arrow both reorder within a section, where the rows on
   // screen are the token's real neighbours; a filter breaks that up.
@@ -228,7 +224,7 @@ export function Table({
 
   // The wrapper element swaps between the table and the empty message, so
   // re-observe whichever one is mounted.
-  const empty = rows.length === 0;
+  const empty = sections.length === 0;
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
@@ -338,7 +334,7 @@ export function Table({
     drag?.overKey === key ? (drag.after ? " drop-after" : " drop-before") : "";
   const dragClass = (key: string) => (drag?.key === key ? " dragging" : "");
 
-  if (rows.length === 0) {
+  if (empty) {
     return (
       <div ref={wrapRef} style={{ padding: 16, opacity: 0.6 }}>
         {q ? "No matching tokens." : "No tokens yet."}
@@ -400,16 +396,28 @@ export function Table({
                     2 + (modes?.shown.length ?? 1) + Number(showType) + Number(showDescription)
                   }
                 >
-                  {group.map((seg, i) =>
-                    i < group.length - 1 ? (
-                      <span key={i} className="section-parent">
+                  {group.map((seg, i) => {
+                    // Each name opens its group's panel. Not a Tab stop, as
+                    // the row controls outside the selected row are not.
+                    const name = (
+                      <button
+                        className="section-name"
+                        tabIndex={-1}
+                        title={`Open ${[...scopeRoot.path, ...group.slice(0, i + 1)].join(".")}`}
+                        onClick={() => onOpen([...scopeRoot.path, ...group.slice(0, i + 1)])}
+                      >
                         {seg}
+                      </button>
+                    );
+                    return i < group.length - 1 ? (
+                      <span key={i} className="section-parent">
+                        {name}
                         <span className="section-sep">/</span>
                       </span>
                     ) : (
-                      <span key={i}>{seg}</span>
-                    ),
-                  )}
+                      <span key={i}>{name}</span>
+                    );
+                  })}
                 </th>
               </tr>
             )}
@@ -538,13 +546,13 @@ function TokenRow({
             grow
             text={token.name}
             title={token.path.join(".")}
+            tabbable={active}
             commit={(t) => {
               const n = t.trim();
               // An inherited token has no key of its own to rename.
               if (token.inheritedFrom) return false;
               if (!n || n.includes(".") || n.includes("{") || n.includes("}")) return false;
-              edits.rename(token.path, n);
-              return true;
+              return edits.rename(token.path, n) !== false;
             }}
           />
           <InheritedPill from={token.inheritedFrom} />
@@ -575,6 +583,7 @@ function TokenRow({
         <td>
           <InlineCell
             className="dim"
+            tabbable={active}
             text={token.description ?? ""}
             placeholder="Description"
             commit={(t) => {
@@ -622,18 +631,22 @@ function ValueCell({
   const type = token.resolvedType ?? token.type;
   const resolved = token.resolvedValue;
   const resolvedText = resolved === undefined ? "" : summarize(resolved, type);
-  const text = token.isAlias ? `{${token.reference}}` : summarize(token.value, token.type);
+  // A `$ref` into another token's value (a property reference) holds the
+  // pointer object as its value; what it stands for is the resolved value.
+  const value = token.valueFromRef ? resolved : token.value;
+  const text = token.isAlias ? `{${token.reference}}` : summarize(value, token.type);
   const shown = token.isAlias ? (
     <>
       {compact && <Glyph value={resolved} type={type} />}
       <span className="chip">{text}</span>
     </>
-  ) : token.value === undefined ? undefined : (
+  ) : value === undefined ? undefined : (
     <>
       <Glyph
-        value={token.value}
+        value={value}
         type={token.type}
         onPick={setValue && token.type === "color" ? setValue : undefined}
+        tabbable={tabbable}
       />
       {text}
     </>
@@ -648,9 +661,10 @@ function ValueCell({
           mono
           text={text}
           placeholder="—"
+          tabbable={tabbable}
           title={title ?? "Click to edit"}
           commit={(t) => {
-            const parsed = parseInline(t, token.type, token.value);
+            const parsed = parseInline(t, token.type, value);
             if (parsed === undefined) return false;
             setValue(parsed);
             return true;

@@ -1,8 +1,9 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { Table, type TableModes } from "../../src/webview/components/Table";
 import { group, sampleRoot, token } from "./fixtures";
 import type { TokenType } from "../../src/core/types";
+import { parseTokens, resolveAliases } from "../../src/core";
 
 /**
  * What the table itself decides: which rows exist, and what the keyboard does.
@@ -353,5 +354,77 @@ describe("Table cell click target", () => {
       clickWithoutEdit(control(4, "button.edit"));
       expect(onOpen).toHaveBeenCalledWith(["color", "brand", "primary"]);
     });
+  });
+});
+
+describe("Table fixes before 1.0", () => {
+  it("keeps focus in the table after an inline edit, so the arrows keep working (#8)", () => {
+    const { onSelect } = renderTable({ selectedKey: "color.brand.primary" });
+    const description = tokenRows()[0].querySelectorAll<HTMLElement>(".cell[tabindex]")[2];
+    act(() => description.focus());
+    const field = document.activeElement as HTMLInputElement;
+    expect(field.tagName).toBe("INPUT");
+    fireEvent.change(field, { target: { value: "Brand" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(edits.setDescription).toHaveBeenCalledTimes(1);
+    const wrap = document.querySelector(".table-wrap")!;
+    expect(document.activeElement).toBe(wrap);
+    fireEvent.keyDown(wrap, { key: "ArrowDown" });
+    expect(onSelect).toHaveBeenLastCalledWith(["color", "brand", "accent"]);
+  });
+
+  it("makes only the selected row's cells and swatch Tab stops (#8)", () => {
+    renderTable({ selectedKey: "color.brand.accent" });
+    const stops = tokenRows().map(
+      (r) =>
+        [...r.querySelectorAll<HTMLElement>(".cell[tabindex], input[type=color]")].filter(
+          (el) => el.tabIndex >= 0,
+        ).length,
+    );
+    expect(stops).toEqual([0, 3, 0]);
+    // A click still edits a cell in any row.
+    const name = tokenRows()[2].querySelector<HTMLElement>(".name-cell .cell")!;
+    act(() => name.focus());
+    expect(document.activeElement?.tagName).toBe("INPUT");
+  });
+
+  it("shows an empty group as a section whose name opens it (#8)", () => {
+    const root = sampleRoot();
+    root.children.push(group(["empty"], []));
+    const { onOpen } = renderTable({ root });
+    expect(headings()).toEqual(["color/brand", "space", "empty"]);
+    fireEvent.click(screen.getByRole("button", { name: "empty" }));
+    expect(onOpen).toHaveBeenCalledWith(["empty"]);
+  });
+
+  it("opens a group from its section heading, under a scope too (#8)", () => {
+    const { onOpen } = renderTable({ scopePath: ["color"] });
+    fireEvent.click(screen.getByRole("button", { name: "brand" }));
+    expect(onOpen).toHaveBeenCalledWith(["color", "brand"]);
+  });
+
+  it("shows the resolved value of a $ref property reference (#8)", () => {
+    const model = parseTokens(
+      JSON.stringify({
+        border: {
+          thin: {
+            $type: "border",
+            $value: {
+              color: { colorSpace: "srgb", components: [0, 0, 0] },
+              width: { value: 1, unit: "px" },
+              style: "solid",
+            },
+          },
+        },
+        w: { $type: "dimension", $ref: "#/border/thin/$value/width" },
+      }),
+    );
+    resolveAliases(model);
+    renderTable({ root: model.root });
+    // The root's own token, `w`, comes before the border section.
+    const cell = tokenRows()[0].querySelectorAll("td")[1];
+    expect(tokenRows()[0].querySelector(".name-cell")!.textContent).toBe("w");
+    expect(cell.textContent).toContain("1px");
+    expect(cell.textContent).not.toContain("[object Object]");
   });
 });

@@ -96,3 +96,45 @@ describe("InlineCell rejected commit", () => {
     expect(display(container)!.textContent).toBe("primary");
   });
 });
+
+describe("InlineCell keyboard", () => {
+  it("ignores the Enter that confirms an IME composition (#8)", () => {
+    const commit = vi.fn(() => true);
+    const outer = vi.fn();
+    const { container } = render(
+      <div onKeyDown={(e) => outer(e.key)}>
+        <InlineCell text="primary" commit={commit} />
+      </div>,
+    );
+    fireEvent.keyDown(edit(container, "にほ"), { key: "Enter", isComposing: true });
+    expect(commit).not.toHaveBeenCalled();
+    expect(input().value).toBe("にほ");
+    // Nor does it reach the table, where Enter opens the row.
+    expect(outer).not.toHaveBeenCalled();
+  });
+
+  it("hands focus back to the table when Enter or Escape closes it, committing once (#8)", () => {
+    for (const key of ["Enter", "Escape"]) {
+      const commit = vi.fn(() => true);
+      const { getByTestId, unmount } = render(
+        <div className="table-wrap" tabIndex={0} data-testid="wrap">
+          <InlineCell text="primary" commit={commit} />
+        </div>,
+      );
+      const wrap = getByTestId("wrap");
+      fireEvent.focus(wrap.querySelector(".cell")!);
+      const field = input();
+      field.focus();
+      fireEvent.change(field, { target: { value: "accent" } });
+      fireEvent.keyDown(field, { key });
+      expect(document.activeElement, key).toBe(wrap);
+      expect(commit.mock.calls, key).toEqual(key === "Enter" ? [["accent"]] : []);
+      unmount();
+    }
+  });
+
+  it("is a Tab stop only when asked to be (#8)", () => {
+    const { container } = render(<InlineCell text="a" commit={() => true} tabbable={false} />);
+    expect(display(container)).toHaveProperty("tabIndex", -1);
+  });
+});
