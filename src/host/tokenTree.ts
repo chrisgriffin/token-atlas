@@ -138,10 +138,13 @@ class TokenTreeProvider implements vscode.TreeDataProvider<Item> {
       node.name,
       isGroup ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
     );
-    item.id = `${uri.toString()}#${node.path.join(".")}`;
+    // Segments kept apart, not dotted: a key "a.b" (invalid, but typeable)
+    // and the path a → b must not share an id, or VS Code refuses the tree.
+    item.id = `${uri.toString()}#${JSON.stringify(node.path)}`;
     item.contextValue = isGroup ? "tokenAtlasGroup" : "tokenAtlasToken";
     item.iconPath = new vscode.ThemeIcon(
-      isGroup ? "folder" : node.type ? TYPE_CODICONS[node.type] : "symbol-field",
+      // A $type outside DTCG's list (a typo, a tool's own) gets the plain icon.
+      isGroup ? "folder" : ((node.type && TYPE_CODICONS[node.type]) ?? "symbol-field"),
     );
     if (isGroup) {
       item.description = String(countTokens(node));

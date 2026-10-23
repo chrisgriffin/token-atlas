@@ -273,13 +273,13 @@ describe("Cross-file rename", () => {
   // Guarded against the file the rename above must not touch, so these hold
   // whichever order mocha runs the two groups in.
   describe("the guards", () => {
-    it("rejects a rename to an empty, dotted or braced name", async () => {
-      for (const bad of ["", "a.b", "{x}"]) {
+    it("rejects a rename to an empty, dotted, braced or $-prefixed name", async () => {
+      for (const bad of ["", "a.b", "{x}", "$description"]) {
         await assert.rejects(
           async () => {
             await renameEdit(OWN, '"primary"', bad);
           },
-          /may not be empty or contain/,
+          /may not be empty, start with "\$"/,
           `${JSON.stringify(bad)} was accepted as a token name`,
         );
       }

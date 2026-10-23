@@ -73,7 +73,7 @@ class ExportHoverProvider implements vscode.HoverProvider {
     if (!found) return;
     const ws = await buildWorkspaceIndex();
     if (cancel.isCancellationRequested) return;
-    return buildTokenHover(found.hit.token, NO_LOCAL, ws, undefined, found.range, found.hit.uri);
+    return buildTokenHover(found.hit.token, NO_LOCAL, ws, document.uri, found.range, found.hit.uri);
   }
 }
 
@@ -182,7 +182,7 @@ class CodeInlayHintsProvider implements vscode.InlayHintsProvider {
       this.tooltips.set(
         hint,
         () =>
-          buildTokenHover(hit.token, NO_LOCAL, ws, undefined, undefined, hit.uri)
+          buildTokenHover(hit.token, NO_LOCAL, ws, document.uri, undefined, hit.uri)
             .contents[0] as vscode.MarkdownString,
       );
       hints.push(hint);

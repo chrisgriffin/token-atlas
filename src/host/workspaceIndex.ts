@@ -5,16 +5,19 @@
  * decides, so detection doesn't depend on a filename convention.
  */
 import * as vscode from "vscode";
-import { findNodeAtLocation, parseTree } from "jsonc-parser";
+import { findNodeAtLocation, parse, parseTree, type ParseError } from "jsonc-parser";
 import {
   hasExtends,
   indexTokens,
   looksLikeResolver,
+  parseResolver,
   parseTokens,
   inlineSources,
   pointerTarget,
   type Fragment,
   resolveAliases,
+  resolutionSources,
+  type Resolver,
   type TokenDocumentModel,
   type TokenNode,
 } from "../core";
@@ -58,16 +61,47 @@ export const TOKEN_SELECTOR: vscode.DocumentSelector = [
   { pattern: "**/*.tokens" },
 ];
 
-let cache: Map<string, IndexedToken> | undefined;
-let fileCache: Array<{ uri: vscode.Uri; text: string }> | undefined;
-/** DTCG resolver documents found by the same scan; never token files themselves. */
-let resolverCache: Array<{ uri: vscode.Uri; text: string }> | undefined;
 /**
- * Bumped on every invalidation. A build that started before the bump must
- * not store its result — it read pre-edit text — so each builder captures the
- * generation up front and only assigns the cache if it is still current.
+ * A file the scan found: its current text (the open buffer's, or the disk's),
+ * and `good`, the last of that text with no JSON syntax error, which is what
+ * the index resolves against. Half-typed JSON in one file must not make every
+ * other file's references into it unresolved.
  */
-let generation = 0;
+interface ScannedFile {
+  uri: vscode.Uri;
+  text: string;
+  good: string;
+}
+
+/**
+ * Every file the include globs matched at the last scan, token file or not:
+ * the files an edit can move into or out of the index without a rescan.
+ */
+let candidates: Set<string> | undefined;
+let fileCache: ScannedFile[] | undefined;
+/** DTCG resolver documents found by the same scan; never token files themselves. */
+let resolverCache: ScannedFile[] | undefined;
+/** The scan in flight, shared by every caller that arrives while it runs. */
+let scanning: Promise<Scanned> | undefined;
+/**
+ * Bumped on every full rescan. A scan that started before the bump must not
+ * store its result — it may list files that are gone — so it captures the
+ * generation up front and only stores while it is still current.
+ */
+let scanGeneration = 0;
+/** The index, derived from the files above and the active set. */
+let cache: Map<string, IndexedToken> | undefined;
+/** The index build in flight, shared like the scan. */
+let building: Promise<Map<string, IndexedToken>> | undefined;
+/** Edits arrive per keystroke; listeners hear about them once per pause. */
+const TYPING_PAUSE_MS = 100;
+let pending: ReturnType<typeof setTimeout> | undefined;
+
+interface Scanned {
+  files: ScannedFile[];
+  resolvers: ScannedFile[];
+}
+
 /**
  * The active token set: which files — and which top-level groups within them —
  * contribute keys to the index, and so which definition a `{reference}`
@@ -127,10 +161,68 @@ export function activeSetOrdered(): boolean {
   return ordered;
 }
 
-export function setActiveSet(next: readonly string[], inOrder = false): void {
+/** A resolver resolution as picked: the resolver's URI and its modifier input. */
+export interface ResolutionArg {
+  resolver: string;
+  input?: Record<string, string>;
+}
+
+/**
+ * The resolver resolution the active set is, when it is one. Its sources are
+ * re-read from the resolver's current text whenever that changes, so editing
+ * the active resolver takes effect without picking it again.
+ */
+let resolution: ResolutionArg | undefined;
+
+export function activeResolution(): Readonly<ResolutionArg> | undefined {
+  return resolution;
+}
+
+/**
+ * Make `next` the active set; `chosen` when it is a resolver resolution, whose
+ * sources then follow the resolver's text (`next` stands until it is read).
+ */
+export function setActiveSet(
+  next: readonly string[],
+  inOrder = false,
+  chosen?: ResolutionArg,
+): void {
   active = [...next];
   ordered = inOrder && active.length > 0;
-  invalidateWorkspaceIndex(); // re-resolve everything against the new set
+  resolution = chosen;
+  syncResolution();
+  indexChanged(true); // re-resolve everything against the new set
+}
+
+/** Re-read the active resolution's sources from its resolver's last good text. */
+function syncResolution(): void {
+  if (!resolution) return;
+  const doc = resolverCache?.find((r) => r.uri.toString() === resolution!.resolver);
+  const resolver = doc && parseResolver(doc.good).resolver;
+  if (!resolver) return; // not scanned yet, or gone: keep the sources it had
+  active = entriesFor(doc.uri, resolver, resolution.input ?? {});
+  ordered = active.length > 0;
+}
+
+/**
+ * A resolution's sources as active-set entries, highest precedence first: a
+ * file URI, or `<uri>#/pointer` for part of a file or tokens inline in the
+ * resolver.
+ */
+export function entriesFor(
+  uri: vscode.Uri,
+  resolver: Resolver,
+  input: Record<string, string>,
+): string[] {
+  const dir = vscode.Uri.joinPath(uri, "..");
+  return resolutionSources(resolver, input)
+    .map((ref) => {
+      const hash = ref.indexOf("#");
+      if (hash === 0) return `${uri.toString()}${ref}`;
+      const file = vscode.Uri.joinPath(dir, hash === -1 ? ref : ref.slice(0, hash)).toString();
+      return hash === -1 ? file : `${file}${ref.slice(hash)}`;
+    })
+    .reverse();
 }
 
 const invalidated = new vscode.EventEmitter<void>();
@@ -138,20 +230,35 @@ const invalidated = new vscode.EventEmitter<void>();
  * Fires whenever the set of token files or their text may have changed: an
  * edit in an editor, a write on disk (git checkout, another tool), a glob or
  * workspace-folder change. Anything showing workspace tokens refreshes on
- * this rather than guessing at the triggers itself.
+ * this rather than guessing at the triggers itself. Typing is reported once
+ * it pauses, not per keystroke.
  */
 export const onDidInvalidateWorkspaceIndex = invalidated.event;
 
+/** Rescan the workspace: the globs, the folders or the files on disk changed. */
 export function invalidateWorkspaceIndex(): void {
-  cache = undefined;
-  fileCache = undefined;
-  resolverCache = undefined;
-  generation++;
-  invalidated.fire();
+  candidates = fileCache = resolverCache = scanning = undefined;
+  scanGeneration++;
+  indexChanged(true);
 }
 
-export function includeGlobs(): string[] {
-  const configured = vscode.workspace.getConfiguration("tokenAtlas").get<string[]>("include");
+/**
+ * The index's inputs changed: derive it again on the next query, from the
+ * files already in memory. `now` tells listeners straight away; otherwise
+ * once typing pauses.
+ */
+function indexChanged(now: boolean): void {
+  cache = building = undefined;
+  clearTimeout(pending);
+  if (now) invalidated.fire();
+  else pending = setTimeout(() => invalidated.fire(), TYPING_PAUSE_MS);
+}
+
+/** `tokenAtlas.include` for the workspace folder `scope` is in. */
+export function includeGlobs(scope?: vscode.Uri): string[] {
+  const configured = vscode.workspace
+    .getConfiguration("tokenAtlas", scope)
+    .get<string[]>("include");
   return configured && configured.length ? configured : DEFAULT_GLOBS;
 }
 
@@ -231,47 +338,146 @@ export function isResolverDocument(document: vscode.TextDocument): boolean {
  * that must visit *every* file — rename, find-references — because the index
  * below is first-file-wins per key and a file contributing no winning key is
  * absent from it. Sorted by URI, so "first" is the same file on every rescan.
- * Cached with the index; the same events invalidate both.
+ * Scanned once; after that an edit or a write replaces only its own file's
+ * entry, so typing never searches the workspace or reads it from disk.
  */
 export async function findTokenFiles(): Promise<Array<{ uri: vscode.Uri; text: string }>> {
-  if (fileCache) return fileCache;
-  const gen = generation;
-  let uris: vscode.Uri[] = [];
-  try {
-    const exclude = excludeGlobs();
-    uris = await vscode.workspace.findFiles(
-      `{${includeGlobs().join(",")}}`,
-      exclude.length ? `{${exclude.join(",")}}` : null,
-    );
-  } catch {
-    return [];
-  }
-  // findFiles has no stable order, and the index is first-file-wins: without
-  // a sort, a rescan can hand a shared path to a different file (#310).
-  // Code-point order, not localeCompare: collation differs by locale and the
-  // winner must be the same file on every machine.
-  uris.sort((a, b) => (a.toString() < b.toString() ? -1 : a.toString() > b.toString() ? 1 : 0));
-  const files: Array<{ uri: vscode.Uri; text: string }> = [];
-  const resolvers: Array<{ uri: vscode.Uri; text: string }> = [];
-  for (const uri of uris) {
-    const open = vscode.workspace.textDocuments.find((d) => d.uri.toString() === uri.toString());
-    const text = open ? open.getText() : await readCapped(uri);
-    if (text === undefined) continue;
-    if (hasTokenExtension(uri)) files.push({ uri, text });
-    else if (looksLikeResolver(text)) resolvers.push({ uri, text });
-    else if (looksLikeTokens(text)) files.push({ uri, text });
-  }
-  if (gen === generation) {
-    fileCache = files;
-    resolverCache = resolvers;
-  }
-  return files;
+  return (await scanned()).files;
 }
 
 /** Every DTCG resolver document in the workspace, found by the same scan. */
 export async function findResolverFiles(): Promise<Array<{ uri: vscode.Uri; text: string }>> {
-  if (!resolverCache) await findTokenFiles();
-  return resolverCache ?? [];
+  return (await scanned()).resolvers;
+}
+
+function scanned(): Promise<Scanned> {
+  if (fileCache && resolverCache) {
+    return Promise.resolve({ files: fileCache, resolvers: resolverCache });
+  }
+  if (!scanning) {
+    const scan = scanWorkspace();
+    scanning = scan;
+    void scan.then(() => {
+      if (scanning === scan) scanning = undefined;
+    });
+  }
+  return scanning;
+}
+
+async function scanWorkspace(): Promise<Scanned> {
+  const gen = scanGeneration;
+  const uris = await discover();
+  if (!uris) return { files: [], resolvers: [] }; // the search failed: try again next time
+  const disk = new Map<string, string>();
+  for (const uri of uris) {
+    const text = await readCapped(uri);
+    if (text !== undefined) disk.set(uri.toString(), text);
+  }
+  // Open buffers are read here, after the last await, so an edit typed while
+  // the scan ran is in its result rather than lost to it.
+  const files: ScannedFile[] = [];
+  const resolvers: ScannedFile[] = [];
+  for (const uri of uris) {
+    const text = openText(uri) ?? disk.get(uri.toString());
+    if (text === undefined) continue;
+    const entry = { uri, text, good: text };
+    const kind = classify(uri, text);
+    if (kind === "tokens") files.push(entry);
+    else if (kind === "resolver") resolvers.push(entry);
+  }
+  if (gen === scanGeneration) {
+    candidates = new Set(uris.map((u) => u.toString()));
+    fileCache = files;
+    resolverCache = resolvers;
+    syncResolution();
+  }
+  return { files, resolvers };
+}
+
+/**
+ * The include globs' matches, folder by folder with each folder's own
+ * `tokenAtlas.include`, in code-point order; undefined when the search fails.
+ */
+async function discover(): Promise<vscode.Uri[] | undefined> {
+  const exclude = excludeGlobs();
+  try {
+    const found = await Promise.all(
+      (vscode.workspace.workspaceFolders ?? []).map((folder) =>
+        vscode.workspace.findFiles(
+          new vscode.RelativePattern(folder, `{${includeGlobs(folder.uri).join(",")}}`),
+          exclude.length ? `{${exclude.join(",")}}` : null,
+        ),
+      ),
+    );
+    const unique = new Map(found.flat().map((u) => [u.toString(), u]));
+    // findFiles has no stable order, and the index is first-file-wins: without
+    // a sort, a rescan can hand a shared path to a different file (#310).
+    // Code-point order, not localeCompare: collation differs by locale and the
+    // winner must be the same file on every machine.
+    return [...unique.values()].sort(byUri);
+  } catch {
+    return undefined;
+  }
+}
+
+function byUri(a: { toString(): string }, b: { toString(): string }): number {
+  return a.toString() < b.toString() ? -1 : a.toString() > b.toString() ? 1 : 0;
+}
+
+function openText(uri: vscode.Uri): string | undefined {
+  const key = uri.toString();
+  return vscode.workspace.textDocuments.find((d) => d.uri.toString() === key)?.getText();
+}
+
+/** Which list a discovered file belongs in, if either. */
+function classify(uri: vscode.Uri, text: string): "tokens" | "resolver" | undefined {
+  if (hasTokenExtension(uri)) return "tokens";
+  if (looksLikeResolver(text)) return "resolver";
+  if (looksLikeTokens(text)) return "tokens";
+  return undefined;
+}
+
+/** True for text that is not yet JSON again: a key half typed, a brace missing. */
+function hasSyntaxErrors(text: string): boolean {
+  if (!text.trim()) return false;
+  const errors: ParseError[] = [];
+  parse(text, errors, { allowTrailingComma: true });
+  return errors.length > 0;
+}
+
+/**
+ * Replace one discovered file's entry with `text` (undefined: the file is
+ * gone), moving it between the token and resolver lists as its content now
+ * says. False when nothing the index or its enumerations hold changed.
+ */
+function updateFile(uri: vscode.Uri, text: string | undefined): boolean {
+  const key = uri.toString();
+  if (!candidates?.has(key) || !fileCache || !resolverCache) return false;
+  const same = (f: ScannedFile) => f.uri.toString() === key;
+  const wasResolver = resolverCache.find(same);
+  const was = fileCache.find(same) ?? wasResolver;
+  if (was?.text === text) return false;
+  const broken = text !== undefined && was !== undefined && hasSyntaxErrors(text);
+  // Mid-edit, a file stays in the list it was in, resolving to its last good text.
+  const kind =
+    text === undefined
+      ? undefined
+      : broken
+        ? wasResolver
+          ? "resolver"
+          : "tokens"
+        : classify(uri, text);
+  if (!was && !kind) return false;
+  fileCache = fileCache.filter((f) => !same(f));
+  resolverCache = resolverCache.filter((f) => !same(f));
+  if (text !== undefined && kind) {
+    const entry = { uri, text, good: broken ? was!.good : text };
+    if (kind === "tokens") fileCache = [...fileCache, entry].sort((a, b) => byUri(a.uri, b.uri));
+    else resolverCache = [...resolverCache, entry].sort((a, b) => byUri(a.uri, b.uri));
+  }
+  if (text === undefined) candidates.delete(key);
+  if (resolution?.resolver === key) syncResolution();
+  return true;
 }
 
 /**
@@ -295,22 +501,41 @@ export function inPrecedenceOrder<T extends { uri: vscode.Uri }>(files: readonly
  * has switched off must not win a path, or picking a brand would change
  * nothing.
  */
-export async function buildWorkspaceIndex(): Promise<Map<string, IndexedToken>> {
-  if (cache) return cache;
-  const gen = generation;
+export function buildWorkspaceIndex(): Promise<Map<string, IndexedToken>> {
+  if (cache) return Promise.resolve(cache);
+  if (!building) {
+    const build = deriveIndex();
+    building = build;
+    void build.then(() => {
+      if (building === build) building = undefined;
+    });
+  }
+  return building;
+}
+
+async function deriveIndex(): Promise<Map<string, IndexedToken>> {
+  const { files, resolvers } = await scanned();
+  // Nothing awaits from here on, so the index is built from the files as they
+  // are now — an edit that landed during the scan included — and kept unless
+  // a rescan has since thrown those files away.
+  const map = indexFrom(fileCache ?? files, resolverCache ?? resolvers);
+  if (fileCache) cache = map;
+  return map;
+}
+
+function indexFrom(files: ScannedFile[], resolvers: ScannedFile[]): Map<string, IndexedToken> {
   const map = new Map<string, IndexedToken>();
   const extending: Extending[] = [];
-  const files = await findTokenFiles();
   if (ordered) {
     // A resolver resolution: its sources in order, each a file or part of one.
-    const known = [...files, ...(await findResolverFiles())];
+    const known = [...files, ...resolvers];
     for (const entry of active) {
       const hash = entry.indexOf("#");
       const key = hash === -1 ? entry : entry.slice(0, hash);
       // Only files discovery already found, so tokenAtlas.exclude still holds.
       const file = known.find((f) => f.uri.toString() === key);
       if (!file) continue;
-      const { uri, text } = file;
+      const { uri, good: text } = file;
       const target = hash === -1 ? { text, path: [] } : pointerTarget(text, entry.slice(hash + 1));
       if (!target) continue;
       const model = parseTokens(target.text);
@@ -325,10 +550,9 @@ export async function buildWorkspaceIndex(): Promise<Map<string, IndexedToken>> 
       if (hasExtends(model.root)) extending.push({ model, uri, label, base });
     }
     extendAcrossFiles(map, extending);
-    if (gen === generation) cache = map;
     return map;
   }
-  for (const { uri, text } of files) {
+  for (const { uri, good: text } of files) {
     if (!isActive(uri)) continue;
     const groups = activeGroupsFor(uri);
     const model = parseTokens(text);
@@ -350,7 +574,6 @@ export async function buildWorkspaceIndex(): Promise<Map<string, IndexedToken>> 
     }
   }
   extendAcrossFiles(map, extending);
-  if (gen === generation) cache = map;
   return map;
 }
 
@@ -466,37 +689,69 @@ export function memberRange(
 }
 
 export function registerIndexInvalidation(context: vscode.ExtensionContext): void {
-  // The watcher is built from the include globs, so it is rebuilt whenever
-  // they change — otherwise a new glob's files would never invalidate.
-  // Those globs match every JSON file, so a write only invalidates when it
-  // touches a known token file or leaves one behind: a build emitting JSON
-  // or an edited package.json must not rescan the workspace.
-  let watcher: vscode.FileSystemWatcher | undefined;
-  const known = (uri: vscode.Uri) =>
-    !fileCache ||
-    [...fileCache, ...(resolverCache ?? [])].some((f) => f.uri.toString() === uri.toString());
+  // The watchers are built from each folder's include globs, so they are
+  // rebuilt whenever those or the folders change — otherwise a new glob's
+  // files would never be seen. Those globs match every JSON file, so a write
+  // to a file the scan did not find only rescans when it holds tokens: a
+  // build emitting JSON or an edited package.json must not rescan the
+  // workspace. A write to a file it did find replaces that file's entry.
+  let watchers: vscode.FileSystemWatcher[] = [];
   const written = async (uri: vscode.Uri) => {
-    const text = known(uri) || hasTokenExtension(uri) ? "" : ((await readCapped(uri)) ?? "");
-    if (known(uri) || hasTokenExtension(uri) || looksLikeTokens(text) || looksLikeResolver(text)) {
+    if (candidates?.has(uri.toString())) {
+      if (openText(uri) !== undefined) return; // the open buffer speaks for it
+      if (updateFile(uri, await readCapped(uri))) indexChanged(false);
+      return;
+    }
+    const text = hasTokenExtension(uri) ? "" : ((await readCapped(uri)) ?? "");
+    if (hasTokenExtension(uri) || looksLikeTokens(text) || looksLikeResolver(text)) {
       invalidateWorkspaceIndex();
     }
   };
+  const deleted = (uri: vscode.Uri) => {
+    const key = uri.toString();
+    if (candidates?.has(key)) {
+      if (updateFile(uri, undefined)) indexChanged(false);
+    } else if (!candidates || [...candidates].some((c) => c.startsWith(`${key}/`))) {
+      invalidateWorkspaceIndex(); // a folder with discovered files in it
+    }
+  };
   const watch = () => {
-    watcher?.dispose();
-    watcher = vscode.workspace.createFileSystemWatcher(`{${includeGlobs().join(",")}}`);
-    watcher.onDidChange(written);
-    watcher.onDidCreate(written);
-    watcher.onDidDelete((uri) => known(uri) && invalidateWorkspaceIndex());
+    for (const w of watchers) w.dispose();
+    watchers = (vscode.workspace.workspaceFolders ?? []).map((folder) => {
+      const w = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(folder, `{${includeGlobs(folder.uri).join(",")}}`),
+      );
+      w.onDidChange(written);
+      w.onDidCreate(written);
+      w.onDidDelete(deleted);
+      return w;
+    });
   };
   watch();
   context.subscriptions.push(
-    { dispose: () => watcher?.dispose() },
+    { dispose: () => watchers.forEach((w) => w.dispose()) },
+    { dispose: () => clearTimeout(pending) },
     invalidated,
-    vscode.workspace.onDidChangeWorkspaceFolders(() => invalidateWorkspaceIndex()),
-    // isTokenDocument checks languageId before reading text, so keystrokes in
-    // non-JSON files cost nothing here.
-    vscode.workspace.onDidChangeTextDocument((e) => {
-      if (isTokenDocument(e.document) || isResolverDocument(e.document)) invalidateWorkspaceIndex();
+    vscode.workspace.onDidChangeWorkspaceFolders(() => {
+      invalidateWorkspaceIndex();
+      watch();
+    }),
+    vscode.workspace.onDidChangeTextDocument(({ document }) => {
+      // A discovered file's entry follows its buffer, keystroke by keystroke;
+      // any other token document (untitled, outside the globs) is not in the
+      // index, but whatever shows it still needs telling. isTokenDocument
+      // checks languageId before reading text, so keystrokes in non-JSON
+      // files cost nothing here.
+      const found =
+        candidates?.has(document.uri.toString()) && updateFile(document.uri, document.getText());
+      if (found || isTokenDocument(document) || isResolverDocument(document)) indexChanged(false);
+    }),
+    // A buffer closed without saving takes its edits with it: the file on
+    // disk is what the index holds again.
+    vscode.workspace.onDidCloseTextDocument(async ({ uri }) => {
+      if (!candidates?.has(uri.toString())) return;
+      const text = await readCapped(uri);
+      if (openText(uri) === undefined && updateFile(uri, text)) indexChanged(false);
     }),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (

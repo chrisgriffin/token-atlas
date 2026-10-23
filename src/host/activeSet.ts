@@ -24,20 +24,22 @@ import {
   parseResolver,
   readThemes,
   resolutionCount,
-  resolutionSources,
   resolutions,
   type Resolver,
   type TokenTheme,
 } from "../core";
 import {
   activeGroupsFor,
+  activeResolution,
   activeSet,
   activeSetOrdered,
+  entriesFor,
   findResolverFiles,
   findTokenFiles,
   isActive,
   onDidInvalidateWorkspaceIndex,
   setActiveSet,
+  type ResolutionArg,
 } from "./workspaceIndex";
 
 const STORAGE_KEY = "tokenAtlas.activeSet";
@@ -57,12 +59,6 @@ interface ResolverDoc {
   name: string;
 }
 
-/** Picks a resolution without the picker: a resolver URI and its modifier input. */
-export interface ResolutionArg {
-  resolver: string;
-  input?: Record<string, string>;
-}
-
 /** A Tokens Studio theme, with the file that declares it. */
 interface FileTheme extends TokenTheme {
   uri: vscode.Uri;
@@ -72,18 +68,11 @@ interface FileTheme extends TokenTheme {
 
 type TokenFile = { uri: vscode.Uri; text: string };
 
-let resolution: ResolutionArg | undefined;
-
-/** The resolver resolution the active set is, or undefined when it is not one. */
-export function activeResolution(): Readonly<ResolutionArg> | undefined {
-  return resolution;
-}
-
 export function registerActiveSet(context: vscode.ExtensionContext): void {
-  resolution = context.workspaceState.get<ResolutionArg>(RESOLUTION_KEY);
   setActiveSet(
     context.workspaceState.get<string[]>(STORAGE_KEY) ?? [],
     context.workspaceState.get<boolean>(ORDERED_KEY) ?? false,
+    context.workspaceState.get<ResolutionArg>(RESOLUTION_KEY),
   );
 
   const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -96,8 +85,7 @@ export function registerActiveSet(context: vscode.ExtensionContext): void {
     label?: string,
     chosen?: ResolutionArg,
   ) => {
-    resolution = chosen;
-    setActiveSet(entries, inOrder);
+    setActiveSet(entries, inOrder, chosen);
     await context.workspaceState.update(STORAGE_KEY, entries.length ? entries : undefined);
     await context.workspaceState.update(ORDERED_KEY, inOrder || undefined);
     await context.workspaceState.update(LABEL_KEY, (inOrder && label) || undefined);
@@ -258,6 +246,28 @@ export function registerActiveSet(context: vscode.ExtensionContext): void {
     ),
     // Files appearing, vanishing or being excluded changes what "all" covers.
     onDidInvalidateWorkspaceIndex(() => void refresh()),
+    // A file renamed or moved keeps its place in the set, under its new name.
+    vscode.workspace.onDidRenameFiles(async ({ files }) => {
+      const move = (entry: string) => {
+        for (const { oldUri, newUri } of files) {
+          const from = oldUri.toString();
+          if (entry === from || entry.startsWith(`${from}#`) || entry.startsWith(`${from}/`)) {
+            return newUri.toString() + entry.slice(from.length);
+          }
+        }
+        return entry;
+      };
+      const entries = activeSet().map(move);
+      const chosen = activeResolution();
+      const resolver = chosen && move(chosen.resolver);
+      if (entries.every((e, i) => e === activeSet()[i]) && resolver === chosen?.resolver) return;
+      await store(
+        entries,
+        activeSetOrdered(),
+        context.workspaceState.get<string>(LABEL_KEY),
+        chosen && { ...chosen, resolver: resolver! },
+      );
+    }),
   );
 
   void refresh();
@@ -286,23 +296,6 @@ async function pickContexts(doc: ResolverDoc): Promise<Record<string, string> | 
     input[modifier.name] = picked;
   }
   return input;
-}
-
-/**
- * A resolution's sources as active-set entries, highest precedence first: a
- * file URI, or `<uri>#/pointer` for part of a file or tokens inline in the
- * resolver.
- */
-function entriesFor(uri: vscode.Uri, resolver: Resolver, input: Record<string, string>): string[] {
-  const dir = vscode.Uri.joinPath(uri, "..");
-  return resolutionSources(resolver, input)
-    .map((ref) => {
-      const hash = ref.indexOf("#");
-      if (hash === 0) return `${uri.toString()}${ref}`;
-      const file = vscode.Uri.joinPath(dir, hash === -1 ? ref : ref.slice(0, hash)).toString();
-      return hash === -1 ? file : `${file}${ref.slice(hash)}`;
-    })
-    .reverse();
 }
 
 /** Every theme declared by every token file, in workspace order. */

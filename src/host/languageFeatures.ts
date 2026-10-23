@@ -206,9 +206,10 @@ class TokenHoverProvider implements vscode.HoverProvider {
 
 /**
  * The hover card for a token. `local` is the index of the document being
- * hovered (empty when hovering exported code); `currentUri` decides which
- * alias hops get a file label; `definedIn` adds a "Defined in" link when the
- * token lives in another file.
+ * hovered (empty when hovering exported code); `currentUri` is the document
+ * hovered, which decides which alias hops get a file label and whose folder's
+ * settings apply; `definedIn` adds a "Defined in" link when the token lives in
+ * another file.
  */
 export function buildTokenHover(
   token: TokenNode,
@@ -227,6 +228,8 @@ export function buildTokenHover(
       ? resolveValue(token.value, (key) => local.get(key) ?? ws.get(key)?.token)
       : undefined;
 
+  // Resource-scoped: in a multi-root workspace each folder may set its own.
+  const settings = vscode.workspace.getConfiguration("tokenAtlas", currentUri);
   const markdown = hoverMarkdown({
     name: token.name,
     path: token.path,
@@ -240,9 +243,8 @@ export function buildTokenHover(
     final: chain?.final?.value,
     resolvedComposite,
     inheritedFrom: token.inheritedFrom,
-    rootPx: vscode.workspace.getConfiguration("tokenAtlas").get<number>("rootFontSize") ?? 16,
-    contrastTarget:
-      vscode.workspace.getConfiguration("tokenAtlas").get<ContrastTarget>("contrastTarget") ?? "AA",
+    rootPx: settings.get<number>("rootFontSize") ?? 16,
+    contrastTarget: settings.get<ContrastTarget>("contrastTarget") ?? "AA",
     definedIn:
       definedIn && definedIn.toString() !== currentUri?.toString()
         ? { label: vscode.workspace.asRelativePath(definedIn), href: definedIn.toString() }
