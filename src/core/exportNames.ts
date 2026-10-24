@@ -159,16 +159,25 @@ function importedNames(text: string): Set<string> {
 /**
  * Whether `name`, scanned from JS/TS, is a DOM style property rather than a
  * token export (docs/adr/ADR-002-js-style-property-names.md): it ends in a style property
- * name, its root is not imported into the file, and it is not that file's own
+ * name, and it is a bare object key (`{ borderWidth: … }`, imported or not), or
+ * its root is not imported into the file and it is not that file's own
  * `export const`. A one-word property at the end of a path other than
  * `.style.` stays a path segment (`tokens.border.width`).
  * ponytail: a style-shaped name read off an object that was not imported
- * (`props.borderWidth`) is skipped too; references and rename miss it.
+ * (`props.borderWidth`) is skipped too, and so is a tokens module's own object
+ * key (`export const tokens = { borderWidth: … }`); references and rename miss both.
  */
-function isStyleProperty(name: string, imported: Set<string>, exported: boolean): boolean {
+function isStyleProperty(
+  name: string,
+  imported: Set<string>,
+  exported: boolean,
+  objectKey: boolean,
+): boolean {
   const segs = name.split(".");
   const last = segs[segs.length - 1];
-  if (!STYLE_PROPERTIES.has(last) || imported.has(segs[0]) || exported) return false;
+  if (!STYLE_PROPERTIES.has(last)) return false;
+  if (objectKey && segs.length === 1) return true;
+  if (imported.has(segs[0]) || exported) return false;
   return segs.length === 1 || segs[segs.length - 2] === "style" || /[A-Z]/.test(last);
 }
 
@@ -209,7 +218,11 @@ export function scanIdentifiers(
       isStyleProperty(
         name,
         imported,
-        /\bexport\s+(?:const|let|var)\s+$/.test(text.slice(Math.max(0, m.index - 20), m.index)),
+        /\bexport\s+(?:declare\s+)?(?:const|let|var)\s+$/.test(
+          text.slice(Math.max(0, m.index - 40), m.index),
+        ),
+        /[{,]\s*$/.test(text.slice(Math.max(0, m.index - 40), m.index)) &&
+          /^\s*:(?!:)/.test(text.slice(m.index + name.length, m.index + name.length + 40)),
       )
     )
       continue;

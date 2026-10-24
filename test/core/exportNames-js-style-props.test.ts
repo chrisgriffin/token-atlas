@@ -95,6 +95,31 @@ describe("renaming a token whose camelCase name is a DOM style property", () => 
     );
   });
 
+  it("leaves a style object's key alone even when the file imports that name", () => {
+    const text = [
+      "import { borderWidth } from './tokens';",
+      "const s = { borderWidth: borderWidth };",
+      "const el = <div style={{ borderWidth: borderWidth }} />;",
+      "const t = { color: 'red', borderWidth };",
+    ].join("\n");
+    expect(rename(text, "typescriptreact", "border.width", 1, "size")).toBe(
+      [
+        "import { borderSize } from './tokens';",
+        "const s = { borderWidth: borderSize };",
+        "const el = <div style={{ borderWidth: borderSize }} />;",
+        "const t = { color: 'red', borderSize };",
+      ].join("\n"),
+    );
+  });
+
+  it("keeps a declared export in a .d.ts tokens module", () => {
+    const text = "export declare const borderWidth: string;";
+    expect(scanIdentifiers(text, "typescript").get("borderWidth")?.[0].declaration).toBe(true);
+    expect(rename(text, "typescript", "border.width", 1, "size")).toBe(
+      "export declare const borderSize: string;",
+    );
+  });
+
   it("keeps a name that is not a style property, and a non-JS file as before", () => {
     const text = "const x = colorBrandPrimary; el.style.colorBrandPrimary;";
     expect([...scanIdentifiers(text, "typescript").keys()]).toEqual(

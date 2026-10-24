@@ -27,9 +27,13 @@ unused-token hint, which share the same scan.
 `core/exportNames.ts` `scanIdentifiers` skips, in a JS/TS file, a name whose
 last dotted part is a CSS property in its DOM spelling (`STYLE_PROPERTIES`)
 unless the name's root is imported into the file (`import`, `require`) or the
-name is that file's own `export const`/`let`/`var`. A one-word property at
-the end of a path other than `.style.` (`tokens.border.width`) is a path
-segment and still counts. Any other name is matched as before.
+name is that file's own `export const`/`let`/`var` (`export declare const` in
+a `.d.ts` too). A bare object key (`{ borderWidth: … }`,
+`style={{ borderWidth: … }}`) is skipped even when the file imports that name:
+the key is the style property, and only the value after it can be the token.
+A one-word property at the end of a path other than `.style.`
+(`tokens.border.width`) is a path segment and still counts. Any other name is
+matched as before.
 
 ## Consequences
 
@@ -38,6 +42,12 @@ segment and still counts. Any other name is matched as before.
 - A style-shaped name read off an object the file did not import
   (`props.borderWidth`, `theme.borderWidth` from a parameter) is missed.
   Revisit with a setting if a real workspace hits it.
+- A tokens module that exports an object
+  (`export const tokens = { borderWidth: '1px' }`) loses that key from the
+  scan, while an importer's `tokens.borderWidth` is still renamed: after F2
+  the module and its callers disagree. Nothing in the text tells that key from
+  a style object's, so it is skipped with them. Before this record both were
+  renamed together.
 - The property list is hand-kept. A property missing from it behaves as
   every name did before this record: rename may rewrite it.
 - Hover and go-to-definition on the word under the cursor do not use the
