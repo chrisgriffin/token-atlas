@@ -77,6 +77,112 @@ export function canNameToken(name: string, languageId?: string, before = ""): bo
   return !variable || variable.test(name) || (languageId === "less" && before === "@");
 }
 
+const JS_LANGUAGES = new Set([
+  "javascript",
+  "javascriptreact",
+  "typescript",
+  "typescriptreact",
+  ...["js", "jsx", "mjs", "cjs", "ts", "tsx", "mts", "cts"], // a closed file's extension
+]);
+
+/**
+ * CSS properties as a DOM style object spells them (`borderWidth`). In JS/TS
+ * nothing tells `el.style.borderWidth` from a `border.width` token export, so
+ * these names count only when the file imports them (see `isStyleProperty`).
+ * ponytail: the standard properties tokens style; a missing one only means
+ * rename may rewrite that property, as it did for every name before.
+ */
+const STYLE_PROPERTIES = new Set(
+  `accent-color align-content align-items align-self all animation animation-delay
+  animation-duration animation-name animation-timing-function appearance aspect-ratio
+  backdrop-filter background background-attachment background-blend-mode background-clip
+  background-color background-image background-origin background-position background-repeat
+  background-size block-size border border-block border-block-color border-block-end
+  border-block-start border-block-style border-block-width border-bottom border-bottom-color
+  border-bottom-left-radius border-bottom-right-radius border-bottom-style border-bottom-width
+  border-collapse border-color border-end-end-radius border-end-start-radius border-image
+  border-inline border-inline-color border-inline-end border-inline-start border-inline-style
+  border-inline-width border-left border-left-color border-left-style border-left-width
+  border-radius border-right border-right-color border-right-style border-right-width
+  border-spacing border-start-end-radius border-start-start-radius border-style border-top
+  border-top-color border-top-left-radius border-top-right-radius border-top-style
+  border-top-width border-width bottom box-shadow box-sizing caret-color clip-path color
+  column-gap column-rule column-rule-color column-rule-width columns column-width content
+  cursor display fill filter flex flex-basis flex-direction flex-flow flex-grow flex-shrink
+  flex-wrap float font font-family font-feature-settings font-size font-stretch font-style
+  font-variant font-variation-settings font-weight gap grid grid-area grid-auto-columns
+  grid-auto-flow grid-auto-rows grid-column grid-column-gap grid-gap grid-row grid-row-gap
+  grid-template grid-template-areas grid-template-columns grid-template-rows height hyphens
+  inline-size inset inset-block inset-inline isolation justify-content justify-items
+  justify-self left letter-spacing line-height list-style margin margin-block margin-block-end
+  margin-block-start margin-bottom margin-inline margin-inline-end margin-inline-start
+  margin-left margin-right margin-top mask max-block-size max-height max-inline-size max-width
+  min-block-size min-height min-inline-size min-width mix-blend-mode object-fit
+  object-position opacity order outline outline-color outline-offset outline-style
+  outline-width overflow overflow-wrap overflow-x overflow-y padding padding-block
+  padding-block-end padding-block-start padding-bottom padding-inline padding-inline-end
+  padding-inline-start padding-left padding-right padding-top perspective place-content
+  place-items place-self pointer-events position resize right rotate row-gap scale
+  scroll-behavior scroll-margin scroll-padding stroke stroke-width tab-size table-layout
+  text-align text-decoration text-decoration-color text-decoration-thickness text-indent
+  text-overflow text-shadow text-transform text-underline-offset top touch-action transform
+  transform-origin transition transition-delay transition-duration transition-property
+  transition-timing-function translate user-select vertical-align visibility white-space
+  width will-change word-break word-spacing writing-mode z-index`
+    .split(/\s+/)
+    .map((p) => p.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())),
+);
+
+/**
+ * The names a JS/TS file brings in: `import a, { b, c as d } from`,
+ * `import * as e from`, `const f = require(` and `const { g, h: i } = require(`.
+ */
+function importedNames(text: string): Set<string> {
+  const out = new Set<string>();
+  const add = (list: string, alias: RegExp) => {
+    for (const part of list.replace(/[{}]/g, ",").split(",")) {
+      const name = alias.exec(part.trim())?.[1];
+      if (name) out.add(name);
+    }
+  };
+  for (const m of text.matchAll(/\bimport\s+(?:type\s+)?([^'";]*?)\s+from\s*['"]/g)) {
+    add(m[1], /(?:^|\s)([A-Za-z_$][\w$]*)$/); // `b`, `c as d` → d, `* as e` → e
+  }
+  for (const m of text.matchAll(
+    /\b(?:const|let|var)\s+(\{[^}]*\}|[A-Za-z_$][\w$]*)\s*=\s*require\s*\(/g,
+  )) {
+    add(m[1], /([A-Za-z_$][\w$]*)$/); // `g`, `h: i` → i
+  }
+  return out;
+}
+
+/**
+ * Whether `name`, scanned from JS/TS, is a DOM style property rather than a
+ * token export (docs/adr/ADR-002-js-style-property-names.md): it ends in a style property
+ * name, and it is a bare object key (`{ borderWidth: … }`, imported or not), or
+ * its root is not imported into the file and it is not that file's own
+ * `export const`. A one-word property at the end of a path other than
+ * `.style.` stays a path segment (`tokens.border.width`).
+ * ponytail: a style-shaped name read off an object that was not imported
+ * (`props.borderWidth`) is skipped too, and so is a tokens module's own object
+ * key (`export const tokens = { borderWidth: … }`); references and rename miss both.
+ * A shorthand key (`{ borderWidth }`) has no `:` after it and still counts, so
+ * rename rewrites it to `{ borderSize }` (ADR-002 Consequences).
+ */
+function isStyleProperty(
+  name: string,
+  imported: Set<string>,
+  exported: boolean,
+  objectKey: boolean,
+): boolean {
+  const segs = name.split(".");
+  const last = segs[segs.length - 1];
+  if (!STYLE_PROPERTIES.has(last)) return false;
+  if (objectKey && segs.length === 1) return true;
+  if (imported.has(segs[0]) || exported) return false;
+  return segs.length === 1 || segs[segs.length - 2] === "style" || /[A-Z]/.test(last);
+}
+
 /** Where an identifier appears in a file: zero-based line and character, like an editor position. */
 export interface IdentifierOccurrence {
   line: number;
@@ -92,7 +198,8 @@ export interface IdentifierOccurrence {
 /**
  * Every identifier in exported code, grouped by spelling. Matching to tokens
  * happens later, per spelling, so a file is read once however the tokens change.
- * With a stylesheet `languageId`, only the names `canNameToken` allows.
+ * With a stylesheet `languageId`, only the names `canNameToken` allows; with
+ * a JS/TS one, no DOM style property (`isStyleProperty`).
  */
 export function scanIdentifiers(
   text: string,
@@ -100,6 +207,7 @@ export function scanIdentifiers(
 ): Map<string, IdentifierOccurrence[]> {
   const out = new Map<string, IdentifierOccurrence[]>();
   const re = new RegExp(EXPORT_IDENTIFIER.source, "g");
+  const imported = JS_LANGUAGES.has(languageId ?? "") ? importedNames(text) : undefined;
   let line = 0;
   let lineStart = 0;
   let scanned = 0;
@@ -107,6 +215,19 @@ export function scanIdentifiers(
     const name = m[0];
     if (!/[A-Za-z]/.test(name)) continue; // 16px, -1, 0.5
     if (!canNameToken(name, languageId, text[m.index - 1])) continue;
+    if (
+      imported &&
+      isStyleProperty(
+        name,
+        imported,
+        /\bexport\s+(?:declare\s+)?(?:const|let|var)\s+$/.test(
+          text.slice(Math.max(0, m.index - 40), m.index),
+        ),
+        /[{,]\s*$/.test(text.slice(Math.max(0, m.index - 40), m.index)) &&
+          /^\s*:(?!:)/.test(text.slice(m.index + name.length, m.index + name.length + 40)),
+      )
+    )
+      continue;
     for (
       let i = text.indexOf("\n", scanned);
       i !== -1 && i < m.index;
