@@ -2,6 +2,16 @@
 
 All notable changes to Token Atlas are documented here.
 
+## [1.0.1](https://github.com/chrisgriffin/token-atlas/compare/v1.0.0...v1.0.1) (2026-10-23)
+
+### Bug Fixes
+
+* **test:** name a VS Code startup hang in the integration step ([3f7a2af](https://github.com/chrisgriffin/token-atlas/commit/3f7a2afc54e992581a93d801486bebca10118f05)), closes [#2](https://github.com/chrisgriffin/token-atlas/issues/2)
+
+### Documentation
+
+* **release:** say a release also publishes to Open VSX ([b4d9895](https://github.com/chrisgriffin/token-atlas/commit/b4d98956c87a1d117e400348a60b9924d15fef7e)), closes [#21](https://github.com/chrisgriffin/token-atlas/issues/21)
+
 ## [1.0.0](https://github.com/chrisgriffin/token-atlas/compare/v0.30.2...v1.0.0) (2026-10-23)
 
 ### Features
