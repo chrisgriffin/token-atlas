@@ -102,6 +102,7 @@ describe("renaming a token whose camelCase name is a DOM style property", () => 
       "const el = <div style={{ borderWidth: borderWidth }} />;",
       "const t = { color: 'red', borderWidth };",
     ].join("\n");
+    // A shorthand key still counts and is rewritten: a known limit, ADR-002 Consequences.
     expect(rename(text, "typescriptreact", "border.width", 1, "size")).toBe(
       [
         "import { borderSize } from './tokens';",

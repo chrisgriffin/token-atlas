@@ -166,6 +166,8 @@ function importedNames(text: string): Set<string> {
  * ponytail: a style-shaped name read off an object that was not imported
  * (`props.borderWidth`) is skipped too, and so is a tokens module's own object
  * key (`export const tokens = { borderWidth: … }`); references and rename miss both.
+ * A shorthand key (`{ borderWidth }`) has no `:` after it and still counts, so
+ * rename rewrites it to `{ borderSize }` (ADR-002 Consequences).
  */
 function isStyleProperty(
   name: string,

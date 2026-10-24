@@ -31,6 +31,8 @@ name is that file's own `export const`/`let`/`var` (`export declare const` in
 a `.d.ts` too). A bare object key (`{ borderWidth: … }`,
 `style={{ borderWidth: … }}`) is skipped even when the file imports that name:
 the key is the style property, and only the value after it can be the token.
+A shorthand key (`{ borderWidth }`) has no `:` after it and is not skipped, see
+Consequences.
 A one-word property at the end of a path other than `.style.`
 (`tokens.border.width`) is a path segment and still counts. Any other name is
 matched as before.
@@ -48,6 +50,13 @@ matched as before.
   the module and its callers disagree. Nothing in the text tells that key from
   a style object's, so it is skipped with them. Before this record both were
   renamed together.
+- A shorthand style key fed by an imported token (`style={{ borderWidth }}`
+  with `import { borderWidth }`) is the key and the value in one word, so it
+  still counts, and F2 rewrites it to `style={{ borderSize }}`: the style
+  silently stops applying. Expanding it to `borderWidth: borderSize` would
+  need the scan to tell an object literal from `import { borderWidth }` and a
+  destructuring pattern, which both keep the bare form; that is left until a
+  real workspace hits it.
 - The property list is hand-kept. A property missing from it behaves as
   every name did before this record: rename may rewrite it.
 - Hover and go-to-definition on the word under the cursor do not use the
