@@ -4,7 +4,7 @@ Feature directory: `specs/015-token-deprecation`
 
 ## Phase 1 — setup
 
-- [ ] T001 `npm ci`, then record the red baseline: `npx vitest run test/core/deprecated.test.ts -t "replacement"` reports no matching test and exits non-zero
+- [ ] T001 `npm ci`, then record the red baseline: `npx vitest run test/core/deprecated.test.ts -t "replacement" 2>&1 | grep -qE "Tests +[1-9][0-9]* passed"` exits 1, with the summary reading `Tests  7 skipped (7)`
 
 ## Phase 2 — core (pure, no `vscode`, no DOM)
 
@@ -29,7 +29,7 @@ Feature directory: `specs/015-token-deprecation`
 
 ## Phase 5 — acceptance
 
-- [ ] T014 `npx vitest run test/core/deprecated.test.ts -t "replacement"` runs at least one test and exits 0 (the runnable line)
+- [ ] T014 `npx vitest run test/core/deprecated.test.ts -t "replacement" 2>&1 | grep -qE "Tests +[1-9][0-9]* passed"` exits 0 (the runnable line). Do not drop the `grep`: the bare `vitest run -t` exits 0 when nothing matches
 - [ ] T015 Integration tests in `test/integration/` for the code action, the remaining-uses list and the removal prompt — the four host-level success criteria cannot be covered by vitest
 - [ ] T016 `npm run format:check && npm run typecheck && npm test && npm run build && npm run test:integration` is green
 

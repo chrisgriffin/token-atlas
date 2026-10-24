@@ -82,9 +82,12 @@ With none, it just goes.
 
 ## Success criteria
 
-- [ ] **Runnable:** `npx vitest run test/core/deprecated.test.ts -t "replacement"`
-      runs at least one test and exits 0. Today no test in that file matches
-      `replacement`, so the run reports no tests and fails.
+- [ ] **Runnable:** `npx vitest run test/core/deprecated.test.ts -t "replacement" 2>&1 | grep -qE "Tests +[1-9][0-9]* passed"`
+      exits 0. Today it exits 1: the file's seven tests are all filtered out,
+      the summary reads `Tests  7 skipped (7)`, and nothing passed. **Note
+      the `grep`, which is load-bearing** — `vitest run -t <pattern>` with no
+      match *skips* every test and still exits **0**, so the bare command is
+      green today and asserts nothing.
 - [ ] From a token in the text editor, and from a token in the visual editor,
       a person can deprecate it with a reason and a replacement, and the
       resulting file differs from the original by the `$deprecated` line
