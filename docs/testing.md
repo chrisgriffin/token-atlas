@@ -20,6 +20,10 @@ The tests prove that the pure token logic — parsing, alias resolution, validat
 - `npm test` — `vitest run`, the whole vitest suite. Needs no build.
 - `npm run build` — `node esbuild.mjs`, producing `dist/extension.js` and `dist/webview.js`.
 - `npm run test:integration` — compiles the integration suite to `out/` and launches a downloaded VS Code through `vscode-test`. It needs a display, so CI runs it as `xvfb-run -a npm run test:integration`.
+- `test/integration-run.mjs` runs `vscode-test` for that last command and names a failure in the step's own output:
+  - a test failed → `Integration tests failed`, exit 1 as before;
+  - VS Code logged `CodeWindow: detected unresponsive` before any test ran → `VS Code startup hang`, retried once, exit 3 if it hangs again (a recovered run leaves a warning);
+  - no test reported and no hang logged → `No integration tests reported`, exit 4.
 
 Narrower runs while working: `npx vitest run test/core/parse.test.ts` for one file, `npx vitest` to watch. `VSCODE_VERSION=1.90.0 npm run test:integration` checks the extension against an older VS Code instead of `stable`.
 

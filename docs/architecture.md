@@ -42,7 +42,7 @@ _Reopen Editor With… → Token Editor_ hands the file to `host/tokenEditorProv
 
 ### Everything else in the repo
 
-- `test/` — `core/` (unit tests for the pure layer), `webview/` (React components under jsdom), `host/` (host modules that load without `vscode`, or against a small stand-in for it), `ci/` (repo-shape guards that read files off disk), `integration/` (the extension inside a real downloaded VS Code, with the token workspace it opens), and `fixtures/architectures/` (one token set per architecture, walked by the core tests). See [testing.md](./testing.md).
+- `test/` — `core/` (unit tests for the pure layer), `webview/` (React components under jsdom), `host/` (host modules that load without `vscode`, or against a small stand-in for it), `ci/` (repo-shape guards that read files off disk), `integration/` (the extension inside a real downloaded VS Code, with the token workspace it opens), `integration-run.mjs` (runs that suite and names a VS Code startup hang apart from a test failure), and `fixtures/architectures/` (one token set per architecture, walked by the core tests). See [testing.md](./testing.md).
 - `examples/` — hands-on token setups, one folder per architecture seen in the wild, for trying the extension by hand; `fixtures/` is a smaller sample for the same purpose.
 - `docs/` — this file and the rest of the written record; `docs/adr/` holds the decision records.
 - `specs/` — the Spec Kit spec, plan and tasks behind past pieces of work.
@@ -57,7 +57,7 @@ _Reopen Editor With… → Token Editor_ hands the file to `host/tokenEditorProv
 - **The DTCG spec** (Design Tokens Format Module 2025.10) is the external contract the core is written against. It is an inbound dependency only — the repo tracks the spec, nothing flows back.
 - **Runtime dependencies** are `jsonc-parser` (format-preserving edits), `colorjs.io` (colour-space maths), and React for the webview. All are bundled into `dist/`, so an installed extension has no `node_modules`.
 - **CI.** Every workflow in `.github/workflows/` is a thin trigger stub calling one of the `_reusable-*.yml` workflows in the public **[chrisgriffin/workflows](https://github.com/chrisgriffin/workflows)** repo (at its floating `v1` tag, so a release there is what changes CI here), passing this repo's own facts as inputs (the gate chain, the `CLAUDE.md` byte budget, the docs it owes, the docs-only paths), so a change to CI or the release machinery reaches this repo without a PR here. Local agent tooling is never committed, and `.gitignore`, `.prettierignore` and `.vscodeignore` all list it.
-- **Nothing depends on this repo as code.** There is no npm package; the only output is the `.vsix` each release attaches to its GitHub Release and publishes to the VS Code Marketplace as `chrisgriffinio.token-atlas`.
+- **Nothing depends on this repo as code.** There is no npm package; the only output is the `.vsix` each release attaches to its GitHub Release and publishes as `chrisgriffinio.token-atlas` to the VS Code Marketplace and Open VSX.
 
 ## Running it
 
