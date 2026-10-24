@@ -13,7 +13,13 @@ export type WebviewToHost =
   | { type: "ready" }
   | { type: "setValue"; path: string[]; value: unknown }
   | { type: "setDescription"; path: string[]; description: string }
-  | { type: "setDeprecated"; path: string[]; deprecated: boolean | string | undefined }
+  | {
+      type: "setDeprecated";
+      path: string[];
+      deprecated: boolean | string | undefined;
+      /** A replacement token to name in the reason (`""` takes it out); the host writes it. */
+      replacement?: string;
+    }
   | {
       type: "setType";
       path: string[];

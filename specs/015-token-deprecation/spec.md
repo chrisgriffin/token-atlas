@@ -86,7 +86,7 @@ With none, it just goes.
       exits 0. Today it exits 1: the file's seven tests are all filtered out,
       the summary reads `Tests  7 skipped (7)`, and nothing passed. **Note
       the `grep`, which is load-bearing** — `vitest run -t <pattern>` with no
-      match *skips* every test and still exits **0**, so the bare command is
+      match _skips_ every test and still exits **0**, so the bare command is
       green today and asserts nothing.
 - [ ] From a token in the text editor, and from a token in the visual editor,
       a person can deprecate it with a reason and a replacement, and the

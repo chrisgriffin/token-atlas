@@ -7,6 +7,7 @@ import {
   type TokenType,
   type ValidationIssue,
 } from "../../core/types";
+import { replacementKey } from "../../core/validate";
 
 interface HeaderProps {
   name: string;
@@ -201,15 +202,26 @@ export function Section({
 }
 
 /** `$deprecated` editor: a checkbox, and an optional reason once checked.
- *  DTCG allows `true` or a string explaining what to use instead. */
+ *  DTCG allows `true` or a string explaining what to use instead. Given
+ *  `replacements`, a token can also name the one its uses should move to: the
+ *  reason's first `{reference}` (spec 015), which the host writes. */
 export function DeprecatedField({
   value,
   onChange,
+  replacements,
 }: {
   value: boolean | string | undefined;
-  onChange: (next: boolean | string | undefined) => void;
+  onChange: (next: boolean | string | undefined, replacement?: string) => void;
+  /** Dotted paths of the tokens that may replace this one. */
+  replacements?: string[];
 }) {
   const on = value !== undefined && value !== false;
+  const reason = typeof value === "string" ? value : "";
+  const current = replacementKey(reason) ?? "";
+  const options =
+    current && replacements && !replacements.includes(current)
+      ? [current, ...replacements]
+      : replacements;
   return (
     <Section label="Deprecated">
       <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: on ? 6 : 0 }}>
@@ -222,10 +234,27 @@ export function DeprecatedField({
       </label>
       {on && (
         <input
-          defaultValue={typeof value === "string" ? value : ""}
+          key={reason}
+          defaultValue={reason}
           placeholder="Reason or replacement, e.g. use {color.brand.primary}"
           onBlur={(e) => onChange(e.target.value.trim() || true)}
         />
+      )}
+      {on && options && (
+        <select
+          aria-label="Replacement"
+          title="The token its uses should move to, written as the reason's first {reference}"
+          value={current}
+          style={{ marginTop: 6 }}
+          onChange={(e) => onChange(reason, e.target.value)}
+        >
+          <option value="">No replacement</option>
+          {options.map((key) => (
+            <option key={key} value={key}>
+              {key}
+            </option>
+          ))}
+        </select>
       )}
     </Section>
   );

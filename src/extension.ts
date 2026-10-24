@@ -14,6 +14,7 @@ import { openInVisualEditor, registerDefaultEditor } from "./host/defaultEditor"
 import { isTokenDocument, registerIndexInvalidation } from "./host/workspaceIndex";
 import { registerNewTokenFile } from "./host/newTokenFile";
 import { registerLegacyFix } from "./host/legacyFix";
+import { registerDeprecation, setRemovalPrompt } from "./host/deprecate";
 
 /**
  * Not a public API. Returned only so `test/integration/` can see the Tokens
@@ -31,6 +32,8 @@ export interface TokenAtlasTestHooks {
   };
   /** The color swatches last drawn in a code document. */
   codeSwatches: typeof codeSwatches;
+  /** Answers the prompt before a still-used deprecated token is removed. */
+  setRemovalPrompt: typeof setRemovalPrompt;
 }
 
 export function activate(context: vscode.ExtensionContext): TokenAtlasTestHooks {
@@ -52,6 +55,9 @@ export function activate(context: vscode.ExtensionContext): TokenAtlasTestHooks 
   registerDiagnostics(context);
   // Lightbulb: rewrite a pre-2025.10 "#hex" / "16px" / "200ms" $value.
   registerLegacyFix(context);
+  // Carry a deprecation out: deprecate with a replacement, move each use by
+  // quick fix, list what is left, and warn before removing a used token.
+  registerDeprecation(context);
   // "Tokens" tree in its own activity-bar container: navigation without
   // spending editor width.
   const tokenTree = registerTokenTree(context);
@@ -104,6 +110,7 @@ export function activate(context: vscode.ExtensionContext): TokenAtlasTestHooks 
       columnWidths: () => context.globalState.get(TokenEditorProvider.columnWidthsKey),
     },
     codeSwatches,
+    setRemovalPrompt,
   };
 }
 

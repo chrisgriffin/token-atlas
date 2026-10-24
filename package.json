@@ -290,6 +290,21 @@
         "command": "tokenAtlas.chooseActiveSet",
         "title": "Choose Active Token Files",
         "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.deprecateToken",
+        "title": "Deprecate Token…",
+        "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.findDeprecatedUses",
+        "title": "Find Remaining Uses of Deprecated Token",
+        "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.removeDeprecatedToken",
+        "title": "Remove Deprecated Token",
+        "category": "Token Atlas"
       }
     ],
     "menus": {
@@ -308,6 +323,18 @@
         {
           "command": "tokenAtlas.scopeToGroup",
           "when": "false"
+        },
+        {
+          "command": "tokenAtlas.deprecateToken",
+          "when": "tokenAtlas.isTokenDocument"
+        },
+        {
+          "command": "tokenAtlas.findDeprecatedUses",
+          "when": "tokenAtlas.isTokenDocument"
+        },
+        {
+          "command": "tokenAtlas.removeDeprecatedToken",
+          "when": "tokenAtlas.isTokenDocument"
         }
       ],
       "view/title": [
@@ -315,6 +342,23 @@
           "command": "tokenAtlas.newTokenFile",
           "when": "view == tokenAtlas.tokens",
           "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "tokenAtlas.deprecateToken",
+          "when": "tokenAtlas.isTokenDocument",
+          "group": "1_tokenAtlas@1"
+        },
+        {
+          "command": "tokenAtlas.findDeprecatedUses",
+          "when": "tokenAtlas.isTokenDocument",
+          "group": "1_tokenAtlas@2"
+        },
+        {
+          "command": "tokenAtlas.removeDeprecatedToken",
+          "when": "tokenAtlas.isTokenDocument",
+          "group": "1_tokenAtlas@3"
         }
       ]
     },

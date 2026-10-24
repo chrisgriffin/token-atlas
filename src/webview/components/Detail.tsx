@@ -31,7 +31,7 @@ interface DetailProps {
   onClose: () => void;
   /** Opens a group from the header's breadcrumb. */
   onOpenPath?: (path: string[]) => void;
-  onChangeDeprecated: (deprecated: boolean | string | undefined) => void;
+  onChangeDeprecated: (deprecated: boolean | string | undefined, replacement?: string) => void;
   onChangeType: (type: TokenType | undefined, starterValue?: unknown) => void;
 }
 
@@ -72,6 +72,17 @@ export function Detail({
     () => [...allTokens, ...externalTokens],
     [allTokens, externalTokens],
   );
+
+  // A replacement of the same type, never the token itself.
+  const replacements = useMemo(() => {
+    const type = token.resolvedType ?? token.type;
+    const self = token.path.join(".");
+    const keys = referenceCandidates
+      .filter((t) => !type || (t.resolvedType ?? t.type) === type)
+      .map((t) => t.path.join("."))
+      .filter((k) => k !== self);
+    return [...new Set(keys)].sort();
+  }, [referenceCandidates, token]);
 
   const TypeEditor = token.isAlias ? undefined : getEditor(token.type);
   const resolvedType = token.resolvedType ?? token.type;
@@ -214,7 +225,11 @@ export function Detail({
         />
       </Section>
 
-      <DeprecatedField value={token.deprecated} onChange={onChangeDeprecated} />
+      <DeprecatedField
+        value={token.deprecated}
+        onChange={onChangeDeprecated}
+        replacements={replacements}
+      />
     </div>
   );
 }

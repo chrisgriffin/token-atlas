@@ -22,7 +22,7 @@ import {
 import { parsePointer, parseTokens, referenceTarget } from "./parse";
 import { indexTokens } from "./resolve";
 import { toPointer } from "./resolver";
-import { ILLEGAL_NAME } from "./validate";
+import { ILLEGAL_NAME, replacementKey } from "./validate";
 
 export type { Edit } from "jsonc-parser";
 
@@ -307,6 +307,91 @@ function renamedReference(
   const next = moved(pointer?.key);
   if (!pointer || next === undefined) return undefined;
   return "#" + toPointer([...next.split("."), ...pointer.sub]);
+}
+
+/**
+ * The `$deprecated` value for a reason and a replacement token. The
+ * replacement is the reason's first `{reference}` (spec 015,
+ * docs/adr/ADR-003-deprecation-replacement.md), so picking one swaps the
+ * reason's first reference for it, or adds `use {…} instead` when it has none;
+ * `""` takes it out again. `undefined` keeps the reason as typed. No reason
+ * and no replacement is plain `true`.
+ */
+export function deprecatedValue(reason: string, replacement?: string): true | string {
+  let text = reason.trim();
+  const current = replacementKey(text);
+  if (replacement === "" && current !== undefined) {
+    const phrase = /(^|;\s*)use \{[^{}]+\} instead(;\s*|$)/;
+    text = phrase.test(text)
+      ? text.replace(phrase, (_, a: string, b: string) => (a && b ? "; " : "")).trim()
+      : text.replace(/\{([^{}]+)\}/, "$1");
+  } else if (replacement && current !== undefined && current !== replacement) {
+    text = text.replace(/\{[^{}]+\}/, `{${replacement}}`);
+  } else if (replacement && current === undefined) {
+    const use = `use {${replacement}} instead`;
+    text = text ? `${text.replace(/[\s.;]+$/, "")}; ${use}` : use;
+  }
+  return text || true;
+}
+
+/**
+ * Deprecate the token or group at `nodePath`. A new `$deprecated` goes in as
+ * the node's first member, on a line of its own at that member's indent, so
+ * the diff is that one added line: appended last, it would also rewrite the
+ * line before it for the comma. An existing one has only its value replaced,
+ * and a node written on one line stays on it (computeSetEdits).
+ */
+export function computeDeprecateEdits(
+  text: string,
+  nodePath: string[],
+  reason: string,
+  replacement?: string,
+  format: FormattingOptions = inferFormat(text),
+): Edit[] {
+  const value = deprecatedValue(reason, replacement);
+  const node = objectAt(text, nodePath);
+  const first = node?.children?.[0];
+  const has = node?.children?.some((p) => p.children?.[0]?.value === "$deprecated");
+  const indent = first && indentOf(text, first);
+  if (
+    node &&
+    first &&
+    !has &&
+    indent !== undefined &&
+    /[\r\n]/.test(text.slice(node.offset, first.offset))
+  ) {
+    return [
+      {
+        offset: first.offset - indent.length,
+        length: 0,
+        content: `${indent}"$deprecated": ${JSON.stringify(value)},${format.eol ?? "\n"}`,
+      },
+    ];
+  }
+  return computeSetEdits(text, nodePath, "$deprecated", value, format);
+}
+
+/**
+ * Point the reference string at `path` (a `{curly}` reference, or a `$ref`
+ * pointer's string, as `deprecatedReferences` reports it) from `oldKey` to
+ * `newKey`. A pointer keeps what follows the token path. No edit when the
+ * string there does not name `oldKey` itself.
+ */
+export function computeRetargetEdits(
+  text: string,
+  path: Array<string | number>,
+  oldKey: string,
+  newKey: string,
+): Edit[] {
+  const root = parseTree(text);
+  const node = root && findNodeAtLocation(root, path);
+  if (node?.type !== "string") return [];
+  const next = renamedReference(String(node.value), (target) =>
+    target === oldKey ? newKey : undefined,
+  );
+  return next === undefined
+    ? []
+    : [{ offset: node.offset, length: node.length, content: JSON.stringify(next) }];
 }
 
 /**
