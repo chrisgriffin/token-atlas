@@ -1,15 +1,18 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest"
 import {
   deprecatedReferences,
   indexTokens,
   parseTokens,
   resolveAliases,
   type TokenNode,
-} from "../../src/core";
+} from "../../src/core"
 
-const color = { colorSpace: "srgb", components: [0, 0, 0] };
-const refs = (doc: object, external?: Map<string, TokenNode>, scope?: (k: string) => boolean) =>
-  deprecatedReferences(parseTokens(JSON.stringify(doc)), external, scope);
+const color = { colorSpace: "srgb", components: [0, 0, 0] }
+const refs = (
+  doc: object,
+  external?: Map<string, TokenNode>,
+  scope?: (k: string) => boolean,
+) => deprecatedReferences(parseTokens(JSON.stringify(doc)), external, scope)
 
 describe("deprecatedReferences", () => {
   it("flags an alias to a deprecated token, with its reason, on the $value string", () => {
@@ -36,8 +39,8 @@ describe("deprecatedReferences", () => {
         reference: "color.flag",
         message: "{color.flag} is deprecated.",
       },
-    ]);
-  });
+    ])
+  })
 
   it("inherits a group's deprecation, unless the token says false", () => {
     const found = refs({
@@ -54,12 +57,18 @@ describe("deprecatedReferences", () => {
         kept: { $value: "{legacy.kept}" },
         blue: { $value: "{legacy.inner.blue}" },
       },
-    });
-    expect(found.map((f) => [f.reference, f.message])).toEqual([
-      ["legacy.red", "{legacy.red} is deprecated: the legacy palette is going away"],
-      ["legacy.inner.blue", "{legacy.inner.blue} is deprecated: the legacy palette is going away"],
-    ]);
-  });
+    })
+    expect(found.map(f => [f.reference, f.message])).toEqual([
+      [
+        "legacy.red",
+        "{legacy.red} is deprecated: the legacy palette is going away",
+      ],
+      [
+        "legacy.inner.blue",
+        "{legacy.inner.blue} is deprecated: the legacy palette is going away",
+      ],
+    ])
+  })
 
   it("flags only the direct hop of an alias chain", () => {
     const found = refs({
@@ -67,9 +76,9 @@ describe("deprecatedReferences", () => {
       old: { $value: color, $deprecated: true },
       mid: { $value: "{old}" },
       top: { $value: "{mid}" },
-    });
-    expect(found.map((f) => f.path)).toEqual([["mid", "$value"]]);
-  });
+    })
+    expect(found.map(f => f.path)).toEqual([["mid", "$value"]])
+  })
 
   it("flags a reference nested in a composite value, at its sub-path", () => {
     const found = refs({
@@ -78,9 +87,9 @@ describe("deprecatedReferences", () => {
         $type: "shadow",
         $value: [{ color: "{old}", offsetX: { value: 0, unit: "px" } }],
       },
-    });
-    expect(found.map((f) => f.path)).toEqual([["shadow", "$value", 0, "color"]]);
-  });
+    })
+    expect(found.map(f => f.path)).toEqual([["shadow", "$value", 0, "color"]])
+  })
 
   it("flags a $ref pointer to a deprecated token like a {reference} to it", () => {
     const found = refs({
@@ -95,9 +104,14 @@ describe("deprecatedReferences", () => {
       },
       shadow: {
         $type: "shadow",
-        $value: [{ color: { $ref: "#/color/old/$value" }, offsetX: { value: 0, unit: "px" } }],
+        $value: [
+          {
+            color: { $ref: "#/color/old/$value" },
+            offsetX: { value: 0, unit: "px" },
+          },
+        ],
       },
-    });
+    })
     expect(found).toEqual([
       {
         path: ["color", "a", "$ref"],
@@ -114,8 +128,8 @@ describe("deprecatedReferences", () => {
         reference: "color.old",
         message: "{color.old} is deprecated: use color.new",
       },
-    ]);
-  });
+    ])
+  })
 
   it("looks in the document first, then the external index", () => {
     const external = indexTokens(
@@ -126,20 +140,19 @@ describe("deprecatedReferences", () => {
           remote: { $value: color, $deprecated: "gone" },
         }),
       ),
-    );
+    )
     const doc = {
       $type: "color",
       shared: { $value: color },
       a: { $value: "{shared}" },
       b: { $value: "{remote}" },
-    };
-    expect(refs(doc, external).map((f) => f.reference)).toEqual(["remote"]);
+    }
+    expect(refs(doc, external).map(f => f.reference)).toEqual(["remote"])
     // A local key the active set turns off defines nothing, so the external one counts.
-    expect(refs(doc, external, (k) => k !== "shared").map((f) => f.reference)).toEqual([
-      "shared",
-      "remote",
-    ]);
-  });
+    expect(
+      refs(doc, external, k => k !== "shared").map(f => f.reference),
+    ).toEqual(["shared", "remote"])
+  })
 
   it("reports a use once, on the group that wrote it, not on a copy $extends made", () => {
     const model = parseTokens(
@@ -149,8 +162,10 @@ describe("deprecatedReferences", () => {
         base: { a: { $value: "{old}" } },
         variant: { $extends: "{base}" },
       }),
-    );
-    resolveAliases(model); // expands `variant.a` into the model, as diagnostics does
-    expect(deprecatedReferences(model).map((f) => f.path)).toEqual([["base", "a", "$value"]]);
-  });
-});
+    )
+    resolveAliases(model) // expands `variant.a` into the model, as diagnostics does
+    expect(deprecatedReferences(model).map(f => f.path)).toEqual([
+      ["base", "a", "$value"],
+    ])
+  })
+})

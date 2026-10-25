@@ -18,13 +18,13 @@ import {
   type Edit,
   type FormattingOptions,
   type Node,
-} from "jsonc-parser";
-import { parsePointer, parseTokens, referenceTarget } from "./parse";
-import { indexTokens } from "./resolve";
-import { toPointer } from "./resolver";
-import { ILLEGAL_NAME } from "./validate";
+} from "jsonc-parser"
+import { parsePointer, parseTokens, referenceTarget } from "./parse"
+import { indexTokens } from "./resolve"
+import { toPointer } from "./resolver"
+import { ILLEGAL_NAME } from "./validate"
 
-export type { Edit } from "jsonc-parser";
+export type { Edit } from "jsonc-parser"
 
 /**
  * The file's own indentation and line ending: the first indented line says
@@ -32,11 +32,16 @@ export type { Edit } from "jsonc-parser";
  * CRLF. A file with no indented line gets two spaces.
  */
 function inferFormat(text: string): FormattingOptions {
-  const indents = text.match(/^[ \t]+(?=\S)/gm) ?? [];
-  const eol = text.includes("\r\n") ? "\r\n" : "\n";
-  if (indents[0]?.startsWith("\t")) return { tabSize: 4, insertSpaces: false, eol };
-  const widths = indents.filter((i) => !i.includes("\t")).map((i) => i.length);
-  return { tabSize: widths.length ? Math.min(...widths) : 2, insertSpaces: true, eol };
+  const indents = text.match(/^[ \t]+(?=\S)/gm) ?? []
+  const eol = text.includes("\r\n") ? "\r\n" : "\n"
+  if (indents[0]?.startsWith("\t"))
+    return { tabSize: 4, insertSpaces: false, eol }
+  const widths = indents.filter(i => !i.includes("\t")).map(i => i.length)
+  return {
+    tabSize: widths.length ? Math.min(...widths) : 2,
+    insertSpaces: true,
+    eol,
+  }
 }
 
 /**
@@ -51,14 +56,16 @@ export function computeSetEdits(
   value: unknown,
   format: FormattingOptions = inferFormat(text),
 ): Edit[] {
-  const path = [...nodePath, property];
-  const root = parseTree(text);
-  const exists = root !== undefined && findNodeAtLocation(root, path) !== undefined;
-  if (value === undefined) return exists ? computeDeleteEdits(text, path, format) : [];
+  const path = [...nodePath, property]
+  const root = parseTree(text)
+  const exists =
+    root !== undefined && findNodeAtLocation(root, path) !== undefined
+  if (value === undefined)
+    return exists ? computeDeleteEdits(text, path, format) : []
   if (!exists && objectAt(text, nodePath)) {
-    return computeAddEdits(text, nodePath, property, value, format);
+    return computeAddEdits(text, nodePath, property, value, format)
   }
-  return modify(text, path, value, { formattingOptions: format });
+  return modify(text, path, value, { formattingOptions: format })
 }
 
 export function setTokenProperty(
@@ -68,7 +75,10 @@ export function setTokenProperty(
   value: unknown,
   format: FormattingOptions = inferFormat(text),
 ): string {
-  return applyEdits(text, computeSetEdits(text, nodePath, property, value, format));
+  return applyEdits(
+    text,
+    computeSetEdits(text, nodePath, property, value, format),
+  )
 }
 
 /**
@@ -78,9 +88,9 @@ export function setTokenProperty(
  */
 export class NameTakenError extends Error {
   constructor(parentPath: string[], name: string) {
-    const group = parentPath.length ? `"${parentPath.join(".")}"` : "The file";
-    super(`${group} already has a token or group named "${name}".`);
-    this.name = "NameTakenError";
+    const group = parentPath.length ? `"${parentPath.join(".")}"` : "The file"
+    super(`${group} already has a token or group named "${name}".`)
+    this.name = "NameTakenError"
   }
 }
 
@@ -94,15 +104,19 @@ export class InvalidNameError extends Error {
   constructor(name: string) {
     super(
       `"${name}" is not a valid name: token names may not be empty, start with "$", or contain "{", "}", or ".".`,
-    );
-    this.name = "InvalidNameError";
+    )
+    this.name = "InvalidNameError"
   }
 }
 
-function assertNameFree(text: string, parentPath: string[], name: string): void {
-  const root = parseTree(text);
+function assertNameFree(
+  text: string,
+  parentPath: string[],
+  name: string,
+): void {
+  const root = parseTree(text)
   if (root && findNodeAtLocation(root, [...parentPath, name])) {
-    throw new NameTakenError(parentPath, name);
+    throw new NameTakenError(parentPath, name)
   }
 }
 
@@ -122,25 +136,45 @@ export function computeAddEdits(
   value: unknown,
   format: FormattingOptions = inferFormat(text),
 ): Edit[] {
-  assertNameFree(text, parentPath, name);
-  const parent = objectAt(text, parentPath);
-  const last = parent?.children?.[parent.children.length - 1];
+  assertNameFree(text, parentPath, name)
+  const parent = objectAt(text, parentPath)
+  const last = parent?.children?.[parent.children.length - 1]
   // A parent written on one line stays on it.
-  if (parent && last && !/[\r\n]/.test(text.slice(parent.offset, end(parent)))) {
+  if (
+    parent &&
+    last &&
+    !/[\r\n]/.test(text.slice(parent.offset, end(parent)))
+  ) {
     return [
-      { offset: end(last), length: 0, content: `, ${JSON.stringify(name)}: ${inline(value)}` },
-    ];
+      {
+        offset: end(last),
+        length: 0,
+        content: `, ${JSON.stringify(name)}: ${inline(value)}`,
+      },
+    ]
   }
-  const indent = last && indentOf(text, last);
-  if (!parent || !last || indent === undefined || !isBlank(text, end(last), end(parent) - 1)) {
-    return modify(text, [...parentPath, name], value, { formattingOptions: format });
+  const indent = last && indentOf(text, last)
+  if (
+    !parent ||
+    !last ||
+    indent === undefined ||
+    !isBlank(text, end(last), end(parent) - 1)
+  ) {
+    return modify(text, [...parentPath, name], value, {
+      formattingOptions: format,
+    })
   }
-  const eol = format.eol ?? "\n";
-  const unit = format.insertSpaces === false ? "\t" : " ".repeat(format.tabSize ?? 2);
-  const body = JSON.stringify(value, null, unit).replace(/\n/g, eol + indent);
+  const eol = format.eol ?? "\n"
+  const unit =
+    format.insertSpaces === false ? "\t" : " ".repeat(format.tabSize ?? 2)
+  const body = JSON.stringify(value, null, unit).replace(/\n/g, eol + indent)
   return [
-    { offset: end(last), length: 0, content: `,${eol}${indent}${JSON.stringify(name)}: ${body}` },
-  ];
+    {
+      offset: end(last),
+      length: 0,
+      content: `,${eol}${indent}${JSON.stringify(name)}: ${body}`,
+    },
+  ]
 }
 
 /**
@@ -156,53 +190,59 @@ export function computeDeleteEdits(
   nodePath: string[],
   format: FormattingOptions = inferFormat(text),
 ): Edit[] {
-  const parent = objectAt(text, nodePath.slice(0, -1));
-  const props = parent?.children ?? [];
-  const i = props.findIndex((p) => p.children?.[0]?.value === nodePath[nodePath.length - 1]);
-  const prop = props[i];
-  const next = props[i + 1];
-  const prev = props[i - 1];
+  const parent = objectAt(text, nodePath.slice(0, -1))
+  const props = parent?.children ?? []
+  const i = props.findIndex(
+    p => p.children?.[0]?.value === nodePath[nodePath.length - 1],
+  )
+  const prop = props[i]
+  const next = props[i + 1]
+  const prev = props[i - 1]
   // Not the last: cut from the property to the next one, which takes the
   // property's own indent with it and leaves the next one's in place.
   if (prop && next && isSeparator(text, end(prop), next.offset)) {
-    return [{ offset: prop.offset, length: next.offset - prop.offset, content: "" }];
+    return [
+      { offset: prop.offset, length: next.offset - prop.offset, content: "" },
+    ]
   }
   // The last: cut from the end of the previous one, its comma included.
   if (prop && prev && isSeparator(text, end(prev), prop.offset)) {
-    return [{ offset: end(prev), length: end(prop) - end(prev), content: "" }];
+    return [{ offset: end(prev), length: end(prop) - end(prev), content: "" }]
   }
-  return modify(text, nodePath, undefined, { formattingOptions: format });
+  return modify(text, nodePath, undefined, { formattingOptions: format })
 }
 
 function objectAt(text: string, path: string[]): Node | undefined {
-  const root = parseTree(text);
-  const node = root && (path.length ? findNodeAtLocation(root, path) : root);
-  return node?.type === "object" ? node : undefined;
+  const root = parseTree(text)
+  const node = root && (path.length ? findNodeAtLocation(root, path) : root)
+  return node?.type === "object" ? node : undefined
 }
 
-const end = (node: Node): number => node.offset + node.length;
+const end = (node: Node): number => node.offset + node.length
 
 const isBlank = (text: string, from: number, to: number): boolean =>
-  /^\s*$/.test(text.slice(from, to));
+  /^\s*$/.test(text.slice(from, to))
 
 const isSeparator = (text: string, from: number, to: number): boolean =>
-  /^\s*,\s*$/.test(text.slice(from, to));
+  /^\s*,\s*$/.test(text.slice(from, to))
 
 /** JSON on one line, spaced the way a person writes an inline object. */
 export function inline(v: unknown): string {
-  if (Array.isArray(v)) return `[${v.map(inline).join(", ")}]`;
+  if (Array.isArray(v)) return `[${v.map(inline).join(", ")}]`
   if (v && typeof v === "object") {
-    const members = Object.entries(v).map(([k, x]) => `${JSON.stringify(k)}: ${inline(x)}`);
-    return members.length ? `{ ${members.join(", ")} }` : "{}";
+    const members = Object.entries(v).map(
+      ([k, x]) => `${JSON.stringify(k)}: ${inline(x)}`,
+    )
+    return members.length ? `{ ${members.join(", ")} }` : "{}"
   }
-  return JSON.stringify(v);
+  return JSON.stringify(v)
 }
 
 /** The whitespace before `node` on its line, or undefined if anything else is there. */
 function indentOf(text: string, node: Node): string | undefined {
-  const lineStart = text.lastIndexOf("\n", node.offset - 1) + 1;
-  const lead = text.slice(lineStart, node.offset);
-  return /^[ \t]*$/.test(lead) ? lead : undefined;
+  const lineStart = text.lastIndexOf("\n", node.offset - 1) + 1
+  const lead = text.slice(lineStart, node.offset)
+  return /^[ \t]*$/.test(lead) ? lead : undefined
 }
 
 /**
@@ -214,23 +254,31 @@ function indentOf(text: string, node: Node): string | undefined {
  * found via the parse tree — leaving the value and sibling order untouched.
  * References in other files are the host's job: see computeReferenceRenameEdits.
  */
-export function computeRenameEdits(text: string, nodePath: string[], newName: string): Edit[] {
+export function computeRenameEdits(
+  text: string,
+  nodePath: string[],
+  newName: string,
+): Edit[] {
   if (!newName || ILLEGAL_NAME.test(newName) || newName.startsWith("$")) {
-    throw new InvalidNameError(newName);
+    throw new InvalidNameError(newName)
   }
-  const oldName = nodePath[nodePath.length - 1];
-  if (oldName === newName) return [];
-  const root = parseTree(text);
-  if (!root) return [];
-  const valueNode = findNodeAtLocation(root, nodePath);
-  const keyNode = valueNode?.parent?.children?.[0];
-  if (!keyNode) return [];
-  assertNameFree(text, nodePath.slice(0, -1), newName);
-  const newPath = [...nodePath.slice(0, -1), newName].join(".");
+  const oldName = nodePath[nodePath.length - 1]
+  if (oldName === newName) return []
+  const root = parseTree(text)
+  if (!root) return []
+  const valueNode = findNodeAtLocation(root, nodePath)
+  const keyNode = valueNode?.parent?.children?.[0]
+  if (!keyNode) return []
+  assertNameFree(text, nodePath.slice(0, -1), newName)
+  const newPath = [...nodePath.slice(0, -1), newName].join(".")
   return [
-    { offset: keyNode.offset, length: keyNode.length, content: JSON.stringify(newName) },
+    {
+      offset: keyNode.offset,
+      length: keyNode.length,
+      content: JSON.stringify(newName),
+    },
     ...referenceEdits(root, nodePath.join("."), newPath),
-  ];
+  ]
 }
 
 /**
@@ -249,47 +297,59 @@ export function computeReferenceRenameEdits(
   oldPath: string,
   newPath: string,
 ): Edit[] {
-  const root = parseTree(text);
-  if (!root) return [];
-  const local = indexTokens(parseTokens(text));
-  if (local.has(oldPath) || [...local.keys()].some((k) => k.startsWith(oldPath + "."))) return [];
-  return referenceEdits(root, oldPath, newPath);
+  const root = parseTree(text)
+  if (!root) return []
+  const local = indexTokens(parseTokens(text))
+  if (
+    local.has(oldPath) ||
+    [...local.keys()].some(k => k.startsWith(oldPath + "."))
+  )
+    return []
+  return referenceEdits(root, oldPath, newPath)
 }
 
 function referenceEdits(root: Node, oldPath: string, newPath: string): Edit[] {
-  const edits: Edit[] = [];
+  const edits: Edit[] = []
   const moved = (target: string | undefined) =>
-    target !== undefined && (target === oldPath || target.startsWith(oldPath + "."))
+    target !== undefined &&
+    (target === oldPath || target.startsWith(oldPath + "."))
       ? newPath + target.slice(oldPath.length)
-      : undefined;
+      : undefined
   const walk = (node: Node, inValue: boolean): void => {
     if (node.type === "property") {
-      const [key, value] = node.children ?? [];
-      if ((key?.value === "$ref" || key?.value === "$extends") && value?.type === "string") {
-        const next = renamedReference(String(value.value), moved);
+      const [key, value] = node.children ?? []
+      if (
+        (key?.value === "$ref" || key?.value === "$extends") &&
+        value?.type === "string"
+      ) {
+        const next = renamedReference(String(value.value), moved)
         if (next !== undefined) {
-          edits.push({ offset: value.offset, length: value.length, content: JSON.stringify(next) });
+          edits.push({
+            offset: value.offset,
+            length: value.length,
+            content: JSON.stringify(next),
+          })
         }
-        return;
+        return
       }
-      if (value) walk(value, inValue || key?.value === "$value");
-      return;
+      if (value) walk(value, inValue || key?.value === "$value")
+      return
     }
     if (node.type === "string" && inValue && typeof node.value === "string") {
-      const next = moved(referenceTarget(node.value));
+      const next = moved(referenceTarget(node.value))
       if (next !== undefined) {
         edits.push({
           offset: node.offset,
           length: node.length,
           content: JSON.stringify(`{${next}}`),
-        });
+        })
       }
-      return;
+      return
     }
-    for (const child of node.children ?? []) walk(child, inValue);
-  };
-  walk(root, false);
-  return edits;
+    for (const child of node.children ?? []) walk(child, inValue)
+  }
+  walk(root, false)
+  return edits
 }
 
 /**
@@ -301,12 +361,12 @@ function renamedReference(
   value: string,
   moved: (target: string | undefined) => string | undefined,
 ): string | undefined {
-  const curly = moved(referenceTarget(value));
-  if (curly !== undefined) return `{${curly}}`;
-  const pointer = parsePointer(value);
-  const next = moved(pointer?.key);
-  if (!pointer || next === undefined) return undefined;
-  return "#" + toPointer([...next.split("."), ...pointer.sub]);
+  const curly = moved(referenceTarget(value))
+  if (curly !== undefined) return `{${curly}}`
+  const pointer = parsePointer(value)
+  const next = moved(pointer?.key)
+  if (!pointer || next === undefined) return undefined
+  return "#" + toPointer([...next.split("."), ...pointer.sub])
 }
 
 /**
@@ -320,24 +380,26 @@ export function computeSwapEdits(
   keyA: string,
   keyB: string,
 ): Edit[] {
-  const root = parseTree(text);
-  if (!root) return [];
-  const parent = parentPath.length ? findNodeAtLocation(root, parentPath) : root;
-  if (!parent || parent.type !== "object" || !parent.children) return [];
+  const root = parseTree(text)
+  if (!root) return []
+  const parent = parentPath.length ? findNodeAtLocation(root, parentPath) : root
+  if (!parent || parent.type !== "object" || !parent.children) return []
 
   const findProp = (key: string) =>
-    parent.children!.find((c) => c.type === "property" && c.children?.[0]?.value === key);
+    parent.children!.find(
+      c => c.type === "property" && c.children?.[0]?.value === key,
+    )
 
-  const a = findProp(keyA);
-  const b = findProp(keyB);
-  if (!a || !b) return [];
+  const a = findProp(keyA)
+  const b = findProp(keyB)
+  if (!a || !b) return []
 
-  const aText = text.substring(a.offset, a.offset + a.length);
-  const bText = text.substring(b.offset, b.offset + b.length);
+  const aText = text.substring(a.offset, a.offset + a.length)
+  const bText = text.substring(b.offset, b.offset + b.length)
   return [
     { offset: a.offset, length: a.length, content: bText },
     { offset: b.offset, length: b.length, content: aText },
-  ];
+  ]
 }
 
 /**
@@ -348,30 +410,37 @@ export function computeSwapEdits(
  * commas and whitespace between properties are untouched — the same trick
  * as computeSwapEdits, generalised to a permutation.
  */
-export function computeReorderEdits(text: string, parentPath: string[], order: string[]): Edit[] {
-  const root = parseTree(text);
-  if (!root) return [];
-  const parent = parentPath.length ? findNodeAtLocation(root, parentPath) : root;
-  if (!parent || parent.type !== "object" || !parent.children) return [];
+export function computeReorderEdits(
+  text: string,
+  parentPath: string[],
+  order: string[],
+): Edit[] {
+  const root = parseTree(text)
+  if (!root) return []
+  const parent = parentPath.length ? findNodeAtLocation(root, parentPath) : root
+  if (!parent || parent.type !== "object" || !parent.children) return []
 
   const props = parent.children.filter(
-    (c) =>
+    c =>
       c.type === "property" &&
       typeof c.children?.[0]?.value === "string" &&
       !(c.children[0].value as string).startsWith("$"),
-  );
-  const byKey = new Map(props.map((p) => [p.children![0].value as string, p]));
-  if (order.length !== props.length || order.some((k) => !byKey.has(k))) return [];
+  )
+  const byKey = new Map(props.map(p => [p.children![0].value as string, p]))
+  if (order.length !== props.length || order.some(k => !byKey.has(k))) return []
 
-  const edits: Edit[] = [];
+  const edits: Edit[] = []
   props.forEach((slot, i) => {
-    const incoming = byKey.get(order[i])!;
-    if (incoming === slot) return;
+    const incoming = byKey.get(order[i])!
+    if (incoming === slot) return
     edits.push({
       offset: slot.offset,
       length: slot.length,
-      content: text.substring(incoming.offset, incoming.offset + incoming.length),
-    });
-  });
-  return edits;
+      content: text.substring(
+        incoming.offset,
+        incoming.offset + incoming.length,
+      ),
+    })
+  })
+  return edits
 }

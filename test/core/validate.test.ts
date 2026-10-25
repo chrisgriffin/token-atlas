@@ -1,47 +1,49 @@
-import { describe, it, expect } from "vitest";
-import { parseTokens } from "../../src/core/parse";
-import { resolveAliases } from "../../src/core/resolve";
-import { validate } from "../../src/core/validate";
+import { describe, it, expect } from "vitest"
+import { parseTokens } from "../../src/core/parse"
+import { resolveAliases } from "../../src/core/resolve"
+import { validate } from "../../src/core/validate"
 
 function issuesFor(doc: Record<string, unknown>) {
-  const model = parseTokens(JSON.stringify(doc));
-  resolveAliases(model);
-  return validate(model).issues;
+  const model = parseTokens(JSON.stringify(doc))
+  resolveAliases(model)
+  return validate(model).issues
 }
 const shapeErrors = (doc: Record<string, unknown>) =>
-  issuesFor(doc).filter((i) => /\$value must be/.test(i.message));
+  issuesFor(doc).filter(i => /\$value must be/.test(i.message))
 
 describe("validate — $value shape for color, dimension, duration", () => {
   const good = {
     colorSpace: "srgb",
     components: [0, 0, 1],
-  };
+  }
 
   it("flags a legacy string color as an error naming the expected shape", () => {
-    const errs = shapeErrors({ color: { $type: "color", a: { $value: "#ff0000" } } });
-    expect(errs).toHaveLength(1);
-    expect(errs[0].severity).toBe("error");
-    expect(errs[0].path).toEqual(["color", "a"]);
-    expect(errs[0].message).toMatch(/colorSpace/);
-    expect(errs[0].message).toMatch(/components/);
-  });
+    const errs = shapeErrors({
+      color: { $type: "color", a: { $value: "#ff0000" } },
+    })
+    expect(errs).toHaveLength(1)
+    expect(errs[0].severity).toBe("error")
+    expect(errs[0].path).toEqual(["color", "a"])
+    expect(errs[0].message).toMatch(/colorSpace/)
+    expect(errs[0].message).toMatch(/components/)
+  })
 
   it("flags a legacy string dimension and a string duration", () => {
     const errs = shapeErrors({
       space: { $type: "dimension", md: { $value: "16px" } },
       motion: { $type: "duration", fast: { $value: "150ms" } },
-    });
-    expect(errs.map((e) => e.path.join("."))).toEqual(["space.md", "motion.fast"]);
-    for (const e of errs) expect(e.message).toMatch(/value.*unit/);
-  });
+    })
+    expect(errs.map(e => e.path.join("."))).toEqual(["space.md", "motion.fast"])
+    for (const e of errs) expect(e.message).toMatch(/value.*unit/)
+  })
 
   it("flags an object missing a required member", () => {
     const errs = shapeErrors({
       color: { $type: "color", a: { $value: { colorSpace: "srgb" } } },
       space: { $type: "dimension", md: { $value: { value: 16 } } },
-    });
-    expect(errs).toHaveLength(2);
-  });
+    })
+    expect(errs).toHaveLength(2)
+  })
 
   it("says whether a member is missing or merely the wrong type", () => {
     const [missing, wrong] = shapeErrors({
@@ -50,38 +52,52 @@ describe("validate — $value shape for color, dimension, duration", () => {
         a: { $value: { value: 16 } },
         b: { $value: { value: "16", unit: "px" } },
       },
-    });
-    expect(missing.message).toMatch(/unit missing/);
-    expect(wrong.message).toMatch(/value a string \(expected number\)/);
-    expect(wrong.message).not.toMatch(/missing/);
-  });
+    })
+    expect(missing.message).toMatch(/unit missing/)
+    expect(wrong.message).toMatch(/value a string \(expected number\)/)
+    expect(wrong.message).not.toMatch(/missing/)
+  })
 
   it("accepts a well-formed object of each type", () => {
     expect(
       shapeErrors({
         color: { $type: "color", a: { $value: good } },
-        space: { $type: "dimension", md: { $value: { value: 16, unit: "px" } } },
-        motion: { $type: "duration", fast: { $value: { value: 150, unit: "ms" } } },
+        space: {
+          $type: "dimension",
+          md: { $value: { value: 16, unit: "px" } },
+        },
+        motion: {
+          $type: "duration",
+          fast: { $value: { value: 150, unit: "ms" } },
+        },
       }),
-    ).toEqual([]);
-  });
+    ).toEqual([])
+  })
 
   it("reports nothing new for an alias or a token with no $type", () => {
     const issues = issuesFor({
-      color: { $type: "color", a: { $value: good }, b: { $value: "{color.a}" } },
+      color: {
+        $type: "color",
+        a: { $value: good },
+        b: { $value: "{color.a}" },
+      },
       untyped: { x: { $value: "#ff0000" } },
-    });
-    expect(issues.filter((i) => /\$value must be/.test(i.message))).toEqual([]);
+    })
+    expect(issues.filter(i => /\$value must be/.test(i.message))).toEqual([])
     // The untyped token is still reported once, for the missing $type only.
-    expect(issues.filter((i) => i.path.join(".") === "untyped.x")).toHaveLength(1);
-  });
-});
+    expect(issues.filter(i => i.path.join(".") === "untyped.x")).toHaveLength(1)
+  })
+})
 
 describe("validate — $value shape for number, fontWeight, cubicBezier, fontFamily", () => {
   it("flags a string number and accepts a numeric one", () => {
-    expect(shapeErrors({ n: { $type: "number", bad: { $value: "16" } } })).toHaveLength(1);
-    expect(shapeErrors({ n: { $type: "number", ok: { $value: 1.25 } } })).toEqual([]);
-  });
+    expect(
+      shapeErrors({ n: { $type: "number", bad: { $value: "16" } } }),
+    ).toHaveLength(1)
+    expect(
+      shapeErrors({ n: { $type: "number", ok: { $value: 1.25 } } }),
+    ).toEqual([])
+  })
 
   it("fontWeight accepts a number or a spec keyword and rejects anything else", () => {
     expect(
@@ -93,16 +109,20 @@ describe("validate — $value shape for number, fontWeight, cubicBezier, fontFam
           kw2: { $value: "extra-black" },
         },
       }),
-    ).toEqual([]);
-    const errs = shapeErrors({ w: { $type: "fontWeight", bad: { $value: "boldish" } } });
-    expect(errs).toHaveLength(1);
-    expect(errs[0].message).toMatch(/keyword/);
-  });
+    ).toEqual([])
+    const errs = shapeErrors({
+      w: { $type: "fontWeight", bad: { $value: "boldish" } },
+    })
+    expect(errs).toHaveLength(1)
+    expect(errs[0].message).toMatch(/keyword/)
+  })
 
   it("cubicBezier must be exactly four numbers", () => {
-    expect(shapeErrors({ e: { $type: "cubicBezier", ok: { $value: [0.4, 0, 0.2, 1] } } })).toEqual(
-      [],
-    );
+    expect(
+      shapeErrors({
+        e: { $type: "cubicBezier", ok: { $value: [0.4, 0, 0.2, 1] } },
+      }),
+    ).toEqual([])
     const errs = shapeErrors({
       e: {
         $type: "cubicBezier",
@@ -110,10 +130,10 @@ describe("validate — $value shape for number, fontWeight, cubicBezier, fontFam
         strings: { $value: ["0.4", "0", "0.2", "1"] },
         str: { $value: "ease-in" },
       },
-    });
-    expect(errs.map((e) => e.path[1])).toEqual(["three", "strings", "str"]);
-    expect(errs[0].message).toMatch(/four numbers/);
-  });
+    })
+    expect(errs.map(e => e.path[1])).toEqual(["three", "strings", "str"])
+    expect(errs[0].message).toMatch(/four numbers/)
+  })
 
   it("fontFamily accepts a string or an array of strings", () => {
     expect(
@@ -124,21 +144,25 @@ describe("validate — $value shape for number, fontWeight, cubicBezier, fontFam
           stack: { $value: ["Inter", "sans-serif"] },
         },
       }),
-    ).toEqual([]);
+    ).toEqual([])
     const errs = shapeErrors({
-      f: { $type: "fontFamily", num: { $value: 12 }, mixed: { $value: ["Inter", 3] } },
-    });
-    expect(errs.map((e) => e.path[1])).toEqual(["num", "mixed"]);
-  });
+      f: {
+        $type: "fontFamily",
+        num: { $value: 12 },
+        mixed: { $value: ["Inter", 3] },
+      },
+    })
+    expect(errs.map(e => e.path[1])).toEqual(["num", "mixed"])
+  })
 
   it("reports nothing new for an alias or a token with no $type", () => {
     const issues = issuesFor({
       n: { $type: "number", a: { $value: 1 }, b: { $value: "{n.a}" } },
       untyped: { x: { $value: "16" } },
-    });
-    expect(issues.filter((i) => /\$value must be/.test(i.message))).toEqual([]);
-  });
-});
+    })
+    expect(issues.filter(i => /\$value must be/.test(i.message))).toEqual([])
+  })
+})
 
 describe("validate with a local scope", () => {
   const model = () =>
@@ -147,36 +171,36 @@ describe("validate with a local scope", () => {
         light: { surface: { $type: "number", $value: 1 } },
         semantic: { page: { $type: "number", $value: "{light.surface}" } },
       }),
-    );
+    )
 
   it("accepts a local reference when no scope is given", () => {
-    const m = model();
-    resolveAliases(m);
-    expect(validate(m).issues).toEqual([]);
-  });
+    const m = model()
+    resolveAliases(m)
+    expect(validate(m).issues).toEqual([])
+  })
 
   it("reports a reference into an out-of-scope key as unresolved", () => {
-    const m = model();
-    const scope = (key: string) => key.startsWith("semantic.");
-    resolveAliases(m, undefined, scope);
-    const { issues } = validate(m, undefined, scope);
+    const m = model()
+    const scope = (key: string) => key.startsWith("semantic.")
+    resolveAliases(m, undefined, scope)
+    const { issues } = validate(m, undefined, scope)
     expect(issues).toEqual([
       {
         severity: "error",
         path: ["semantic", "page"],
         message: "Unresolved reference: {light.surface}",
       },
-    ]);
-  });
-});
+    ])
+  })
+})
 
 describe("core model fixes — what DTCG 2025.10 rejects", () => {
-  const px = (value: number) => ({ value, unit: "px" });
-  const black = { colorSpace: "srgb", components: [0, 0, 0] };
+  const px = (value: number) => ({ value, unit: "px" })
+  const black = { colorSpace: "srgb", components: [0, 0, 0] }
   const at = (doc: Record<string, unknown>) =>
     issuesFor(doc)
-      .filter((i) => i.severity === "error")
-      .map((i) => `${i.path.join(".")}: ${i.message}`);
+      .filter(i => i.severity === "error")
+      .map(i => `${i.path.join(".")}: ${i.message}`)
 
   it("reports an unknown $type on a token and on a group, where it is declared", () => {
     expect(
@@ -189,8 +213,8 @@ describe("core model fixes — what DTCG 2025.10 rejects", () => {
       `g.$type: Unknown $type "Color": use one of color, dimension, fontFamily, fontWeight, duration, cubicBezier, number, strokeStyle, border, transition, shadow, gradient, typography.`,
       `a.$type: Unknown $type "colour": use one of color, dimension, fontFamily, fontWeight, duration, cubicBezier, number, strokeStyle, border, transition, shadow, gradient, typography.`,
       `b.$type: Unknown $type "string": use one of color, dimension, fontFamily, fontWeight, duration, cubicBezier, number, strokeStyle, border, transition, shadow, gradient, typography.`,
-    ]);
-  });
+    ])
+  })
 
   it("allows only px and rem for a dimension, ms and s for a duration (§8.2, §8.5)", () => {
     expect(
@@ -203,8 +227,8 @@ describe("core model fixes — what DTCG 2025.10 rejects", () => {
     ).toEqual([
       `d: dimension unit must be "px" or "rem" (DTCG 2025.10); got "em".`,
       `t: duration unit must be "ms" or "s" (DTCG 2025.10); got "min".`,
-    ]);
-  });
+    ])
+  })
 
   it("checks a color object's space, components, alpha and hex", () => {
     expect(
@@ -214,10 +238,19 @@ describe("core model fixes — what DTCG 2025.10 rejects", () => {
           space: { $value: { colorSpace: "rgb", components: [255, 0, 0] } },
           count: { $value: { colorSpace: "srgb", components: [1, 0] } },
           comp: { $value: { colorSpace: "srgb", components: ["x", 0, 0] } },
-          alpha: { $value: { colorSpace: "srgb", components: [1, 0, 0], alpha: 7 } },
-          hex: { $value: { colorSpace: "srgb", components: [1, 0, 0], hex: "red" } },
+          alpha: {
+            $value: { colorSpace: "srgb", components: [1, 0, 0], alpha: 7 },
+          },
+          hex: {
+            $value: { colorSpace: "srgb", components: [1, 0, 0], hex: "red" },
+          },
           ok: {
-            $value: { colorSpace: "hsl", components: ["none", 0, 100], alpha: 0.5, hex: "#ffffff" },
+            $value: {
+              colorSpace: "hsl",
+              components: ["none", 0, 100],
+              alpha: 0.5,
+              hex: "#ffffff",
+            },
           },
         },
       }),
@@ -227,8 +260,8 @@ describe("core model fixes — what DTCG 2025.10 rejects", () => {
       `c.comp: color components must be 3 numbers or "none"; got "x".`,
       `c.alpha: color alpha must be a number from 0 to 1; got 7.`,
       `c.hex: color hex must be a 6-digit CSS hex color such as "#ff0000"; got "red".`,
-    ]);
-  });
+    ])
+  })
 
   it("checks each composite's members and runs the primitive checks on its sub-values (§9)", () => {
     expect(
@@ -247,7 +280,10 @@ describe("core model fixes — what DTCG 2025.10 rejects", () => {
         },
         gr: { $type: "gradient", $value: [{ color: black, position: "0" }] },
         st: { $type: "strokeStyle", $value: "wavy" },
-        st2: { $type: "strokeStyle", $value: { dashArray: [px(1), "2px"], lineCap: "flat" } },
+        st2: {
+          $type: "strokeStyle",
+          $value: { dashArray: [px(1), "2px"], lineCap: "flat" },
+        },
       }),
     ).toEqual([
       `s: shadow $value.color: color $value must be an object { colorSpace, components } (DTCG 2025.10); got a string.`,
@@ -261,18 +297,27 @@ describe("core model fixes — what DTCG 2025.10 rejects", () => {
       `st: strokeStyle $value must be one of solid, dashed, dotted, double, groove, ridge, outset, inset, or an object { dashArray, lineCap } (DTCG 2025.10); got "wavy".`,
       `st2: strokeStyle $value.dashArray[1]: dimension $value must be an object { value, unit } (DTCG 2025.10); got a string.`,
       `st2: strokeStyle $value.lineCap must be "round", "butt" or "square" (DTCG 2025.10); got "flat".`,
-    ]);
-  });
+    ])
+  })
 
   it("accepts well-formed composites, references in sub-values and a shadow array", () => {
-    const shadow = { color: black, offsetX: px(0), offsetY: px(1), blur: px(2), spread: px(0) };
+    const shadow = {
+      color: black,
+      offsetX: px(0),
+      offsetY: px(1),
+      blur: px(2),
+      spread: px(0),
+    }
     expect(
       at({
         c: { $type: "color", $value: black },
         w: { $type: "dimension", $value: px(1) },
         s1: { $type: "shadow", $value: { ...shadow, inset: true } },
         s2: { $type: "shadow", $value: ["{s1}", { ...shadow, color: "{c}" }] },
-        b: { $type: "border", $value: { color: "{c}", width: "{w}", style: "solid" } },
+        b: {
+          $type: "border",
+          $value: { color: "{c}", width: "{w}", style: "solid" },
+        },
         b2: {
           $type: "border",
           $value: {
@@ -308,8 +353,8 @@ describe("core model fixes — what DTCG 2025.10 rejects", () => {
         },
         p: { $type: "dimension", $value: { $ref: "#/w/$value" } },
       }),
-    ).toEqual([]);
-  });
+    ).toEqual([])
+  })
 
   it("reports a cycle through composite values on each token in it", () => {
     expect(
@@ -320,8 +365,8 @@ describe("core model fixes — what DTCG 2025.10 rejects", () => {
     ).toEqual([
       "s1: Reference cycle detected through {s2}",
       "s2: Reference cycle detected through {s1}",
-    ]);
-  });
+    ])
+  })
 
   it("says a dangling chain does not resolve, naming the missing token, instead of a cycle", () => {
     expect(
@@ -332,6 +377,6 @@ describe("core model fixes — what DTCG 2025.10 rejects", () => {
     ).toEqual([
       "a: Unresolved reference: {b} leads to {missing}, which does not exist.",
       "b: Unresolved reference: {missing}",
-    ]);
-  });
-});
+    ])
+  })
+})

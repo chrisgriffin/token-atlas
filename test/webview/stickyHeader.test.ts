@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import "../../src/webview/styles";
+import { describe, it, expect } from "vitest"
+import "../../src/webview/styles"
 
 /**
  * The column header and group headings stick while the rows scroll. In a
@@ -9,12 +9,12 @@ import "../../src/webview/styles";
 describe("sticky table header line", () => {
   it("draws the column header and group heading lines as inset shadows", () => {
     document.body.innerHTML = `<table class="tokens"><thead><tr><th>Name</th></tr></thead>
-      <tbody><tr class="section"><th>color</th></tr></tbody></table>`;
+      <tbody><tr class="section"><th>color</th></tr></tbody></table>`
     for (const th of document.querySelectorAll("th")) {
-      const style = getComputedStyle(th);
-      expect(style.position).toBe("sticky");
-      expect(style.borderBottomStyle || "none").toBe("none");
-      expect(style.boxShadow).toContain("inset");
+      const style = getComputedStyle(th)
+      expect(style.position).toBe("sticky")
+      expect(style.borderBottomStyle || "none").toBe("none")
+      expect(style.boxShadow).toContain("inset")
     }
-  });
-});
+  })
+})
