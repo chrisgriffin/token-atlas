@@ -53,7 +53,7 @@ Even scoped to VS Code only, a three-layer split pays for itself in testability 
 
 ### 2.1 `src/host/` — the file map
 
-The only vscode-aware code — all 16 files, alphabetical:
+The only vscode-aware code — all 17 files, alphabetical:
 `activeSet.ts` (the status-bar chooser for which files a `{reference}`
 resolves against: DTCG resolver resolutions first, stepping through each
 modifier when there are more than 12, then Tokens Studio `$themes`),
@@ -64,6 +64,14 @@ per file: the code half of find-references, and the opt-in unused-token hint),
 `colorProvider.ts` (inline colour swatches in the raw JSON),
 `defaultEditor.ts` (the `tokenAtlas.defaultEditor` setting: reopens a token
 document in the visual editor, content-based rather than by filename),
+`deprecate.ts` (carrying a deprecation out: the Deprecate Token command,
+writing `$deprecated` with a replacement as its first `{reference}`; the quick
+fix that moves one struck-through use onto that replacement, in token files,
+resolver inline tokens and code; the remaining-uses list, read from the
+workspace's files rather than its open editors; and the removal guard, shared
+by the Remove Deprecated Token command and the visual editor's delete, that
+names how many uses remain before a deprecated token goes — see
+[ADR-003](./adr/ADR-003-deprecation-replacement.md)),
 `diagnostics.ts` (validation and lint results as squiggles in the Problems panel,
 the unused-token hint, a struck-through hint on each use of a deprecated token
 in token files, resolver inline tokens and open code files,
@@ -207,7 +215,7 @@ right.
 
 - `ready` — webview booted, request initial state
 - `setValue { path, value }`
-- `setType { path, tokenType, starterValue? }` · `setDescription { path, description }` · `setDeprecated { path, deprecated }`
+- `setType { path, tokenType, starterValue? }` · `setDescription { path, description }` · `setDeprecated { path, deprecated, replacement? }`
 - `addToken { parentPath, name }` · `addGroup { parentPath, name }`
 - `deleteNode { path }` · `renameNode { path, newName }`
 - `moveNode { path, direction }` — the detail panel's move up/down · `reorderNodes { parentPath, order[] }` — the full new order under `parentPath`, from a drag-and-drop

@@ -273,6 +273,61 @@ describe("DeprecatedField", () => {
     expect(onChange.mock.calls).toEqual([[true]])
   })
 
+  it("names a replacement as the reason's first reference, and reports the pick", () => {
+    const onChange = vi.fn()
+    render(
+      <DeprecatedField
+        value="too faint; use {color.border.strong} instead"
+        onChange={onChange}
+        replacements={["color.border.default", "color.border.strong"]}
+      />,
+    )
+
+    const select = screen.getByRole("combobox", {
+      name: "Replacement",
+    }) as HTMLSelectElement
+    expect(select.value).toBe("color.border.strong")
+    fireEvent.change(select, { target: { value: "color.border.default" } })
+    fireEvent.change(select, { target: { value: "" } })
+
+    expect(onChange.mock.calls).toEqual([
+      ["too faint; use {color.border.strong} instead", "color.border.default"],
+      ["too faint; use {color.border.strong} instead", ""],
+    ])
+  })
+
+  it("keeps a replacement that is not among the choices visible", () => {
+    render(
+      <DeprecatedField
+        value="use {gone}"
+        onChange={vi.fn()}
+        replacements={["color.a"]}
+      />,
+    )
+    expect(
+      (
+        screen.getByRole("combobox", {
+          name: "Replacement",
+        }) as HTMLSelectElement
+      ).value,
+    ).toBe("gone")
+  })
+
+  it("offers no replacement picker without choices, or until it is deprecated", () => {
+    const { rerender } = render(
+      <DeprecatedField value={true} onChange={vi.fn()} />,
+    )
+    expect(screen.queryByRole("combobox", { name: "Replacement" })).toBeNull()
+    rerender(
+      <DeprecatedField
+        value={undefined}
+        onChange={vi.fn()}
+        replacements={["color.a"]}
+      />,
+    )
+    expect(screen.queryByRole("combobox", { name: "Replacement" })).toBeNull()
+  })
+
   it("offers no reason field until it is deprecated", () => {
     render(<DeprecatedField value={undefined} onChange={vi.fn()} />)
 

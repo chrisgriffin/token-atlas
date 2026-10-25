@@ -16,6 +16,7 @@ import {
   modeOf,
   parseResolver,
   computeDeleteEdits,
+  computeDeprecateEdits,
   computeSetEdits,
   computeSwapEdits,
   computeReorderEdits,
@@ -36,6 +37,7 @@ import type {
   WebviewToHost,
 } from "../shared/protocol"
 import type { ContrastTarget } from "../core/color"
+import { mayRemove } from "./deprecate"
 import {
   activeResolution,
   externalIndexFor,
@@ -302,12 +304,19 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
           await this.materialize(document, msg.path)
           await this.applyEdits(
             document,
-            computeSetEdits(
-              document.getText(),
-              msg.path,
-              "$deprecated",
-              msg.deprecated,
-            ),
+            msg.deprecated === undefined || msg.deprecated === false
+              ? computeSetEdits(
+                  document.getText(),
+                  msg.path,
+                  "$deprecated",
+                  msg.deprecated,
+                )
+              : computeDeprecateEdits(
+                  document.getText(),
+                  msg.path,
+                  typeof msg.deprecated === "string" ? msg.deprecated : "",
+                  msg.replacement,
+                ),
           )
           break
         case "addToken":
@@ -325,6 +334,8 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
           )
           break
         case "deleteNode":
+          // A deprecated token still in use says how many uses remain first.
+          if (!(await mayRemove(document, msg.path))) break
           await this.applyEdits(
             document,
             computeDeleteEdits(document.getText(), msg.path),

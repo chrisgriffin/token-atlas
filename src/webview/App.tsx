@@ -417,8 +417,13 @@ export function App() {
               onMove={direction =>
                 post({ type: "moveNode", path: selected.path, direction })
               }
-              onChangeDeprecated={deprecated =>
-                post({ type: "setDeprecated", path: selected.path, deprecated })
+              onChangeDeprecated={(deprecated, replacement) =>
+                post({
+                  type: "setDeprecated",
+                  path: selected.path,
+                  deprecated,
+                  replacement,
+                })
               }
               onChangeType={(tokenType, starterValue) =>
                 post({

@@ -37,6 +37,7 @@ Want something to poke at first? Clone this repo and open [`examples/`](examples
 - Outline view, plus _Go to Symbol in Workspace_ (Cmd+T) by token path.
 - Problems for unresolved references, reference cycles, bad values, and tokens that inherit no `$type`.
 - Deprecated tokens are struck through everywhere they are used.
+- Deprecate a token with a reason and a replacement (_Token Atlas: Deprecate Token…_, or the visual editor's Deprecated field), then move each use with a quick fix, list what still uses it, and get the remaining count before _Remove Deprecated Token_ deletes it. The replacement is written into `$deprecated` itself: `"use {color.border.default} instead"`.
 - A quick fix that converts old-style string values like `"16px"` to the 2025.10 object form.
 
 ![The Problems panel listing an unresolved reference, a reference cycle, and a token with no type](media/problems.png)
@@ -74,13 +75,16 @@ The active set is remembered per workspace and never written to the repo.
 
 ## Commands
 
-Three commands in the Command Palette:
+Six commands in the Command Palette; the last three also sit in a token file's right-click menu and act on the token under the cursor:
 
-| Command                                          | What it does                                               |
-| ------------------------------------------------ | ---------------------------------------------------------- |
-| `Token Atlas: New Token File`                    | Asks for a name and creates an empty `<name>.tokens.json`. |
-| `Token Atlas: Open Current File in Token Editor` | Opens the active token file as a table.                    |
-| `Token Atlas: Choose Active Token Files`         | The same picker the status bar opens.                      |
+| Command                                                | What it does                                                                         |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `Token Atlas: New Token File`                          | Asks for a name and creates an empty `<name>.tokens.json`.                           |
+| `Token Atlas: Open Current File in Token Editor`       | Opens the active token file as a table.                                              |
+| `Token Atlas: Choose Active Token Files`               | The same picker the status bar opens.                                                |
+| `Token Atlas: Deprecate Token…`                        | Asks for a reason and a replacement, and writes them into the token's `$deprecated`. |
+| `Token Atlas: Find Remaining Uses of Deprecated Token` | Lists every use left across the workspace, opened files or not.                      |
+| `Token Atlas: Remove Deprecated Token`                 | Deletes it, first saying how many uses remain if any do.                             |
 
 In the _Design Tokens_ view, clicking a group opens the table scoped to that group, and clicking a token reveals it: in the table's detail panel if the table is open, otherwise at its line in the JSON.
 

@@ -507,6 +507,70 @@ export function memberCompletions(
 const ALNUM = /[A-Za-z0-9]/
 
 /**
+ * Where the spelling of `key` starts in `identifier`: the first segment
+ * boundary (the ones `tokenMatcher` drops a prefix at) from which the rest
+ * normalizes to `key`, or -1.
+ */
+function keyStart(id: string, key: string): number {
+  const norm = normalizeName(key)
+  for (let p = 0; p < id.length; p++) {
+    if (!ALNUM.test(id[p])) continue
+    const boundary =
+      p === 0 ||
+      !ALNUM.test(id[p - 1]) ||
+      (/[a-z0-9]/.test(id[p - 1]) && /[A-Z]/.test(id[p])) ||
+      (/[A-Z]/.test(id[p - 1]) &&
+        /[A-Z]/.test(id[p]) &&
+        /[a-z]/.test(id[p + 1] ?? ""))
+    if (boundary && normalizeName(id.slice(p)) === norm) return p
+  }
+  return -1
+}
+
+/**
+ * `identifier` (an exported spelling of `key`, prefix allowed) re-pointed at
+ * the token `next`: the prefix kept as written and the rest spelled for
+ * `next` in the identifier's own convention, as `renameInIdentifier` judges
+ * it (snake, kebab, a dotted path, camel or Pascal). Undefined when the
+ * identifier does not end in `key`.
+ */
+export function retargetIdentifier(
+  identifier: string,
+  key: string,
+  next: string,
+): string | undefined {
+  const at = keyStart(identifier, key)
+  if (at < 0) return undefined
+  const head = identifier.slice(0, at)
+  const tail = identifier.slice(at)
+  const segs = next.split(".")
+  const words = segs.map(s => kebab(s).split("-").filter(Boolean))
+  if (!words.flat().length) return undefined
+  const cap = (w: string) => w[0].toUpperCase() + w.slice(1)
+  const camel = (ws: string[]) => ws[0] + ws.slice(1).map(cap).join("")
+  let text: string
+  if (tail.includes("_") || head.endsWith("_")) {
+    text = words.flat().join("_")
+    if (/[A-Z]/.test(tail) && tail === tail.toUpperCase())
+      text = text.toUpperCase()
+  } else if (
+    /^(--|\$|@)/.test(identifier) ||
+    tail.includes("-") ||
+    head.endsWith("-")
+  ) {
+    text = words.flat().join("-")
+  } else if (tail.includes(".") || head.endsWith(".")) {
+    text = segs
+      .map((s, j) => (/^[A-Za-z_$][\w$]*$/.test(s) ? s : camel(words[j])))
+      .join(".")
+  } else {
+    text = camel(words.flat())
+    if (/[A-Z]/.test(tail[0])) text = cap(text)
+  }
+  return head + text
+}
+
+/**
  * Renaming the segment at `depth` of `key` to `newName`, as an edit inside
  * `identifier` (an exported spelling of `key`, prefix allowed): the span that
  * spells that segment and its new spelling in the identifier's own
@@ -526,19 +590,7 @@ export function renameInIdentifier(
   newName: string,
 ): { start: number; end: number; text: string } | undefined {
   const id = identifier
-  const norm = normalizeName(key)
-  let i = -1
-  for (let p = 0; p < id.length && i < 0; p++) {
-    if (!ALNUM.test(id[p])) continue
-    const boundary =
-      p === 0 ||
-      !ALNUM.test(id[p - 1]) ||
-      (/[a-z0-9]/.test(id[p - 1]) && /[A-Z]/.test(id[p])) ||
-      (/[A-Z]/.test(id[p - 1]) &&
-        /[A-Z]/.test(id[p]) &&
-        /[a-z]/.test(id[p + 1] ?? ""))
-    if (boundary && normalizeName(id.slice(p)) === norm) i = p
-  }
+  let i = keyStart(id, key)
   if (i < 0) return undefined
 
   const segs = key.split(".")

@@ -14,6 +14,7 @@
  *    name a property the target token does not have
  *  - `$extends` that is malformed, names nothing, names a token, or is part
  *    of a cycle (on the group's `$extends` key)
+ *  - a `$deprecated` reason whose replacement `{reference}` names nothing
  *  - `$value` shape (DTCG 2025.10): a `color` must be `{ colorSpace,
  *    components }` in a defined space, with 3 numeric-or-`"none"` components,
  *    an alpha from 0 to 1 and a 6-digit hex; a `dimension` or `duration`
@@ -61,6 +62,7 @@ export function validate(
   checkNames(model.root, issues)
   checkGroupTypes(model.root, issues)
   checkExtends(model.root, issues)
+  checkReplacements(model.root, has, issues)
 
   for (const token of index.values()) {
     // An inherited copy's findings are its origin's, reported there.
@@ -209,6 +211,34 @@ function checkExtends(group: GroupNode, issues: ValidationIssue[]): void {
   for (const child of group.children) {
     if (child.kind === "group" && !child.inheritedFrom)
       checkExtends(child, issues)
+  }
+}
+
+/**
+ * A `$deprecated` reason, on a token or a group, whose replacement does not
+ * resolve: reported on that `$deprecated`, naming the replacement.
+ */
+function checkReplacements(
+  group: GroupNode,
+  has: (key: string) => boolean,
+  issues: ValidationIssue[],
+): void {
+  const check = (node: GroupNode | TokenNode) => {
+    const key = replacementKey(node.deprecated)
+    if (key !== undefined && !has(key)) {
+      const name = node.path.length ? `"${node.path.join(".")}"` : "This file"
+      issues.push({
+        severity: "warning",
+        path: [...node.path, "$deprecated"],
+        message: `${name} is deprecated in favour of {${key}}, which does not resolve.`,
+      })
+    }
+  }
+  check(group)
+  for (const child of group.children) {
+    if (child.inheritedFrom) continue
+    if (child.kind === "group") checkReplacements(child, has, issues)
+    else check(child)
   }
 }
 
@@ -501,11 +531,43 @@ export function deprecationMessage(key: string, value: true | string): string {
     : `{${key}} is deprecated: ${value}`
 }
 
+/**
+ * The token a `$deprecated` reason names as its replacement: the path in the
+ * first `{reference}` the string holds (spec 015 — DTCG defines no successor
+ * field, docs/adr/ADR-003-deprecation-replacement.md). `true`, `false` and a
+ * reason with no reference name none.
+ */
+export function replacementKey(
+  deprecated: boolean | string | undefined,
+): string | undefined {
+  if (typeof deprecated !== "string") return undefined
+  const key = /\{([^{}]+)\}/.exec(deprecated)?.[1].trim()
+  return key || undefined
+}
+
+/**
+ * A deprecated token's replacement, looked up with `lookup` (document first,
+ * then the workspace index, as every reference is): its key, and the token
+ * when it resolves. Undefined when the token is not deprecated, its reason
+ * names no replacement, or names the token itself.
+ */
+export function deprecationReplacement(
+  token: TokenNode,
+  lookup: (key: string) => TokenNode | undefined,
+): { key: string; token: TokenNode | undefined } | undefined {
+  const why = deprecation(token)
+  const key = replacementKey(why === true ? undefined : why)
+  if (key === undefined || key === token.path.join(".")) return undefined
+  return { key, token: lookup(key) }
+}
+
 export interface DeprecatedReference {
   /** JSON path of the string holding the reference, from the document root. */
   path: Array<string | number>
   reference: string
   message: string
+  /** The key the deprecated target names as its replacement, when it names one that resolves. */
+  replacement?: string
 }
 
 /**
@@ -530,8 +592,15 @@ export function deprecatedReferences(
     if (reference === undefined) return
     const target = lookup(reference)
     const why = target && deprecation(target)
-    if (why)
-      out.push({ path, reference, message: deprecationMessage(reference, why) })
+    if (!why) return
+    const found: DeprecatedReference = {
+      path,
+      reference,
+      message: deprecationMessage(reference, why),
+    }
+    const next = deprecationReplacement(target, lookup)
+    if (next?.token) found.replacement = next.key
+    out.push(found)
   }
   const walk = (value: unknown, path: Array<string | number>) => {
     const pointer = refPointer(value)

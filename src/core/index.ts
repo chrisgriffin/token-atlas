@@ -48,6 +48,7 @@ export {
   memberCompletions,
   normalizeName,
   renameInIdentifier,
+  retargetIdentifier,
   scanIdentifiers,
   tokenMatcher,
   tokenUsages,
@@ -71,6 +72,8 @@ export {
   deprecation,
   deprecationMessage,
   deprecatedReferences,
+  deprecationReplacement,
+  replacementKey,
   type DeprecatedReference,
 } from "./validate"
 export {
@@ -105,6 +108,9 @@ export {
   computeReferenceRenameEdits,
   computeSwapEdits,
   computeReorderEdits,
+  computeDeprecateEdits,
+  computeRetargetEdits,
+  deprecatedValue,
   InvalidNameError,
   NameTakenError,
   type Edit,
