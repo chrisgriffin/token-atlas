@@ -10,40 +10,50 @@
  * Each intent goes in through `hooks.tokenEditor.receive`, as in
  * `token-editor-writes.test.ts`; every file is left as it was found.
  */
-import * as assert from "node:assert/strict";
-import { rmSync } from "node:fs";
-import * as vscode from "vscode";
-import type { TokenAtlasTestHooks } from "../../src/extension";
+import * as assert from "node:assert/strict"
+import { rmSync } from "node:fs"
+import * as vscode from "vscode"
+import type { TokenAtlasTestHooks } from "../../src/extension"
 
-const workspace = vscode.workspace.workspaceFolders![0].uri;
-const LIGHT = vscode.Uri.joinPath(workspace, "light.tokens.json");
-const DARK = vscode.Uri.joinPath(workspace, "dark.tokens.json");
-type Intent = Parameters<TokenAtlasTestHooks["tokenEditor"]["receive"]>[1];
+const workspace = vscode.workspace.workspaceFolders![0].uri
+const LIGHT = vscode.Uri.joinPath(workspace, "light.tokens.json")
+const DARK = vscode.Uri.joinPath(workspace, "dark.tokens.json")
+type Intent = Parameters<TokenAtlasTestHooks["tokenEditor"]["receive"]>[1]
 
-let hooks: TokenAtlasTestHooks;
+let hooks: TokenAtlasTestHooks
 
-async function waitFor<T>(check: () => T | Promise<T>, what: string, ms = 20_000): Promise<T> {
-  const deadline = Date.now() + ms;
-  let last: T | undefined;
+async function waitFor<T>(
+  check: () => T | Promise<T>,
+  what: string,
+  ms = 20_000,
+): Promise<T> {
+  const deadline = Date.now() + ms
+  let last: T | undefined
   while (Date.now() < deadline) {
-    last = await check();
-    if (last) return last;
-    await new Promise((r) => setTimeout(r, 100));
+    last = await check()
+    if (last) return last
+    await new Promise(r => setTimeout(r, 100))
   }
-  throw new Error(`timed out waiting for ${what} (last: ${JSON.stringify(last)})`);
+  throw new Error(
+    `timed out waiting for ${what} (last: ${JSON.stringify(last)})`,
+  )
 }
 
 /** Send `intent` to the visual editor on the light file. */
 async function send(intent: Intent): Promise<void> {
-  await vscode.commands.executeCommand("vscode.openWith", LIGHT, "tokenAtlas.tokenEditor.any");
+  await vscode.commands.executeCommand(
+    "vscode.openWith",
+    LIGHT,
+    "tokenAtlas.tokenEditor.any",
+  )
   await waitFor(async () => {
     try {
-      await hooks.tokenEditor.receive(LIGHT, intent);
-      return true;
+      await hooks.tokenEditor.receive(LIGHT, intent)
+      return true
     } catch {
-      return false;
+      return false
     }
-  }, "the visual editor to take the intent");
+  }, "the visual editor to take the intent")
 }
 
 /** The hover over `{ref}` in a fresh untitled document. */
@@ -51,77 +61,110 @@ async function hoverOf(ref: string): Promise<string> {
   const doc = await vscode.workspace.openTextDocument({
     language: "json",
     content: `{ "p": { "$value": "{${ref}}" } }`,
-  });
+  })
   const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
     "vscode.executeHoverProvider",
     doc.uri,
     doc.positionAt(doc.getText().indexOf(`{${ref}}`) + 2),
-  );
+  )
   return hovers
-    .flatMap((h) => h.contents.map((c) => (typeof c === "string" ? c : c.value)))
-    .join("\n");
+    .flatMap(h => h.contents.map(c => (typeof c === "string" ? c : c.value)))
+    .join("\n")
 }
 
 before(async () => {
-  const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffinio.token-atlas");
-  assert.ok(ext, "extension not found");
-  hooks = await ext.activate();
-});
+  const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>(
+    "chrisgriffinio.token-atlas",
+  )
+  assert.ok(ext, "extension not found")
+  hooks = await ext.activate()
+})
 
 describe("Visual editor modes", () => {
   it("writes another mode's cell into that mode's file, and nothing else", async () => {
-    const dark = await vscode.workspace.openTextDocument(DARK);
-    const light = await vscode.workspace.openTextDocument(LIGHT);
-    const before = dark.getText();
-    const lightBefore = light.getText();
-    const path = ["theme", "accent"];
+    const dark = await vscode.workspace.openTextDocument(DARK)
+    const light = await vscode.workspace.openTextDocument(LIGHT)
+    const before = dark.getText()
+    const lightBefore = light.getText()
+    const path = ["theme", "accent"]
     try {
-      await send({ type: "setModeValue", context: "dark", path, value: "{color.base.blue-600}" });
-      await waitFor(() => dark.getText() !== before, "the dark file to change");
+      await send({
+        type: "setModeValue",
+        context: "dark",
+        path,
+        value: "{color.base.blue-600}",
+      })
+      await waitFor(() => dark.getText() !== before, "the dark file to change")
       assert.equal(
         dark.getText(),
         before.replace('"{color.base.blue-400}"', '"{color.base.blue-600}"'),
-      );
-      assert.equal(light.getText(), lightBefore);
+      )
+      assert.equal(light.getText(), lightBefore)
     } finally {
-      await send({ type: "setModeValue", context: "dark", path, value: "{color.base.blue-400}" });
-      await waitFor(() => dark.getText() === before, "the dark file to be restored");
-      await dark.save();
+      await send({
+        type: "setModeValue",
+        context: "dark",
+        path,
+        value: "{color.base.blue-400}",
+      })
+      await waitFor(
+        () => dark.getText() === before,
+        "the dark file to be restored",
+      )
+      await dark.save()
     }
-  });
+  })
 
   it("makes the picked mode the active resolution", async () => {
     try {
-      await send({ type: "setMode", context: "dark" });
+      await send({ type: "setMode", context: "dark" })
       await waitFor(
         async () => (await hoverOf("theme.surface")).includes("#1e293b"),
         "theme.surface to resolve to dark's slate-800",
-      );
-      await send({ type: "setMode", context: "light" });
+      )
+      await send({ type: "setMode", context: "light" })
       await waitFor(
         async () => (await hoverOf("theme.surface")).includes("#f1f5f9"),
         "theme.surface to resolve to light's slate-100",
-      );
+      )
     } finally {
-      await vscode.commands.executeCommand("tokenAtlas.chooseActiveSet", []);
+      await vscode.commands.executeCommand("tokenAtlas.chooseActiveSet", [])
     }
-  });
+  })
 
   it("writes the mode view where a value already decides it", async () => {
     // A workspace value overrides a user one: written to user settings, the
     // toggle would change nothing the editor reads.
-    const config = () => vscode.workspace.getConfiguration("tokenAtlas", LIGHT);
-    await config().update("modeView", "single", vscode.ConfigurationTarget.Workspace);
+    const config = () => vscode.workspace.getConfiguration("tokenAtlas", LIGHT)
+    await config().update(
+      "modeView",
+      "single",
+      vscode.ConfigurationTarget.Workspace,
+    )
     try {
-      await send({ type: "setModeView", view: "sideBySide" });
-      await waitFor(() => config().get("modeView") === "sideBySide", "the toggle to take effect");
-      assert.equal(config().inspect("modeView")?.workspaceValue, "sideBySide");
-      assert.equal(config().inspect("modeView")?.globalValue, undefined);
+      await send({ type: "setModeView", view: "sideBySide" })
+      await waitFor(
+        () => config().get("modeView") === "sideBySide",
+        "the toggle to take effect",
+      )
+      assert.equal(config().inspect("modeView")?.workspaceValue, "sideBySide")
+      assert.equal(config().inspect("modeView")?.globalValue, undefined)
     } finally {
-      await config().update("modeView", undefined, vscode.ConfigurationTarget.Workspace);
-      await config().update("modeView", undefined, vscode.ConfigurationTarget.Global);
+      await config().update(
+        "modeView",
+        undefined,
+        vscode.ConfigurationTarget.Workspace,
+      )
+      await config().update(
+        "modeView",
+        undefined,
+        vscode.ConfigurationTarget.Global,
+      )
       // The workspace settings file the test wrote, so the fixture stays as committed.
-      rmSync(vscode.Uri.joinPath(workspace, ".vscode").fsPath, { recursive: true, force: true });
+      rmSync(vscode.Uri.joinPath(workspace, ".vscode").fsPath, {
+        recursive: true,
+        force: true,
+      })
     }
-  });
-});
+  })
+})

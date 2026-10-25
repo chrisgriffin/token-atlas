@@ -3,7 +3,7 @@
  * helpers (defaults, inline parsing, preview) can read them without threading
  * a prop through every component; App updates it on each host message.
  */
-import type { EditorSettings } from "../../shared/protocol";
+import type { EditorSettings } from "../../shared/protocol"
 
 export const DEFAULT_SETTINGS: EditorSettings = {
   rootFontSize: 16,
@@ -11,11 +11,11 @@ export const DEFAULT_SETTINGS: EditorSettings = {
   defaultDimensionUnit: "px",
   contrastTarget: "AA",
   modeView: "single",
-};
+}
 
-let current: EditorSettings = DEFAULT_SETTINGS;
+let current: EditorSettings = DEFAULT_SETTINGS
 
-export const settings = (): EditorSettings => current;
+export const settings = (): EditorSettings => current
 export function setSettings(next: EditorSettings | undefined): void {
-  current = next ?? DEFAULT_SETTINGS;
+  current = next ?? DEFAULT_SETTINGS
 }

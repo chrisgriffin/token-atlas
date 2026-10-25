@@ -677,8 +677,8 @@ export const css = `
   .statusbar svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.6; }
   .sev-error { color: var(--vscode-errorForeground); }
   .sev-warning { color: var(--vscode-editorWarning-foreground); }
-`;
+`
 
-const style = document.createElement("style");
-style.textContent = css;
-document.head.appendChild(style);
+const style = document.createElement("style")
+style.textContent = css
+document.head.appendChild(style)

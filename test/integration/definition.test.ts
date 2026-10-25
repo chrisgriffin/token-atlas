@@ -21,12 +21,12 @@
  * swatch per concrete colour token plus "dist/copy.tokens.json is the
  * workspace's one hex-string $value".
  */
-import * as assert from "node:assert/strict";
-import * as vscode from "vscode";
-import type { TokenAtlasTestHooks } from "../../src/extension";
+import * as assert from "node:assert/strict"
+import * as vscode from "vscode"
+import type { TokenAtlasTestHooks } from "../../src/extension"
 
-const workspace = vscode.workspace.workspaceFolders![0].uri;
-const file = (name: string) => vscode.Uri.joinPath(workspace, name);
+const workspace = vscode.workspace.workspaceFolders![0].uri
+const file = (name: string) => vscode.Uri.joinPath(workspace, name)
 
 /**
  * Poll until `check` returns a value; the workspace index is built lazily.
@@ -40,23 +40,25 @@ async function waitFor<T>(
   what: string,
   ms = 20_000,
 ): Promise<T> {
-  const deadline = Date.now() + ms;
-  let last: T | undefined;
+  const deadline = Date.now() + ms
+  let last: T | undefined
   while (Date.now() < deadline) {
-    last = await check();
-    if (last) return last;
-    await new Promise((r) => setTimeout(r, 100));
+    last = await check()
+    if (last) return last
+    await new Promise(r => setTimeout(r, 100))
   }
-  throw new Error(`timed out waiting for ${what} (last: ${JSON.stringify(last)})`);
+  throw new Error(
+    `timed out waiting for ${what} (last: ${JSON.stringify(last)})`,
+  )
 }
 
 /** The position just inside `needle`'s first occurrence in `name`. */
 async function positionOf(name: string, needle: string) {
-  const uri = file(name);
-  const doc = await vscode.workspace.openTextDocument(uri);
-  const offset = doc.getText().indexOf(needle);
-  assert.notEqual(offset, -1, `${name} no longer contains ${needle}`);
-  return { uri, position: doc.positionAt(offset + 1) };
+  const uri = file(name)
+  const doc = await vscode.workspace.openTextDocument(uri)
+  const offset = doc.getText().indexOf(needle)
+  assert.notEqual(offset, -1, `${name} no longer contains ${needle}`)
+  return { uri, position: doc.positionAt(offset + 1) }
 }
 
 /**
@@ -66,19 +68,22 @@ async function positionOf(name: string, needle: string) {
  * Token Atlas's shape of answer — the same filter `exports.test.ts` applies, for
  * the same reason.
  */
-async function tokenDefinitionsAt(name: string, needle: string): Promise<vscode.Location[]> {
-  const { uri, position } = await positionOf(name, needle);
+async function tokenDefinitionsAt(
+  name: string,
+  needle: string,
+): Promise<vscode.Location[]> {
+  const { uri, position } = await positionOf(name, needle)
   const found =
-    (await vscode.commands.executeCommand<Array<vscode.Location | vscode.LocationLink>>(
-      "vscode.executeDefinitionProvider",
-      uri,
-      position,
-    )) ?? [];
+    (await vscode.commands.executeCommand<
+      Array<vscode.Location | vscode.LocationLink>
+    >("vscode.executeDefinitionProvider", uri, position)) ?? []
   return found
-    .map((d) =>
-      "targetUri" in d ? new vscode.Location(d.targetUri, d.targetRange) : (d as vscode.Location),
+    .map(d =>
+      "targetUri" in d
+        ? new vscode.Location(d.targetUri, d.targetRange)
+        : (d as vscode.Location),
     )
-    .filter((loc) => loc.uri.path.endsWith(".tokens.json"));
+    .filter(loc => loc.uri.path.endsWith(".tokens.json"))
 }
 
 /**
@@ -90,18 +95,21 @@ async function tokenDefinitionsAt(name: string, needle: string): Promise<vscode.
  * `light` group itself, so a bare-key search would land there.
  */
 function keyOffsetOf(doc: vscode.TextDocument, path: string[]) {
-  const text = doc.getText();
-  let cursor = 0;
-  let offset = -1;
+  const text = doc.getText()
+  let cursor = 0
+  let offset = -1
   for (const key of path) {
-    const opens = new RegExp(`"${key}"\\s*:\\s*\\{`, "g");
-    opens.lastIndex = cursor;
-    const match = opens.exec(text);
-    assert.ok(match, `${doc.uri.path} no longer opens a member at ${path.join(".")}`);
-    offset = match.index;
-    cursor = match.index + match[0].length;
+    const opens = new RegExp(`"${key}"\\s*:\\s*\\{`, "g")
+    opens.lastIndex = cursor
+    const match = opens.exec(text)
+    assert.ok(
+      match,
+      `${doc.uri.path} no longer opens a member at ${path.join(".")}`,
+    )
+    offset = match.index
+    cursor = match.index + match[0].length
   }
-  return offset;
+  return offset
 }
 
 /**
@@ -113,37 +121,44 @@ function keyOffsetOf(doc: vscode.TextDocument, path: string[]) {
  * twice, once under `light` and once under `dark`, so a leaf-only assertion
  * would also pass a provider that resolved `{light.surface}` to `dark.surface`.
  */
-async function assertLandsOnKey(location: vscode.Location, fileName: string, path: string[]) {
+async function assertLandsOnKey(
+  location: vscode.Location,
+  fileName: string,
+  path: string[],
+) {
   assert.ok(
     location.uri.path.endsWith(fileName),
     `definition landed in ${location.uri.path}, not ${fileName}`,
-  );
-  const doc = await vscode.workspace.openTextDocument(location.uri);
-  const key = path[path.length - 1];
-  assert.equal(doc.getText(location.range), `"${key}"`);
-  const landed = doc.offsetAt(location.range.start);
-  const expected = keyOffsetOf(doc, path);
+  )
+  const doc = await vscode.workspace.openTextDocument(location.uri)
+  const key = path[path.length - 1]
+  assert.equal(doc.getText(location.range), `"${key}"`)
+  const landed = doc.offsetAt(location.range.start)
+  const expected = keyOffsetOf(doc, path)
   assert.equal(
     landed,
     expected,
     `the definition is not the key that opens ${path.join(".")} — ${landed} !== ${expected}`,
-  );
-  const member = doc.getText().slice(landed);
+  )
+  const member = doc.getText().slice(landed)
   assert.match(
     member,
     new RegExp(`^"${key}":\\s*\\{\\s*"\\$(type|value)"`),
     `the definition range is not the key that opens ${key}'s member`,
-  );
+  )
 }
 
 /** The one definition at `needle`, asserting no other token file claimed it. */
-async function soleDefinitionAt(name: string, needle: string): Promise<vscode.Location> {
+async function soleDefinitionAt(
+  name: string,
+  needle: string,
+): Promise<vscode.Location> {
   const [definition, ...rest] = await waitFor(async () => {
-    const found = await tokenDefinitionsAt(name, needle);
-    return found.length ? found : undefined;
-  }, `a token-file definition for ${needle} in ${name}`);
-  assert.deepEqual(rest, [], "more than one token file claimed the definition");
-  return definition;
+    const found = await tokenDefinitionsAt(name, needle)
+    return found.length ? found : undefined
+  }, `a token-file definition for ${needle} in ${name}`)
+  assert.deepEqual(rest, [], "more than one token file claimed the definition")
+  return definition
 }
 
 describe("Token JSON go-to-definition", () => {
@@ -153,18 +168,26 @@ describe("Token JSON go-to-definition", () => {
   // executeDefinitionProvider works off a TextDocument — so there is no
   // teardown to pair with it.
   before(async () => {
-    const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>("chrisgriffinio.token-atlas");
-    assert.ok(ext, "extension not found");
-    await ext.activate();
-  });
+    const ext = vscode.extensions.getExtension<TokenAtlasTestHooks>(
+      "chrisgriffinio.token-atlas",
+    )
+    assert.ok(ext, "extension not found")
+    await ext.activate()
+  })
 
   it("jumps from an alias to a token defined in the same file", async () => {
     // studio.tokens.json's `semantic.page` is `{light.surface}`, and
     // `light.surface` is defined in that same file — the provider's
     // local-first branch, which never consults the workspace index.
-    const definition = await soleDefinitionAt("studio.tokens.json", '"{light.surface}"');
-    await assertLandsOnKey(definition, "studio.tokens.json", ["light", "surface"]);
-  });
+    const definition = await soleDefinitionAt(
+      "studio.tokens.json",
+      '"{light.surface}"',
+    )
+    await assertLandsOnKey(definition, "studio.tokens.json", [
+      "light",
+      "surface",
+    ])
+  })
 
   it("jumps from an alias in a theme file to the token in the shared primitives file", async () => {
     // light.tokens.json is nothing but aliases into primitives.tokens.json:
@@ -172,9 +195,16 @@ describe("Token JSON go-to-definition", () => {
     // file. `color.base.white` is defined only there — `brand.primary` is
     // defined in two fixtures and would be first-file-wins (exports.test.ts
     // records the same constraint).
-    const definition = await soleDefinitionAt("light.tokens.json", '"{color.base.white}"');
-    await assertLandsOnKey(definition, "primitives.tokens.json", ["color", "base", "white"]);
-  });
+    const definition = await soleDefinitionAt(
+      "light.tokens.json",
+      '"{color.base.white}"',
+    )
+    await assertLandsOnKey(definition, "primitives.tokens.json", [
+      "color",
+      "base",
+      "white",
+    ])
+  })
 
   it("stays silent on a $value that is a plain string rather than an alias", async () => {
     // dist/copy.tokens.json's `accent` is the workspace's one plain-string
@@ -182,7 +212,10 @@ describe("Token JSON go-to-definition", () => {
     // keeps a file out of SCANNING only — opened directly it still gets
     // language features, which color.test.ts already proves for the
     // `isTokenDocument`-gated colour provider on this exact document.
-    assert.deepEqual(await tokenDefinitionsAt("dist/copy.tokens.json", '"#123456"'), []);
+    assert.deepEqual(
+      await tokenDefinitionsAt("dist/copy.tokens.json", '"#123456"'),
+      [],
+    )
 
     // And again in studio.tokens.json, where the test above proves the
     // provider answers — so the silence is pinned to the value's shape, not to
@@ -191,11 +224,15 @@ describe("Token JSON go-to-definition", () => {
     // guards in `tokenReferenceAtOffset` pass on it, so this reaches the
     // reference match itself.
     assert.ok(
-      (await tokenDefinitionsAt("studio.tokens.json", '"{light.surface}"')).length > 0,
+      (await tokenDefinitionsAt("studio.tokens.json", '"{light.surface}"'))
+        .length > 0,
       "the alias in studio.tokens.json stopped resolving, so the silence below proves nothing",
-    );
-    assert.deepEqual(await tokenDefinitionsAt("studio.tokens.json", '"#ffffff"'), []);
-  });
+    )
+    assert.deepEqual(
+      await tokenDefinitionsAt("studio.tokens.json", '"#ffffff"'),
+      [],
+    )
+  })
 
   // Invariant 3: the workspace index scans only the `tokenAtlas.include` globs
   // (#303). Narrowed to `scale/`, the index holds `scale/space.json` alone, so
@@ -205,29 +242,45 @@ describe("Token JSON go-to-definition", () => {
     const include = (globs: string[] | undefined) =>
       vscode.workspace
         .getConfiguration("tokenAtlas")
-        .update("include", globs, vscode.ConfigurationTarget.Global);
+        .update("include", globs, vscode.ConfigurationTarget.Global)
 
-    after(() => include(undefined));
+    after(() => include(undefined))
 
     it("stops resolving a reference into a file outside the globs", async () => {
       // At the default include first, so the miss below is the narrowing and
       // not a broken fixture.
-      const definition = await soleDefinitionAt("light.tokens.json", '"{color.base.white}"');
-      await assertLandsOnKey(definition, "primitives.tokens.json", ["color", "base", "white"]);
+      const definition = await soleDefinitionAt(
+        "light.tokens.json",
+        '"{color.base.white}"',
+      )
+      await assertLandsOnKey(definition, "primitives.tokens.json", [
+        "color",
+        "base",
+        "white",
+      ])
 
-      await include(["scale/**"]);
+      await include(["scale/**"])
       await waitFor(async () => {
-        const found = await tokenDefinitionsAt("light.tokens.json", '"{color.base.white}"');
-        return found.length === 0 || undefined;
-      }, "{color.base.white} to stop resolving once primitives.tokens.json is outside include");
-    });
+        const found = await tokenDefinitionsAt(
+          "light.tokens.json",
+          '"{color.base.white}"',
+        )
+        return found.length === 0 || undefined
+      }, "{color.base.white} to stop resolving once primitives.tokens.json is outside include")
+    })
 
     it("still resolves a path the active document defines itself", async () => {
       // studio.tokens.json is outside `scale/**` too: it answers from its own
       // tokens, never the index.
-      await include(["scale/**"]);
-      const definition = await soleDefinitionAt("studio.tokens.json", '"{light.surface}"');
-      await assertLandsOnKey(definition, "studio.tokens.json", ["light", "surface"]);
-    });
-  });
-});
+      await include(["scale/**"])
+      const definition = await soleDefinitionAt(
+        "studio.tokens.json",
+        '"{light.surface}"',
+      )
+      await assertLandsOnKey(definition, "studio.tokens.json", [
+        "light",
+        "surface",
+      ])
+    })
+  })
+})

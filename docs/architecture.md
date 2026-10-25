@@ -67,14 +67,15 @@ npm run build             # esbuild → dist/extension.js + dist/webview.js
 npm run watch             # rebuild on change
 npm test                  # vitest: core, webview and repo-shape tests
 npm run typecheck         # tsc --noEmit
-npm run format:check      # prettier
+npm run format:check      # prettier, with the shared @chrisgriffin/config style
+npm run lint              # eslint, from eslint.config.mjs on the shared base
 npm run test:integration  # the extension inside a downloaded VS Code
 npm run package           # vsce package --no-dependencies --githubBranch main → .vsix
 ```
 
 To use it: press <kbd>F5</kbd> in VS Code ("Run Token Atlas Extension"), which opens an Extension Development Host with the extension loaded, then open one of the token files in `examples/` or `fixtures/`.
 
-The gate CI runs, and the one to run before pushing, is those commands in order: `npm run format:check && npm run typecheck && npm test && npm run build && npm run test:integration`. CI wraps the last one in `xvfb-run -a` because it needs a display.
+The gate CI runs, and the one to run before pushing, is those commands in order: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`. CI wraps the last one in `xvfb-run -a` because it needs a display.
 
 ## Where to look next
 

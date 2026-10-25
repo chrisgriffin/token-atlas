@@ -15,7 +15,7 @@
 // they ride along with the next feat/fix/perf bump and show up in the
 // changelog under their own sections.
 
-import createPreset from "conventional-changelog-conventionalcommits";
+import createPreset from "conventional-changelog-conventionalcommits"
 
 const preset = await createPreset({
   types: [
@@ -31,7 +31,7 @@ const preset = await createPreset({
     { type: "ci", section: "Continuous Integration" },
     { type: "chore", section: "Chores" },
   ],
-});
+})
 
 // GitHub auto-closes any issue that follows a closing keyword
 // (close/closes/closed, fix/fixes/fixed, resolve/resolves/resolved) in a
@@ -44,14 +44,14 @@ const preset = await createPreset({
 // closing keyword closes the issue; a plain mention does not. The parser
 // sets `action` to the matched keyword for those; bare mentions have a
 // null `action`.
-const baseTransform = preset.writer.transform;
+const baseTransform = preset.writer.transform
 
 preset.writer.transform = (commit, context) => {
-  const transformed = baseTransform ? baseTransform(commit, context) : commit;
+  const transformed = baseTransform ? baseTransform(commit, context) : commit
   if (transformed && Array.isArray(transformed.references)) {
-    transformed.references = transformed.references.filter((ref) => ref.action);
+    transformed.references = transformed.references.filter(ref => ref.action)
   }
-  return transformed;
-};
+  return transformed
+}
 
-export default preset;
+export default preset

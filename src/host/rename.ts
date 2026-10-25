@@ -8,8 +8,8 @@
  * Less, JS and TS (codeUsages.ts), each re-spelled in its own convention;
  * a file that says it was generated is left to the export tool.
  */
-import * as vscode from "vscode";
-import { getLocation } from "jsonc-parser";
+import * as vscode from "vscode"
+import { getLocation } from "jsonc-parser"
 import {
   computeReferenceRenameEdits,
   computeRenameEdits,
@@ -20,8 +20,8 @@ import {
   renameInIdentifier,
   type Edit,
   type Fragment,
-} from "../core";
-import { codeUsages } from "./codeUsages";
+} from "../core"
+import { codeUsages } from "./codeUsages"
 import {
   TOKEN_SELECTOR,
   buildWorkspaceIndex,
@@ -31,7 +31,7 @@ import {
   isTokenDocument,
   keyRange,
   tokenScopeAt,
-} from "./workspaceIndex";
+} from "./workspaceIndex"
 
 /**
  * Rename the node at `nodePath` in `document` (inside `scope` when it is an
@@ -47,20 +47,25 @@ export async function buildRenameEdit(
   // Both rename paths come through here, F2 and the visual editor's:
   // computeRenameEdits throws InvalidNameError for an illegal name before
   // anything is edited.
-  const edit = new vscode.WorkspaceEdit();
-  add(edit, document, computeRenameEdits(scope.text, nodePath, newName), scope.offset);
+  const edit = new vscode.WorkspaceEdit()
+  add(
+    edit,
+    document,
+    computeRenameEdits(scope.text, nodePath, newName),
+    scope.offset,
+  )
 
-  const oldKey = nodePath.join(".");
-  const newKey = [...nodePath.slice(0, -1), newName].join(".");
+  const oldKey = nodePath.join(".")
+  const newKey = [...nodePath.slice(0, -1), newName].join(".")
   // Every token file, not just index winners (the index is first-file-wins
   // per key). Open each as a TextDocument so offsets match what VS Code edits,
   // unsaved changes included. computeReferenceRenameEdits skips a file that
   // defines the path itself (local-first, invariant 4).
   for (const { uri } of await findTokenFiles()) {
-    if (uri.toString() === document.uri.toString()) continue;
+    if (uri.toString() === document.uri.toString()) continue
     try {
-      const doc = await vscode.workspace.openTextDocument(uri);
-      add(edit, doc, computeReferenceRenameEdits(doc.getText(), oldKey, newKey));
+      const doc = await vscode.workspace.openTextDocument(uri)
+      add(edit, doc, computeReferenceRenameEdits(doc.getText(), oldKey, newKey))
     } catch {
       /* unreadable file — skip */
     }
@@ -68,24 +73,29 @@ export async function buildRenameEdit(
   // Each inline source is its own scope, local-first like a file.
   for (const { uri } of await findResolverFiles()) {
     try {
-      const doc = await vscode.workspace.openTextDocument(uri);
-      const self = doc.uri.toString() === document.uri.toString();
+      const doc = await vscode.workspace.openTextDocument(uri)
+      const self = doc.uri.toString() === document.uri.toString()
       for (const s of inlineSources(doc.getText())) {
-        if (self && s.offset === scope.offset) continue;
-        add(edit, doc, computeReferenceRenameEdits(s.text, oldKey, newKey), s.offset);
+        if (self && s.offset === scope.offset) continue
+        add(
+          edit,
+          doc,
+          computeReferenceRenameEdits(s.text, oldKey, newKey),
+          s.offset,
+        )
       }
     } catch {
       /* unreadable file — skip */
     }
   }
-  await addCodeUsages(edit, scope.text, oldKey, nodePath.length - 1, newName);
-  return edit;
+  await addCodeUsages(edit, scope.text, oldKey, nodePath.length - 1, newName)
+  return edit
 }
 
 const CODE_USAGE: vscode.WorkspaceEditEntryMetadata = {
   label: "Code usages",
   needsConfirmation: false,
-};
+}
 
 /**
  * Rewrite the code usages of `oldKey`, or of every token under it when it is
@@ -101,34 +111,44 @@ async function addCodeUsages(
   depth: number,
   newName: string,
 ): Promise<void> {
-  const local = indexTokens(parseTokens(text));
-  const renamed = [...local.keys()].filter((k) => k === oldKey || k.startsWith(oldKey + "."));
-  if (!renamed.length) return;
-  const keys = new Set([...(await buildWorkspaceIndex()).keys(), ...local.keys()]);
-  const usages = await codeUsages(keys);
-  const docs = new Map<string, vscode.TextDocument | undefined>();
+  const local = indexTokens(parseTokens(text))
+  const renamed = [...local.keys()].filter(
+    k => k === oldKey || k.startsWith(oldKey + "."),
+  )
+  if (!renamed.length) return
+  const keys = new Set([
+    ...(await buildWorkspaceIndex()).keys(),
+    ...local.keys(),
+  ])
+  const usages = await codeUsages(keys)
+  const docs = new Map<string, vscode.TextDocument | undefined>()
   for (const key of renamed) {
     for (const { location } of usages.get(key) ?? []) {
-      const uri = location.uri.toString();
+      const uri = location.uri.toString()
       if (!docs.has(uri)) {
         try {
-          const doc = await vscode.workspace.openTextDocument(location.uri);
-          docs.set(uri, isGeneratedCode(doc.getText()) ? undefined : doc);
+          const doc = await vscode.workspace.openTextDocument(location.uri)
+          docs.set(uri, isGeneratedCode(doc.getText()) ? undefined : doc)
         } catch {
-          docs.set(uri, undefined); // unreadable file — skip
+          docs.set(uri, undefined) // unreadable file — skip
         }
       }
-      const doc = docs.get(uri);
-      if (!doc) continue;
-      const r = renameInIdentifier(doc.getText(location.range), key, depth, newName);
-      if (!r) continue;
-      const at = location.range.start;
+      const doc = docs.get(uri)
+      if (!doc) continue
+      const r = renameInIdentifier(
+        doc.getText(location.range),
+        key,
+        depth,
+        newName,
+      )
+      if (!r) continue
+      const at = location.range.start
       edit.replace(
         doc.uri,
         new vscode.Range(at.translate(0, r.start), at.translate(0, r.end)),
         r.text,
         CODE_USAGE,
-      );
+      )
     }
   }
 }
@@ -140,12 +160,15 @@ function add(
   base = 0,
 ): void {
   for (const e of edits) {
-    const start = base + e.offset;
+    const start = base + e.offset
     edit.replace(
       document.uri,
-      new vscode.Range(document.positionAt(start), document.positionAt(start + e.length)),
+      new vscode.Range(
+        document.positionAt(start),
+        document.positionAt(start + e.length),
+      ),
       e.content,
-    );
+    )
   }
 }
 
@@ -154,32 +177,40 @@ function renameTargetAt(
   document: vscode.TextDocument,
   position: vscode.Position,
 ): { path: string[]; range: vscode.Range; scope: Fragment } | undefined {
-  const offset = document.offsetAt(position);
-  const loc = getLocation(document.getText(), offset);
-  if (!loc.isAtPropertyKey) return;
+  const offset = document.offsetAt(position)
+  const loc = getLocation(document.getText(), offset)
+  if (!loc.isAtPropertyKey) return
   // A token document, or a source written inline in a resolver.
-  const scope = tokenScopeAt(document, offset);
-  if (!scope) return;
-  const path = loc.path.slice(scope.path.length);
-  if (!path.length) return;
-  if (!path.every((s): s is string => typeof s === "string" && !s.startsWith("$"))) return;
-  const key = path.join(".");
-  const local = indexTokens(parseTokens(scope.text));
-  const known = local.has(key) || [...local.keys()].some((k) => k.startsWith(key + "."));
-  if (!known) return;
-  const range = keyRange(document, [...scope.path, ...path]);
-  return range ? { path, range, scope } : undefined;
+  const scope = tokenScopeAt(document, offset)
+  if (!scope) return
+  const path = loc.path.slice(scope.path.length)
+  if (!path.length) return
+  if (
+    !path.every((s): s is string => typeof s === "string" && !s.startsWith("$"))
+  )
+    return
+  const key = path.join(".")
+  const local = indexTokens(parseTokens(scope.text))
+  const known =
+    local.has(key) || [...local.keys()].some(k => k.startsWith(key + "."))
+  if (!known) return
+  const range = keyRange(document, [...scope.path, ...path])
+  return range ? { path, range, scope } : undefined
 }
 
 const renamable = (document: vscode.TextDocument) =>
-  isTokenDocument(document) || isResolverDocument(document);
+  isTokenDocument(document) || isResolverDocument(document)
 
 class TokenRenameProvider implements vscode.RenameProvider {
   prepareRename(document: vscode.TextDocument, position: vscode.Position) {
-    if (!renamable(document)) return;
-    const target = renameTargetAt(document, position);
-    if (!target) throw new Error("Put the cursor on a token or group name to rename it.");
-    return { range: target.range, placeholder: target.path[target.path.length - 1] };
+    if (!renamable(document)) return
+    const target = renameTargetAt(document, position)
+    if (!target)
+      throw new Error("Put the cursor on a token or group name to rename it.")
+    return {
+      range: target.range,
+      placeholder: target.path[target.path.length - 1],
+    }
   }
 
   async provideRenameEdits(
@@ -187,15 +218,18 @@ class TokenRenameProvider implements vscode.RenameProvider {
     position: vscode.Position,
     newName: string,
   ) {
-    if (!renamable(document)) return;
-    const target = renameTargetAt(document, position);
-    if (!target) return;
-    return buildRenameEdit(document, target.path, newName, target.scope);
+    if (!renamable(document)) return
+    const target = renameTargetAt(document, position)
+    if (!target) return
+    return buildRenameEdit(document, target.path, newName, target.scope)
   }
 }
 
 export function registerRename(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.languages.registerRenameProvider(TOKEN_SELECTOR, new TokenRenameProvider()),
-  );
+    vscode.languages.registerRenameProvider(
+      TOKEN_SELECTOR,
+      new TokenRenameProvider(),
+    ),
+  )
 }

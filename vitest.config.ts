@@ -1,8 +1,8 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig } from "vitest/config"
 
 // Those run inside a real VS Code via `npm run test:integration`; the
 // `vscode` module does not exist here.
-const exclude = ["test/integration/**", "**/node_modules/**"];
+const exclude = ["test/integration/**", "**/node_modules/**"]
 
 export default defineConfig({
   test: {
@@ -31,4 +31,4 @@ export default defineConfig({
       },
     ],
   },
-});
+})

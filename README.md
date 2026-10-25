@@ -120,10 +120,14 @@ Token Atlas can check your own naming and tiering conventions. Put a `token-atla
 ```json
 {
   "tiers": ["base", "system", "component"],
-  "vocabularies": [{ "paths": ["system.radius"], "values": ["none", "sm", "md", "lg"] }],
+  "vocabularies": [
+    { "paths": ["system.radius"], "values": ["none", "sm", "md", "lg"] }
+  ],
   "rampPaths": ["base.color.*"],
   "naming": { "case": "kebab-case" },
-  "contrastPairs": [{ "foreground": "system.color.text", "background": "system.color.surface" }],
+  "contrastPairs": [
+    { "foreground": "system.color.text", "background": "system.color.surface" }
+  ],
   "rules": { "token-atlas/tier-alias-inverted": "error" }
 }
 ```

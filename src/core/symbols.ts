@@ -5,13 +5,13 @@
  * `color.brand.primary`; an empty query matches everything.
  */
 export function fuzzyMatches(query: string, candidate: string): boolean {
-  const q = query.toLowerCase();
-  const c = candidate.toLowerCase();
-  let at = 0;
+  const q = query.toLowerCase()
+  const c = candidate.toLowerCase()
+  let at = 0
   for (const ch of q) {
-    at = c.indexOf(ch, at);
-    if (at === -1) return false;
-    at++;
+    at = c.indexOf(ch, at)
+    if (at === -1) return false
+    at++
   }
-  return true;
+  return true
 }

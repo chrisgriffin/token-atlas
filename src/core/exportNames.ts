@@ -11,7 +11,7 @@
 
 /** Comparison key: letters and digits only, lowercased. */
 export function normalizeName(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return s.toLowerCase().replace(/[^a-z0-9]/g, "")
 }
 
 /**
@@ -23,7 +23,7 @@ function segments(identifier: string): string[] {
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2")
     .split(/[^A-Za-z0-9]+/)
-    .filter(Boolean);
+    .filter(Boolean)
 }
 
 /**
@@ -35,28 +35,30 @@ export function findTokenForIdentifier(
   identifier: string,
   keys: Iterable<string>,
 ): string | undefined {
-  return tokenMatcher(keys)(identifier);
+  return tokenMatcher(keys)(identifier)
 }
 
 /** `findTokenForIdentifier` with the key lookup built once, for matching many identifiers. */
-export function tokenMatcher(keys: Iterable<string>): (identifier: string) => string | undefined {
-  const byNorm = new Map<string, string>();
+export function tokenMatcher(
+  keys: Iterable<string>,
+): (identifier: string) => string | undefined {
+  const byNorm = new Map<string, string>()
   for (const key of keys) {
-    const n = normalizeName(key);
-    if (n && !byNorm.has(n)) byNorm.set(n, key);
+    const n = normalizeName(key)
+    if (n && !byNorm.has(n)) byNorm.set(n, key)
   }
-  return (identifier) => {
-    const segs = segments(identifier);
+  return identifier => {
+    const segs = segments(identifier)
     for (let i = 0; i < segs.length; i++) {
-      const hit = byNorm.get(segs.slice(i).join("").toLowerCase());
-      if (hit) return hit;
+      const hit = byNorm.get(segs.slice(i).join("").toLowerCase())
+      if (hit) return hit
     }
-    return undefined;
-  };
+    return undefined
+  }
 }
 
 /** `--a-b`, `$a-b`, `aB`, `a_b`, `a.b.c`: one run of identifier chars, dots allowed between. */
-export const EXPORT_IDENTIFIER = /[$\w-]+(?:\.[$\w-]+)*/;
+export const EXPORT_IDENTIFIER = /[$\w-]+(?:\.[$\w-]+)*/
 
 /** The variable spellings a stylesheet has; any other word there is a property, keyword or selector. */
 const STYLESHEET_VARIABLE: Record<string, RegExp> = {
@@ -64,7 +66,7 @@ const STYLESHEET_VARIABLE: Record<string, RegExp> = {
   scss: /^--|(?:^|\.)\$/, // `$x`, or `tokens.$x` from a Sass module
   sass: /^--|(?:^|\.)\$/,
   less: /^--/, // `@x` too: the `@` sits before the scanned name, see `before`
-};
+}
 
 /**
  * Whether `name`, scanned with `EXPORT_IDENTIFIER` from a file in
@@ -72,9 +74,17 @@ const STYLESHEET_VARIABLE: Record<string, RegExp> = {
  * can: `--x`, Sass's `$x`, Less's `@x` (`before` is the character ahead of
  * the name). Elsewhere, and with no language, every identifier can.
  */
-export function canNameToken(name: string, languageId?: string, before = ""): boolean {
-  const variable = languageId ? STYLESHEET_VARIABLE[languageId] : undefined;
-  return !variable || variable.test(name) || (languageId === "less" && before === "@");
+export function canNameToken(
+  name: string,
+  languageId?: string,
+  before = "",
+): boolean {
+  const variable = languageId ? STYLESHEET_VARIABLE[languageId] : undefined
+  return (
+    !variable ||
+    variable.test(name) ||
+    (languageId === "less" && before === "@")
+  )
 }
 
 const JS_LANGUAGES = new Set([
@@ -83,7 +93,7 @@ const JS_LANGUAGES = new Set([
   "typescript",
   "typescriptreact",
   ...["js", "jsx", "mjs", "cjs", "ts", "tsx", "mts", "cts"], // a closed file's extension
-]);
+])
 
 /**
  * CSS properties as a DOM style object spells them (`borderWidth`). In JS/TS
@@ -130,30 +140,32 @@ const STYLE_PROPERTIES = new Set(
   transition-timing-function translate user-select vertical-align visibility white-space
   width will-change word-break word-spacing writing-mode z-index`
     .split(/\s+/)
-    .map((p) => p.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())),
-);
+    .map(p => p.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())),
+)
 
 /**
  * The names a JS/TS file brings in: `import a, { b, c as d } from`,
  * `import * as e from`, `const f = require(` and `const { g, h: i } = require(`.
  */
 function importedNames(text: string): Set<string> {
-  const out = new Set<string>();
+  const out = new Set<string>()
   const add = (list: string, alias: RegExp) => {
     for (const part of list.replace(/[{}]/g, ",").split(",")) {
-      const name = alias.exec(part.trim())?.[1];
-      if (name) out.add(name);
+      const name = alias.exec(part.trim())?.[1]
+      if (name) out.add(name)
     }
-  };
-  for (const m of text.matchAll(/\bimport\s+(?:type\s+)?([^'";]*?)\s+from\s*['"]/g)) {
-    add(m[1], /(?:^|\s)([A-Za-z_$][\w$]*)$/); // `b`, `c as d` → d, `* as e` → e
+  }
+  for (const m of text.matchAll(
+    /\bimport\s+(?:type\s+)?([^'";]*?)\s+from\s*['"]/g,
+  )) {
+    add(m[1], /(?:^|\s)([A-Za-z_$][\w$]*)$/) // `b`, `c as d` → d, `* as e` → e
   }
   for (const m of text.matchAll(
     /\b(?:const|let|var)\s+(\{[^}]*\}|[A-Za-z_$][\w$]*)\s*=\s*require\s*\(/g,
   )) {
-    add(m[1], /([A-Za-z_$][\w$]*)$/); // `g`, `h: i` → i
+    add(m[1], /([A-Za-z_$][\w$]*)$/) // `g`, `h: i` → i
   }
-  return out;
+  return out
 }
 
 /**
@@ -175,24 +187,26 @@ function isStyleProperty(
   exported: boolean,
   objectKey: boolean,
 ): boolean {
-  const segs = name.split(".");
-  const last = segs[segs.length - 1];
-  if (!STYLE_PROPERTIES.has(last)) return false;
-  if (objectKey && segs.length === 1) return true;
-  if (imported.has(segs[0]) || exported) return false;
-  return segs.length === 1 || segs[segs.length - 2] === "style" || /[A-Z]/.test(last);
+  const segs = name.split(".")
+  const last = segs[segs.length - 1]
+  if (!STYLE_PROPERTIES.has(last)) return false
+  if (objectKey && segs.length === 1) return true
+  if (imported.has(segs[0]) || exported) return false
+  return (
+    segs.length === 1 || segs[segs.length - 2] === "style" || /[A-Z]/.test(last)
+  )
 }
 
 /** Where an identifier appears in a file: zero-based line and character, like an editor position. */
 export interface IdentifierOccurrence {
-  line: number;
-  character: number;
-  length: number;
+  line: number
+  character: number
+  length: number
   /**
    * The name is being defined here (`--x:`, `$x:`, `x =`, `x:`), as an export
    * tool's output does, rather than used.
    */
-  declaration: boolean;
+  declaration: boolean
 }
 
 /**
@@ -205,16 +219,18 @@ export function scanIdentifiers(
   text: string,
   languageId?: string,
 ): Map<string, IdentifierOccurrence[]> {
-  const out = new Map<string, IdentifierOccurrence[]>();
-  const re = new RegExp(EXPORT_IDENTIFIER.source, "g");
-  const imported = JS_LANGUAGES.has(languageId ?? "") ? importedNames(text) : undefined;
-  let line = 0;
-  let lineStart = 0;
-  let scanned = 0;
+  const out = new Map<string, IdentifierOccurrence[]>()
+  const re = new RegExp(EXPORT_IDENTIFIER.source, "g")
+  const imported = JS_LANGUAGES.has(languageId ?? "")
+    ? importedNames(text)
+    : undefined
+  let line = 0
+  let lineStart = 0
+  let scanned = 0
   for (let m = re.exec(text); m; m = re.exec(text)) {
-    const name = m[0];
-    if (!/[A-Za-z]/.test(name)) continue; // 16px, -1, 0.5
-    if (!canNameToken(name, languageId, text[m.index - 1])) continue;
+    const name = m[0]
+    if (!/[A-Za-z]/.test(name)) continue // 16px, -1, 0.5
+    if (!canNameToken(name, languageId, text[m.index - 1])) continue
     if (
       imported &&
       isStyleProperty(
@@ -224,34 +240,41 @@ export function scanIdentifiers(
           text.slice(Math.max(0, m.index - 40), m.index),
         ),
         /[{,]\s*$/.test(text.slice(Math.max(0, m.index - 40), m.index)) &&
-          /^\s*:(?!:)/.test(text.slice(m.index + name.length, m.index + name.length + 40)),
+          /^\s*:(?!:)/.test(
+            text.slice(m.index + name.length, m.index + name.length + 40),
+          ),
       )
     )
-      continue;
+      continue
     for (
       let i = text.indexOf("\n", scanned);
       i !== -1 && i < m.index;
       i = text.indexOf("\n", i + 1)
     ) {
-      line++;
-      lineStart = i + 1;
+      line++
+      lineStart = i + 1
     }
-    scanned = m.index;
+    scanned = m.index
     // ponytail: the char after the name decides; a ternary's `a ? x : y` reads as
     // a declaration of x. Only the unused-token hint is affected, and it is opt-in.
     const after = /^\s*([:=])(.)/.exec(
       text.slice(m.index + name.length, m.index + name.length + 40),
-    );
+    )
     const declaration =
       !!after &&
       !(after[1] === ":" && after[2] === ":") &&
-      !(after[1] === "=" && /[=>]/.test(after[2]));
-    const occurrence = { line, character: m.index - lineStart, length: name.length, declaration };
-    const list = out.get(name);
-    if (list) list.push(occurrence);
-    else out.set(name, [occurrence]);
+      !(after[1] === "=" && /[=>]/.test(after[2]))
+    const occurrence = {
+      line,
+      character: m.index - lineStart,
+      length: name.length,
+      declaration,
+    }
+    const list = out.get(name)
+    if (list) list.push(occurrence)
+    else out.set(name, [occurrence])
   }
-  return out;
+  return out
 }
 
 /**
@@ -265,23 +288,24 @@ export function scanIdentifiers(
  * what follows it; a scanner then misses a usage there, never invents one.
  */
 export function blankComments(text: string, languageId?: string): string {
-  const blank = (m: string) => m.replace(/[^\n]/g, " ");
-  const blocks = text.replace(/\/\*[\s\S]*?(?:\*\/|$)/g, blank);
-  if (languageId === "css") return blocks;
+  const blank = (m: string) => m.replace(/[^\n]/g, " ")
+  const blocks = text.replace(/\/\*[\s\S]*?(?:\*\/|$)/g, blank)
+  if (languageId === "css") return blocks
   const lineComment = ["scss", "sass", "less"].includes(languageId ?? "")
     ? /(url\(\s*\/\/[^)\n]*|"[^"\n]*"|'[^'\n]*')|(^|[^:])(\/\/[^\n]*)/gim
-    : /()(^|[^:])(\/\/[^\n]*)/gm;
-  return blocks.replace(lineComment, (_, url: string, pre: string, c: string) =>
-    url ? url : pre + blank(c),
-  );
+    : /()(^|[^:])(\/\/[^\n]*)/gm
+  return blocks.replace(
+    lineComment,
+    (_, url: string, pre: string, c: string) => (url ? url : pre + blank(c)),
+  )
 }
 
 /** A use of a token in code, and what `pick` said about it. */
 export interface TokenUsage<T> {
-  line: number;
-  character: number;
-  length: number;
-  value: T;
+  line: number
+  character: number
+  length: number
+  value: T
 }
 
 /**
@@ -297,26 +321,29 @@ export function tokenUsages<T>(
   pick: (key: string) => T | null | undefined,
   languageId?: string,
 ): Array<TokenUsage<T>> {
-  const match = tokenMatcher(keys);
-  const out: Array<TokenUsage<T>> = [];
-  for (const [name, occurrences] of scanIdentifiers(blankComments(text, languageId), languageId)) {
-    const key = match(name);
-    const value = key ? pick(key) : undefined;
-    if (value === undefined || value === null || value === "") continue;
+  const match = tokenMatcher(keys)
+  const out: Array<TokenUsage<T>> = []
+  for (const [name, occurrences] of scanIdentifiers(
+    blankComments(text, languageId),
+    languageId,
+  )) {
+    const key = match(name)
+    const value = key ? pick(key) : undefined
+    if (value === undefined || value === null || value === "") continue
     for (const { line, character, length, declaration } of occurrences) {
-      if (!declaration) out.push({ line, character, length, value });
+      if (!declaration) out.push({ line, character, length, value })
     }
   }
-  return out.sort((a, b) => a.line - b.line || a.character - b.character);
+  return out.sort((a, b) => a.line - b.line || a.character - b.character)
 }
 
 /** A `var(--name …)` in a stylesheet, as offsets into its text. */
 export interface CssVarUsage {
-  name: string;
+  name: string
   /** Where `--name` begins. */
-  start: number;
+  start: number
   /** Just past the `)` that closes the `var(`, or past the name when the declaration ends first. */
-  end: number;
+  end: number
 }
 
 /**
@@ -324,38 +351,41 @@ export interface CssVarUsage {
  * Comments are blanked first (offsets kept), so a commented-out
  * declaration is skipped and a comment's `)` or `;` never ends a fallback.
  */
-export function cssVarUsages(source: string, languageId?: string): CssVarUsage[] {
-  const text = blankComments(source, languageId);
-  const out: CssVarUsage[] = [];
-  const re = /\bvar\(\s*(--[\w-]+)/g;
+export function cssVarUsages(
+  source: string,
+  languageId?: string,
+): CssVarUsage[] {
+  const text = blankComments(source, languageId)
+  const out: CssVarUsage[] = []
+  const re = /\bvar\(\s*(--[\w-]+)/g
   for (let m = re.exec(text); m; m = re.exec(text)) {
-    const start = m.index + m[0].length - m[1].length;
-    let end = start + m[1].length;
+    const start = m.index + m[0].length - m[1].length
+    let end = start + m[1].length
     for (let i = end, depth = 1; i < text.length; i++) {
-      if (";{}".includes(text[i])) break; // the declaration ended unclosed
-      if (text[i] === "(") depth++;
+      if (";{}".includes(text[i])) break // the declaration ended unclosed
+      if (text[i] === "(") depth++
       else if (text[i] === ")" && --depth === 0) {
-        end = i + 1;
-        break;
+        end = i + 1
+        break
       }
     }
-    out.push({ name: m[1], start, end });
-    re.lastIndex = start + m[1].length;
+    out.push({ name: m[1], start, end })
+    re.lastIndex = start + m[1].length
   }
-  return out;
+  return out
 }
 
 /** Where a completion in exported code starts, and what kind of name it wants. */
 export type ExportCompletionContext =
   | { kind: "sigil"; sigil: "--" | "$" | "@"; start: number }
-  | { kind: "member"; chain: string[]; start: number };
+  | { kind: "member"; chain: string[]; start: number }
 
 const MEMBER_LANGUAGES = new Set([
   "javascript",
   "javascriptreact",
   "typescript",
   "typescriptreact",
-]);
+])
 
 /**
  * What is being typed at the end of `linePrefix` (the line up to the cursor),
@@ -372,20 +402,30 @@ export function exportCompletionContext(
   linePrefix: string,
   languageId: string,
 ): ExportCompletionContext | undefined {
-  const sigil = (re: RegExp, s: "--" | "$" | "@"): ExportCompletionContext | undefined => {
-    const m = re.exec(linePrefix);
-    return m ? { kind: "sigil", sigil: s, start: m.index } : undefined;
-  };
-  const css = sigil(/(?<![\w$@-])--[\w-]*$/, "--");
-  if (css) return css;
-  if (languageId === "scss" || languageId === "sass") return sigil(/(?<![\w$-])\$[\w-]*$/, "$");
-  if (languageId === "less") return sigil(/(?<![\w@-])@[\w-]*$/, "@");
-  if (MEMBER_LANGUAGES.has(languageId)) {
-    const m = /(?<![\w$.])([A-Za-z_$][\w$]*(?:\.[\w$]+)*)\.([\w$]*)$/.exec(linePrefix);
-    if (m)
-      return { kind: "member", chain: m[1].split("."), start: linePrefix.length - m[2].length };
+  const sigil = (
+    re: RegExp,
+    s: "--" | "$" | "@",
+  ): ExportCompletionContext | undefined => {
+    const m = re.exec(linePrefix)
+    return m ? { kind: "sigil", sigil: s, start: m.index } : undefined
   }
-  return undefined;
+  const css = sigil(/(?<![\w$@-])--[\w-]*$/, "--")
+  if (css) return css
+  if (languageId === "scss" || languageId === "sass")
+    return sigil(/(?<![\w$-])\$[\w-]*$/, "$")
+  if (languageId === "less") return sigil(/(?<![\w@-])@[\w-]*$/, "@")
+  if (MEMBER_LANGUAGES.has(languageId)) {
+    const m = /(?<![\w$.])([A-Za-z_$][\w$]*(?:\.[\w$]+)*)\.([\w$]*)$/.exec(
+      linePrefix,
+    )
+    if (m)
+      return {
+        kind: "member",
+        chain: m[1].split("."),
+        start: linePrefix.length - m[2].length,
+      }
+  }
+  return undefined
 }
 
 /**
@@ -396,7 +436,7 @@ export function exportCompletionContext(
 function kebab(key: string): string {
   return key
     .split(".")
-    .map((seg) =>
+    .map(seg =>
       seg
         .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
         .toLowerCase()
@@ -404,31 +444,35 @@ function kebab(key: string): string {
         .replace(/^-|-$/g, ""),
     )
     .filter(Boolean)
-    .join("-");
+    .join("-")
 }
 
 /** The exported name for a token: `--` / `$` / `@`, then a prefix, then the kebab path. */
 export function exportName(key: string, sigil: string, prefix = ""): string {
-  return sigil + prefix + kebab(key);
+  return sigil + prefix + kebab(key)
 }
 
 /**
  * The export prefix a file already uses (`ds-` in `--ds-color-brand`), learnt
  * from the first `sigil` name in `text` that matches a token, or `""`.
  */
-export function learnPrefix(text: string, sigil: string, keys: Iterable<string>): string {
-  const list = [...keys];
-  const esc = sigil.replace(/[$]/g, "\\$");
-  const re = new RegExp(`(?<![\\w$@-])${esc}([\\w-]+)`, "g");
-  let seen = 0;
+export function learnPrefix(
+  text: string,
+  sigil: string,
+  keys: Iterable<string>,
+): string {
+  const list = [...keys]
+  const esc = sigil.replace(/[$]/g, "\\$")
+  const re = new RegExp(`(?<![\\w$@-])${esc}([\\w-]+)`, "g")
+  let seen = 0
   for (const m of text.matchAll(re)) {
-    if (++seen > 200) break; // ponytail: first 200 names only; a prefix shows up early
-    const key = findTokenForIdentifier(m[1], list);
-    if (!key) continue;
-    const body = kebab(key);
-    if (m[1].endsWith(body)) return m[1].slice(0, m[1].length - body.length);
+    if (++seen > 200) break // ponytail: first 200 names only; a prefix shows up early
+    const key = findTokenForIdentifier(m[1], list)
+    if (!key) continue
+    const body = kebab(key)
+    if (m[1].endsWith(body)) return m[1].slice(0, m[1].length - body.length)
   }
-  return "";
+  return ""
 }
 
 /**
@@ -441,21 +485,26 @@ export function memberCompletions(
   chain: string[],
   keys: Iterable<string>,
 ): { key: string; insert: string }[] {
-  const list = [...keys].map((key) => ({ key, segs: key.split(".") }));
-  const norm = chain.map(normalizeName);
+  const list = [...keys].map(key => ({ key, segs: key.split(".") }))
+  const norm = chain.map(normalizeName)
   for (let i = 0; i < norm.length; i++) {
-    const base = norm.slice(i);
+    const base = norm.slice(i)
     const hits = list.filter(
-      ({ segs }) => segs.length > base.length && base.every((b, j) => normalizeName(segs[j]) === b),
-    );
+      ({ segs }) =>
+        segs.length > base.length &&
+        base.every((b, j) => normalizeName(segs[j]) === b),
+    )
     if (hits.length) {
-      return hits.map(({ key, segs }) => ({ key, insert: segs.slice(base.length).join(".") }));
+      return hits.map(({ key, segs }) => ({
+        key,
+        insert: segs.slice(base.length).join("."),
+      }))
     }
   }
-  return [];
+  return []
 }
 
-const ALNUM = /[A-Za-z0-9]/;
+const ALNUM = /[A-Za-z0-9]/
 
 /**
  * Where the spelling of `key` starts in `identifier`: the first segment
@@ -463,17 +512,19 @@ const ALNUM = /[A-Za-z0-9]/;
  * normalizes to `key`, or -1.
  */
 function keyStart(id: string, key: string): number {
-  const norm = normalizeName(key);
+  const norm = normalizeName(key)
   for (let p = 0; p < id.length; p++) {
-    if (!ALNUM.test(id[p])) continue;
+    if (!ALNUM.test(id[p])) continue
     const boundary =
       p === 0 ||
       !ALNUM.test(id[p - 1]) ||
       (/[a-z0-9]/.test(id[p - 1]) && /[A-Z]/.test(id[p])) ||
-      (/[A-Z]/.test(id[p - 1]) && /[A-Z]/.test(id[p]) && /[a-z]/.test(id[p + 1] ?? ""));
-    if (boundary && normalizeName(id.slice(p)) === norm) return p;
+      (/[A-Z]/.test(id[p - 1]) &&
+        /[A-Z]/.test(id[p]) &&
+        /[a-z]/.test(id[p + 1] ?? ""))
+    if (boundary && normalizeName(id.slice(p)) === norm) return p
   }
-  return -1;
+  return -1
 }
 
 /**
@@ -488,28 +539,35 @@ export function retargetIdentifier(
   key: string,
   next: string,
 ): string | undefined {
-  const at = keyStart(identifier, key);
-  if (at < 0) return undefined;
-  const head = identifier.slice(0, at);
-  const tail = identifier.slice(at);
-  const segs = next.split(".");
-  const words = segs.map((s) => kebab(s).split("-").filter(Boolean));
-  if (!words.flat().length) return undefined;
-  const cap = (w: string) => w[0].toUpperCase() + w.slice(1);
-  const camel = (ws: string[]) => ws[0] + ws.slice(1).map(cap).join("");
-  let text: string;
+  const at = keyStart(identifier, key)
+  if (at < 0) return undefined
+  const head = identifier.slice(0, at)
+  const tail = identifier.slice(at)
+  const segs = next.split(".")
+  const words = segs.map(s => kebab(s).split("-").filter(Boolean))
+  if (!words.flat().length) return undefined
+  const cap = (w: string) => w[0].toUpperCase() + w.slice(1)
+  const camel = (ws: string[]) => ws[0] + ws.slice(1).map(cap).join("")
+  let text: string
   if (tail.includes("_") || head.endsWith("_")) {
-    text = words.flat().join("_");
-    if (/[A-Z]/.test(tail) && tail === tail.toUpperCase()) text = text.toUpperCase();
-  } else if (/^(--|\$|@)/.test(identifier) || tail.includes("-") || head.endsWith("-")) {
-    text = words.flat().join("-");
+    text = words.flat().join("_")
+    if (/[A-Z]/.test(tail) && tail === tail.toUpperCase())
+      text = text.toUpperCase()
+  } else if (
+    /^(--|\$|@)/.test(identifier) ||
+    tail.includes("-") ||
+    head.endsWith("-")
+  ) {
+    text = words.flat().join("-")
   } else if (tail.includes(".") || head.endsWith(".")) {
-    text = segs.map((s, j) => (/^[A-Za-z_$][\w$]*$/.test(s) ? s : camel(words[j]))).join(".");
+    text = segs
+      .map((s, j) => (/^[A-Za-z_$][\w$]*$/.test(s) ? s : camel(words[j])))
+      .join(".")
   } else {
-    text = camel(words.flat());
-    if (/[A-Z]/.test(tail[0])) text = cap(text);
+    text = camel(words.flat())
+    if (/[A-Z]/.test(tail[0])) text = cap(text)
   }
-  return head + text;
+  return head + text
 }
 
 /**
@@ -531,46 +589,52 @@ export function renameInIdentifier(
   depth: number,
   newName: string,
 ): { start: number; end: number; text: string } | undefined {
-  const id = identifier;
-  let i = keyStart(id, key);
-  if (i < 0) return undefined;
+  const id = identifier
+  let i = keyStart(id, key)
+  if (i < 0) return undefined
 
-  const segs = key.split(".");
-  let start = -1;
-  let end = -1;
+  const segs = key.split(".")
+  let start = -1
+  let end = -1
   for (let j = 0; j < segs.length; j++) {
-    let need = normalizeName(segs[j]).length;
-    if (!need) continue;
-    while (!ALNUM.test(id[i])) i++;
-    const s = i;
-    for (; need; i++) if (ALNUM.test(id[i])) need--;
-    if (j === depth) [start, end] = [s, i];
+    let need = normalizeName(segs[j]).length
+    if (!need) continue
+    while (!ALNUM.test(id[i])) i++
+    const s = i
+    for (; need; i++) if (ALNUM.test(id[i])) need--
+    if (j === depth) [start, end] = [s, i]
   }
-  if (start < 0) return undefined;
+  if (start < 0) return undefined
 
-  const span = id.slice(start, end);
-  const near = id[start - 1] ?? "";
-  const next = id[end] ?? "";
-  const words = kebab(newName).split("-").filter(Boolean);
-  if (!words.length) return undefined;
-  const cap = (w: string) => w[0].toUpperCase() + w.slice(1);
-  let text: string;
+  const span = id.slice(start, end)
+  const near = id[start - 1] ?? ""
+  const next = id[end] ?? ""
+  const words = kebab(newName).split("-").filter(Boolean)
+  if (!words.length) return undefined
+  const cap = (w: string) => w[0].toUpperCase() + w.slice(1)
+  let text: string
   if (near === "_" || next === "_" || span.includes("_")) {
-    text = words.join("_");
-    if (/[A-Z]/.test(span) && span === span.toUpperCase()) text = text.toUpperCase();
-  } else if (/^(--|\$|@)/.test(id) || near === "-" || next === "-" || span.includes("-")) {
-    text = words.join("-");
+    text = words.join("_")
+    if (/[A-Z]/.test(span) && span === span.toUpperCase())
+      text = text.toUpperCase()
+  } else if (
+    /^(--|\$|@)/.test(id) ||
+    near === "-" ||
+    next === "-" ||
+    span.includes("-")
+  ) {
+    text = words.join("-")
   } else if (near === "." || next === ".") {
     text =
       span === segs[depth] && /^[A-Za-z_$][\w$]*$/.test(newName)
         ? newName
-        : words[0] + words.slice(1).map(cap).join("");
+        : words[0] + words.slice(1).map(cap).join("")
   } else {
     text = /[A-Z]/.test(span[0])
       ? words.map(cap).join("")
-      : words[0] + words.slice(1).map(cap).join("");
+      : words[0] + words.slice(1).map(cap).join("")
   }
-  return { start, end, text };
+  return { start, end, text }
 }
 
 /**
@@ -581,5 +645,5 @@ export function renameInIdentifier(
 export function isGeneratedCode(text: string): boolean {
   return /do not edit|auto-?generated|@generated|generated (automatically|by)/i.test(
     text.slice(0, 512),
-  );
+  )
 }
