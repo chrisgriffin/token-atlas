@@ -120,6 +120,6 @@ are `core`. The quick fix, the workspace list and the removal guard are
 applies nothing itself. The boundary is not crossed.
 
 **Where this is tested.** `core` behaviour in `test/core/deprecated.test.ts`,
-which exists and has eight `deprecatedReferences` cases to sit beside. Anything
+which exists and has seven `deprecatedReferences` cases to sit beside. Anything
 about a code action, a tree view or a command belongs in
 `test/integration/`, because vitest cannot load `vscode`.
