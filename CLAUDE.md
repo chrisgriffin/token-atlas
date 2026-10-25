@@ -12,6 +12,7 @@ npm run watch      # rebuild on change
 npm test           # vitest — test/{core,webview,ci,host}, no vscode
 npm run test:integration  # the extension inside a downloaded VS Code (test/integration/)
 npm run typecheck  # tsc --noEmit
+npm run lint       # eslint, on the shared @chrisgriffin/config base
 npm run package    # vsce package --no-dependencies → .vsix
 ```
 
@@ -66,5 +67,5 @@ workflow in the public [`chrisgriffin/workflows`](https://github.com/chrisgriffi
 repo at its `v1` tag.
 
 **Build gate:**
-`npm run format:check && npm run typecheck && npm test && npm run build && npm run test:integration`
+`npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`
 (CI wraps the last in `xvfb-run -a`).

@@ -16,31 +16,31 @@
  * Paths are as the resolver writes them, relative to it; `read` maps one to
  * its text, with `""` meaning the resolver document itself.
  */
-import { expandExtends } from "./extends";
-import { parseTokens } from "./parse";
-import { indexTokens, resolveAliases } from "./resolve";
+import { expandExtends } from "./extends"
+import { parseTokens } from "./parse"
+import { indexTokens, resolveAliases } from "./resolve"
 import {
   pointerTarget,
   resolutionSources,
   type Resolver,
   type ResolverModifier,
   type Source,
-} from "./resolver";
-import type { TokenNode } from "./types";
+} from "./resolver"
+import type { TokenNode } from "./types"
 
 export interface ModeCell {
   /** The authored `$value`; undefined when the context defines no such token. */
-  value: unknown;
-  resolved?: unknown;
+  value: unknown
+  resolved?: unknown
   /** The file an edit writes, relative to the resolver; undefined is read-only. */
-  file?: string;
+  file?: string
 }
 
-const clean = (file: string) => file.replace(/^(\.\/)+/, "");
+const clean = (file: string) => file.replace(/^(\.\/)+/, "")
 
 /** A context's whole-file sources, lowest precedence first. */
 const ownFiles = (sources: readonly Source[]) =>
-  sources.filter((s) => s.file && s.pointer === undefined).map((s) => clean(s.file));
+  sources.filter(s => s.file && s.pointer === undefined).map(s => clean(s.file))
 
 /**
  * The modifier `file` is a mode of, and the context it stands for: the first
@@ -51,11 +51,11 @@ export function modeOf(
   resolver: Resolver,
   file: string,
 ): { modifier: ResolverModifier; context: string } | undefined {
-  const target = clean(file);
+  const target = clean(file)
   for (const modifier of resolver.modifiers)
     for (const [context, sources] of modifier.contexts)
-      if (ownFiles(sources).at(-1) === target) return { modifier, context };
-  return undefined;
+      if (ownFiles(sources).at(-1) === target) return { modifier, context }
+  return undefined
 }
 
 /**
@@ -65,10 +65,14 @@ export function modeOf(
  * file loads beside every context and is never in a group.
  */
 export function modifierFiles(resolver: Resolver): string[][] {
-  const inSets = new Set(resolver.steps.flatMap((s) => ("files" in s ? ownFiles(s.files) : [])));
-  return resolver.modifiers.map((m) =>
-    [...new Set([...m.contexts.values()].flatMap(ownFiles))].filter((f) => !inSets.has(f)),
-  );
+  const inSets = new Set(
+    resolver.steps.flatMap(s => ("files" in s ? ownFiles(s.files) : [])),
+  )
+  return resolver.modifiers.map(m =>
+    [...new Set([...m.contexts.values()].flatMap(ownFiles))].filter(
+      f => !inSets.has(f),
+    ),
+  )
 }
 
 /**
@@ -83,29 +87,41 @@ export function contextValues(
   keys: readonly string[],
   input: Record<string, string> = {},
 ): Record<string, ModeCell> {
-  const own = ownFiles(modifier.contexts.get(context) ?? []);
-  const merged = new Map<string, TokenNode>();
-  for (const ref of resolutionSources(resolver, { ...input, [modifier.name]: context })) {
-    const hash = ref.indexOf("#");
-    const file = clean(hash === -1 ? ref : ref.slice(0, hash));
-    const text = read(file);
-    if (text === undefined) continue;
-    const target = hash === -1 ? { text } : pointerTarget(text, ref.slice(hash + 1));
-    if (!target) continue;
+  const own = ownFiles(modifier.contexts.get(context) ?? [])
+  const merged = new Map<string, TokenNode>()
+  for (const ref of resolutionSources(resolver, {
+    ...input,
+    [modifier.name]: context,
+  })) {
+    const hash = ref.indexOf("#")
+    const file = clean(hash === -1 ? ref : ref.slice(0, hash))
+    const text = read(file)
+    if (text === undefined) continue
+    const target =
+      hash === -1 ? { text } : pointerTarget(text, ref.slice(hash + 1))
+    if (!target) continue
     // A group's `$extends` reaches this source's groups or an earlier one's.
-    const model = parseTokens(target.text);
-    expandExtends(model.root, merged);
+    const model = parseTokens(target.text)
+    expandExtends(model.root, merged)
     // Later sources win, so each one overwrites what came before it.
-    for (const [key, token] of indexTokens(model)) merged.set(key, token);
+    for (const [key, token] of indexTokens(model)) merged.set(key, token)
   }
   // Flattened, an inherited token is a token of this context like any other.
-  const children = [...merged.values()].map((t) => ({ ...t, inheritedFrom: undefined }));
-  const resolved = resolveAliases({ root: { kind: "group", name: "", path: [], children } });
-  const file = own.at(-1);
+  const children = [...merged.values()].map(t => ({
+    ...t,
+    inheritedFrom: undefined,
+  }))
+  const resolved = resolveAliases({
+    root: { kind: "group", name: "", path: [], children },
+  })
+  const file = own.at(-1)
   return Object.fromEntries(
-    keys.map((key) => {
-      const token = resolved.get(key);
-      return [key, { value: token?.value, resolved: token?.resolvedValue, file }];
+    keys.map(key => {
+      const token = resolved.get(key)
+      return [
+        key,
+        { value: token?.value, resolved: token?.resolvedValue, file },
+      ]
     }),
-  );
+  )
 }

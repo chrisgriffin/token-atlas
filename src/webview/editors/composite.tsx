@@ -6,8 +6,8 @@
  * `Field` shows those as the reference, so no control below ever reads or
  * spreads one as if it were a value.
  */
-import type { ReactNode } from "react";
-import type { EditorProps } from "./registry";
+import type { ReactNode } from "react"
+import type { EditorProps } from "./registry"
 import {
   ColorSwatchInput,
   DimensionField,
@@ -21,16 +21,18 @@ import {
   TextInput,
   type Dimension,
   type Duration,
-} from "./fields";
-import { CubicBezierEditor, FontWeightEditor } from "./primitive";
-import { buildFromHex, isDtcgColor, toHex } from "./color";
-import { STROKE_KEYWORDS } from "../lib/css";
-import { settings } from "../lib/settings";
-import { starterColor } from "../lib/defaults";
+} from "./fields"
+import { CubicBezierEditor, FontWeightEditor } from "./primitive"
+import { buildFromHex, isDtcgColor, toHex } from "./color"
+import { STROKE_KEYWORDS } from "../lib/css"
+import { settings } from "../lib/settings"
+import { starterColor } from "../lib/defaults"
 
 const obj = (v: unknown): Record<string, unknown> =>
-  v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
-const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+  v && typeof v === "object" && !Array.isArray(v)
+    ? (v as Record<string, unknown>)
+    : {}
+const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
 
 /** One labelled sub-field: its control, or the reference it holds. Not a
  *  `<label>` around a reference, which would turn a click on the label text
@@ -42,59 +44,84 @@ function Field({
   onChange,
   children,
 }: {
-  label: string;
-  value: unknown;
-  resolved: unknown;
-  onChange: (value: unknown) => void;
-  children: ReactNode;
+  label: string
+  value: unknown
+  resolved: unknown
+  onChange: (value: unknown) => void
+  children: ReactNode
 }) {
-  if (!isRef(value)) return <Labeled label={label}>{children}</Labeled>;
+  if (!isRef(value)) return <Labeled label={label}>{children}</Labeled>
   return (
     <div style={{ marginBottom: 10 }}>
       <span className="field-label">{label}</span>
       <RefValue value={value} resolved={resolved} onChange={onChange} />
     </div>
-  );
+  )
 }
 
 /** `field(key, label, control)`: a `Field` for one of `v`'s sub-values. */
 const fieldsOf =
-  (v: Record<string, unknown>, r: Record<string, unknown>, set: (k: string, x: unknown) => void) =>
+  (
+    v: Record<string, unknown>,
+    r: Record<string, unknown>,
+    set: (k: string, x: unknown) => void,
+  ) =>
   (k: string, label: string, control: ReactNode) => (
-    <Field key={k} label={label} value={v[k]} resolved={r[k]} onChange={(x) => set(k, x)}>
+    <Field
+      key={k}
+      label={label}
+      value={v[k]}
+      resolved={r[k]}
+      onChange={x => set(k, x)}
+    >
       {control}
     </Field>
-  );
+  )
 
 /** A compact color sub-field: swatch picker and hex text, writing a 2025.10
  *  colour object in the colour's own space (the configured one for a legacy
  *  string). Text that is not a colour writes nothing. Alpha digits left as
  *  shown keep the exact alpha, which the hex rounds and the native picker
  *  cannot show. */
-function ColorSubField({ value, onChange }: { value: unknown; onChange: (c: unknown) => void }) {
-  const hex = toHex(value) ?? "#000000";
+function ColorSubField({
+  value,
+  onChange,
+}: {
+  value: unknown
+  onChange: (c: unknown) => void
+}) {
+  const hex = toHex(value) ?? "#000000"
   const write = (input: string) => {
-    const text = input.trim().toLowerCase();
-    const space = isDtcgColor(value) ? value.colorSpace : settings().defaultColorSpace;
-    const next = buildFromHex(text, space);
-    if (!next) return;
-    const keep = isDtcgColor(value) && text.slice(7) === hex.slice(7) ? value.alpha : undefined;
-    onChange(keep === undefined ? next : { ...next, alpha: keep });
-  };
+    const text = input.trim().toLowerCase()
+    const space = isDtcgColor(value)
+      ? value.colorSpace
+      : settings().defaultColorSpace
+    const next = buildFromHex(text, space)
+    if (!next) return
+    const keep =
+      isDtcgColor(value) && text.slice(7) === hex.slice(7)
+        ? value.alpha
+        : undefined
+    onChange(keep === undefined ? next : { ...next, alpha: keep })
+  }
   return (
     <Row>
-      <ColorSwatchInput hex={hex} size={26} onPick={(picked) => write(picked + hex.slice(7))} />
+      <ColorSwatchInput
+        hex={hex}
+        size={26}
+        onPick={picked => write(picked + hex.slice(7))}
+      />
       <TextInput mono value={hex} onCommit={write} />
     </Row>
-  );
+  )
 }
 
 // ---------- typography ----------
 export function TypographyEditor({ value, onChange, resolved }: EditorProps) {
-  const v = obj(value);
-  const r = obj(resolved);
-  const set = (k: string, val: unknown) => onChange({ ...v, [k]: val });
-  const field = fieldsOf(v, r, set);
+  const v = obj(value)
+  const r = obj(resolved)
+  const set = (k: string, val: unknown) => onChange({ ...v, [k]: val })
+  const field = fieldsOf(v, r, set)
   return (
     <div>
       {field(
@@ -107,12 +134,12 @@ export function TypographyEditor({ value, onChange, resolved }: EditorProps) {
               : String(v.fontFamily ?? "")
           }
           placeholder="Inter, sans-serif"
-          onCommit={(s) => {
+          onCommit={s => {
             const parts = s
               .split(",")
-              .map((p) => p.trim())
-              .filter(Boolean);
-            set("fontFamily", parts.length > 1 ? parts : (parts[0] ?? ""));
+              .map(p => p.trim())
+              .filter(Boolean)
+            set("fontFamily", parts.length > 1 ? parts : (parts[0] ?? ""))
           }}
         />,
       )}
@@ -121,20 +148,23 @@ export function TypographyEditor({ value, onChange, resolved }: EditorProps) {
         "Font size",
         <DimensionField
           value={v.fontSize as Dimension | undefined}
-          onChange={(d) => set("fontSize", d)}
+          onChange={d => set("fontSize", d)}
         />,
       )}
       {field(
         "fontWeight",
         "Font weight",
-        <FontWeightEditor value={v.fontWeight} onChange={(w) => set("fontWeight", w)} />,
+        <FontWeightEditor
+          value={v.fontWeight}
+          onChange={w => set("fontWeight", w)}
+        />,
       )}
       {field(
         "letterSpacing",
         "Letter spacing",
         <DimensionField
           value={v.letterSpacing as Dimension | undefined}
-          onChange={(d) => set("letterSpacing", d)}
+          onChange={d => set("letterSpacing", d)}
         />,
       )}
       {field(
@@ -143,28 +173,32 @@ export function TypographyEditor({ value, onChange, resolved }: EditorProps) {
         <NumberInput
           value={typeof v.lineHeight === "number" ? v.lineHeight : 1.2}
           step={0.05}
-          onCommit={(n) => set("lineHeight", n)}
+          onCommit={n => set("lineHeight", n)}
         />,
       )}
     </div>
-  );
+  )
 }
 
 // ---------- border ----------
 export function BorderEditor({ value, onChange, resolved }: EditorProps) {
-  const v = obj(value);
-  const r = obj(resolved);
-  const set = (k: string, val: unknown) => onChange({ ...v, [k]: val });
-  const field = fieldsOf(v, r, set);
+  const v = obj(value)
+  const r = obj(resolved)
+  const set = (k: string, val: unknown) => onChange({ ...v, [k]: val })
+  const field = fieldsOf(v, r, set)
   return (
     <div>
-      {field("color", "Color", <ColorSubField value={v.color} onChange={(c) => set("color", c)} />)}
+      {field(
+        "color",
+        "Color",
+        <ColorSubField value={v.color} onChange={c => set("color", c)} />,
+      )}
       {field(
         "width",
         "Width",
         <DimensionField
           value={v.width as Dimension | undefined}
-          onChange={(d) => set("width", d)}
+          onChange={d => set("width", d)}
         />,
       )}
       {field(
@@ -177,19 +211,19 @@ export function BorderEditor({ value, onChange, resolved }: EditorProps) {
               : "solid"
           }
           options={STROKE_KEYWORDS}
-          onChange={(s) => set("style", s)}
+          onChange={s => set("style", s)}
         />,
       )}
     </div>
-  );
+  )
 }
 
 // ---------- transition ----------
 export function TransitionEditor({ value, onChange, resolved }: EditorProps) {
-  const v = obj(value);
-  const r = obj(resolved);
-  const set = (k: string, val: unknown) => onChange({ ...v, [k]: val });
-  const field = fieldsOf(v, r, set);
+  const v = obj(value)
+  const r = obj(resolved)
+  const set = (k: string, val: unknown) => onChange({ ...v, [k]: val })
+  const field = fieldsOf(v, r, set)
   return (
     <div>
       {field(
@@ -197,36 +231,42 @@ export function TransitionEditor({ value, onChange, resolved }: EditorProps) {
         "Duration",
         <DurationField
           value={v.duration as Duration | undefined}
-          onChange={(d) => set("duration", d)}
+          onChange={d => set("duration", d)}
         />,
       )}
       {field(
         "delay",
         "Delay",
-        <DurationField value={v.delay as Duration | undefined} onChange={(d) => set("delay", d)} />,
+        <DurationField
+          value={v.delay as Duration | undefined}
+          onChange={d => set("delay", d)}
+        />,
       )}
       {field(
         "timingFunction",
         "Timing function (cubic Bézier)",
-        <CubicBezierEditor value={v.timingFunction} onChange={(b) => set("timingFunction", b)} />,
+        <CubicBezierEditor
+          value={v.timingFunction}
+          onChange={b => set("timingFunction", b)}
+        />,
       )}
     </div>
-  );
+  )
 }
 
 // ---------- strokeStyle ----------
-const LINE_CAPS = ["butt", "round", "square"] as const;
+const LINE_CAPS = ["butt", "round", "square"] as const
 
 export function StrokeStyleEditor({ value, onChange, resolved }: EditorProps) {
-  const isObject = value && typeof value === "object" && !Array.isArray(value);
-  const mode = isObject ? "custom" : "keyword";
+  const isObject = value && typeof value === "object" && !Array.isArray(value)
+  const mode = isObject ? "custom" : "keyword"
   return (
     <div>
       <Labeled label="Mode">
         <Select
           value={mode}
           options={["keyword", "custom"] as const}
-          onChange={(m) =>
+          onChange={m =>
             onChange(
               m === "keyword"
                 ? "solid"
@@ -244,14 +284,18 @@ export function StrokeStyleEditor({ value, onChange, resolved }: EditorProps) {
                 : "solid"
             }
             options={STROKE_KEYWORDS}
-            onChange={(k) => onChange(k)}
+            onChange={k => onChange(k)}
           />
         </Labeled>
       ) : (
-        <CustomStroke value={obj(value)} resolved={obj(resolved)} onChange={onChange} />
+        <CustomStroke
+          value={obj(value)}
+          resolved={obj(resolved)}
+          onChange={onChange}
+        />
       )}
     </div>
-  );
+  )
 }
 
 function CustomStroke({
@@ -259,13 +303,14 @@ function CustomStroke({
   resolved,
   onChange,
 }: {
-  value: Record<string, unknown>;
-  resolved: Record<string, unknown>;
-  onChange: (v: unknown) => void;
+  value: Record<string, unknown>
+  resolved: Record<string, unknown>
+  onChange: (v: unknown) => void
 }) {
-  const dashArray = list(value.dashArray);
-  const setDash = (next: unknown[]) => onChange({ ...value, dashArray: next });
-  const setOne = (i: number, d: unknown) => setDash(dashArray.map((x, j) => (j === i ? d : x)));
+  const dashArray = list(value.dashArray)
+  const setDash = (next: unknown[]) => onChange({ ...value, dashArray: next })
+  const setOne = (i: number, d: unknown) =>
+    setDash(dashArray.map((x, j) => (j === i ? d : x)))
   // Not a <label>: it holds several controls, a reference's Unlink among them.
   return (
     <div>
@@ -273,7 +318,7 @@ function CustomStroke({
         label="Dash array"
         value={value.dashArray}
         resolved={resolved.dashArray}
-        onChange={(d) => onChange({ ...value, dashArray: d })}
+        onChange={d => onChange({ ...value, dashArray: d })}
       >
         <div>
           {dashArray.map((d, i) => (
@@ -282,10 +327,13 @@ function CustomStroke({
                 <RefValue
                   value={d}
                   resolved={list(resolved.dashArray)[i]}
-                  onChange={(x) => setOne(i, x)}
+                  onChange={x => setOne(i, x)}
                 />
               ) : (
-                <DimensionField value={d as Dimension} onChange={(nd) => setOne(i, nd)} />
+                <DimensionField
+                  value={d as Dimension}
+                  onChange={nd => setOne(i, nd)}
+                />
               )}
               <button
                 className="secondary"
@@ -312,15 +360,15 @@ function CustomStroke({
               : "butt"
           }
           options={LINE_CAPS}
-          onChange={(c) => onChange({ ...value, lineCap: c })}
+          onChange={c => onChange({ ...value, lineCap: c })}
         />
       </Labeled>
     </div>
-  );
+  )
 }
 
 // ---------- shadow (single object or array of layers) ----------
-type Shadow = Record<string, unknown>;
+type Shadow = Record<string, unknown>
 
 const emptyShadow = (): Shadow => ({
   color: starterColor("#000000"),
@@ -329,31 +377,41 @@ const emptyShadow = (): Shadow => ({
   blur: { value: 4, unit: "px" },
   spread: { value: 0, unit: "px" },
   inset: false,
-});
+})
 
 /** A shadow's layers: an array as it is, one object as a list of one. */
 const layersOf = (v: unknown): unknown[] =>
-  Array.isArray(v) ? v : v && typeof v === "object" ? [v] : [];
+  Array.isArray(v) ? v : v && typeof v === "object" ? [v] : []
 
 export function ShadowEditor({ value, onChange, resolved }: EditorProps) {
-  const written = layersOf(value);
-  const layers = (written.length ? written : [emptyShadow()]) as Shadow[];
-  const resolvedLayers = layersOf(resolved);
+  const written = layersOf(value)
+  const layers = (written.length ? written : [emptyShadow()]) as Shadow[]
+  const resolvedLayers = layersOf(resolved)
 
-  const commit = (next: Shadow[]) => onChange(next.length === 1 ? next[0] : next);
+  const commit = (next: Shadow[]) =>
+    onChange(next.length === 1 ? next[0] : next)
   const setLayer = (i: number, layer: Shadow) =>
-    commit(layers.map((l, j) => (j === i ? layer : l)));
+    commit(layers.map((l, j) => (j === i ? layer : l)))
 
   return (
     <div>
       {layers.map((layer, i) => {
-        const set = (k: string, val: unknown) => setLayer(i, { ...layer, [k]: val });
-        const r = obj(resolvedLayers[i]);
-        const field = fieldsOf(layer, r, set);
+        const set = (k: string, val: unknown) =>
+          setLayer(i, { ...layer, [k]: val })
+        const r = obj(resolvedLayers[i])
+        const field = fieldsOf(layer, r, set)
         return (
           <div key={i} className="layer" style={{ marginBottom: 10 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-              <strong style={{ fontSize: "0.85em", opacity: 0.8 }}>Layer {i + 1}</strong>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 8,
+              }}
+            >
+              <strong style={{ fontSize: "0.85em", opacity: 0.8 }}>
+                Layer {i + 1}
+              </strong>
               {layers.length > 1 && (
                 <button
                   className="secondary"
@@ -368,70 +426,91 @@ export function ShadowEditor({ value, onChange, resolved }: EditorProps) {
               <RefValue
                 value={layer}
                 resolved={resolvedLayers[i]}
-                onChange={(x) => commit(layers.map((l, j) => (j === i ? (x as Shadow) : l)))}
+                onChange={x =>
+                  commit(layers.map((l, j) => (j === i ? (x as Shadow) : l)))
+                }
               />
             ) : (
               <>
                 {field(
                   "color",
                   "Color",
-                  <ColorSubField value={layer.color} onChange={(c) => set("color", c)} />,
+                  <ColorSubField
+                    value={layer.color}
+                    onChange={c => set("color", c)}
+                  />,
                 )}
                 <Row gap={12}>
-                  {(["offsetX", "offsetY"] as const).map((k) =>
+                  {(["offsetX", "offsetY"] as const).map(k =>
                     field(
                       k,
                       k === "offsetX" ? "Offset X" : "Offset Y",
-                      <DimensionField value={layer[k] as Dimension} onChange={(d) => set(k, d)} />,
+                      <DimensionField
+                        value={layer[k] as Dimension}
+                        onChange={d => set(k, d)}
+                      />,
                     ),
                   )}
                 </Row>
                 <Row gap={12}>
-                  {(["blur", "spread"] as const).map((k) =>
+                  {(["blur", "spread"] as const).map(k =>
                     field(
                       k,
                       k === "blur" ? "Blur" : "Spread",
-                      <DimensionField value={layer[k] as Dimension} onChange={(d) => set(k, d)} />,
+                      <DimensionField
+                        value={layer[k] as Dimension}
+                        onChange={d => set(k, d)}
+                      />,
                     ),
                   )}
                 </Row>
                 <label
-                  style={{ display: "flex", gap: 6, alignItems: "center", fontSize: "0.85em" }}
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    alignItems: "center",
+                    fontSize: "0.85em",
+                  }}
                 >
                   <input
                     type="checkbox"
                     checked={layer.inset === true}
                     style={{ width: "auto" }}
-                    onChange={(e) => set("inset", e.target.checked)}
+                    onChange={e => set("inset", e.target.checked)}
                   />
                   Inset
                 </label>
               </>
             )}
           </div>
-        );
+        )
       })}
-      <button className="secondary" onClick={() => commit([...layers, emptyShadow()])}>
+      <button
+        className="secondary"
+        onClick={() => commit([...layers, emptyShadow()])}
+      >
         + Add shadow layer
       </button>
     </div>
-  );
+  )
 }
 
 // ---------- gradient (array of { color, position }) ----------
-type Stop = { color?: unknown; position?: unknown };
+type Stop = { color?: unknown; position?: unknown }
 
 export function GradientEditor({ value, onChange, resolved }: EditorProps) {
-  const stops = list(value) as Stop[];
-  const resolvedStops = list(resolved);
-  const commit = (next: unknown[]) => onChange(next);
-  const setStop = (i: number, stop: unknown) => commit(stops.map((s, j) => (j === i ? stop : s)));
+  const stops = list(value) as Stop[]
+  const resolvedStops = list(resolved)
+  const commit = (next: unknown[]) => onChange(next)
+  const setStop = (i: number, stop: unknown) =>
+    commit(stops.map((s, j) => (j === i ? stop : s)))
 
   return (
     <div>
       {stops.map((stop, i) => {
-        const r = obj(resolvedStops[i]);
-        const set = (k: keyof Stop, val: unknown) => setStop(i, { ...stop, [k]: val });
+        const r = obj(resolvedStops[i])
+        const set = (k: keyof Stop, val: unknown) =>
+          setStop(i, { ...stop, [k]: val })
         const remove = (
           <button
             className="secondary"
@@ -440,16 +519,24 @@ export function GradientEditor({ value, onChange, resolved }: EditorProps) {
           >
             Remove
           </button>
-        );
+        )
         return (
-          <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-end", marginBottom: 8 }}>
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "flex-end",
+              marginBottom: 8,
+            }}
+          >
             {isRef(stop) ? (
               <div style={{ flex: 1 }}>
                 <span className="field-label">{`Stop ${i + 1}`}</span>
                 <RefValue
                   value={stop}
                   resolved={resolvedStops[i]}
-                  onChange={(x) => setStop(i, x)}
+                  onChange={x => setStop(i, x)}
                 />
               </div>
             ) : (
@@ -459,40 +546,48 @@ export function GradientEditor({ value, onChange, resolved }: EditorProps) {
                     label={`Stop ${i + 1} color`}
                     value={stop.color}
                     resolved={r.color}
-                    onChange={(x) => set("color", x)}
+                    onChange={x => set("color", x)}
                   >
-                    <ColorSubField value={stop.color} onChange={(c) => set("color", c)} />
+                    <ColorSubField
+                      value={stop.color}
+                      onChange={c => set("color", c)}
+                    />
                   </Field>
                 </div>
                 <Field
                   label="Position (0–1)"
                   value={stop.position}
                   resolved={r.position}
-                  onChange={(x) => set("position", x)}
+                  onChange={x => set("position", x)}
                 >
                   <NumberInput
-                    value={typeof stop.position === "number" ? stop.position : 0}
+                    value={
+                      typeof stop.position === "number" ? stop.position : 0
+                    }
                     step={0.05}
                     min={0}
                     max={1}
                     width={90}
-                    onCommit={(n) => set("position", n)}
+                    onCommit={n => set("position", n)}
                   />
                 </Field>
               </>
             )}
             {remove}
           </div>
-        );
+        )
       })}
       <button
         className="secondary"
         onClick={() =>
-          commit([...stops, { color: starterColor("#000000"), position: stops.length ? 1 : 0 }])
+          commit([
+            ...stops,
+            { color: starterColor("#000000"), position: stops.length ? 1 : 0 },
+          ])
         }
       >
         + Add stop
       </button>
     </div>
-  );
+  )
 }

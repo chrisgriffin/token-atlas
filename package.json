@@ -364,11 +364,14 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "lint": "eslint .",
     "package": "vsce package --no-dependencies --githubBranch main",
     "vscode:prepublish": "node esbuild.mjs --production",
     "version:recommend": "conventional-recommended-bump -p conventionalcommits"
   },
+  "prettier": "@chrisgriffin/config/prettier",
   "devDependencies": {
+    "@chrisgriffin/config": "github:chrisgriffin/config#v1",
     "@testing-library/react": "^16.3.3",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.0.0",
@@ -382,6 +385,8 @@
     "conventional-changelog-conventionalcommits": "^8.0.0",
     "conventional-recommended-bump": "^12.1.0",
     "esbuild": "^0.28.2",
+    "eslint": "^9.39.5",
+    "globals": "^17.13.0",
     "jsdom": "^25.0.1",
     "prettier": "^3.8.1",
     "typescript": "^5.5.0",

@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import "../../src/webview/styles";
+import { describe, expect, it } from "vitest"
+import "../../src/webview/styles"
 
 /**
  * jsdom has no layout, so the chip's height is not measurable here; this pins
@@ -8,8 +8,10 @@ import "../../src/webview/styles";
  */
 describe("toolbar scope chip", () => {
   it("stretches to the toolbar row, so it is as tall as the buttons", () => {
-    const rules = [...document.styleSheets].flatMap((s) => [...s.cssRules]) as CSSStyleRule[];
-    const chip = rules.find((r) => r.selectorText === ".toolbar .scope-chip");
-    expect(chip?.style.getPropertyValue("align-self")).toBe("stretch");
-  });
-});
+    const rules = [...document.styleSheets].flatMap(s => [
+      ...s.cssRules,
+    ]) as CSSStyleRule[]
+    const chip = rules.find(r => r.selectorText === ".toolbar .scope-chip")
+    expect(chip?.style.getPropertyValue("align-self")).toBe("stretch")
+  })
+})
