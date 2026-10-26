@@ -50,6 +50,12 @@ matched as before.
   the module and its callers disagree. Nothing in the text tells that key from
   a style object's, so it is skipped with them. Before this record both were
   renamed together.
+- A key destructured with a new name from an imported tokens object
+  (`const { borderWidth: bw } = tokens`) is a bare key with a `:` after it,
+  so it is skipped too, while `tokens.borderWidth` in the same file is still
+  renamed: after F2 the two disagree and `bw` reads `undefined`, with no
+  warning. Before this record rename updated both. It is the same price as
+  the tokens-module key above.
 - A shorthand style key fed by an imported token (`style={{ borderWidth }}`
   with `import { borderWidth }`) is the key and the value in one word, so it
   still counts, and F2 rewrites it to `style={{ borderSize }}`: the style
