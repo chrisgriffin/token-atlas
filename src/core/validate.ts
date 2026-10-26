@@ -570,37 +570,35 @@ export interface DeprecatedReference {
   replacement?: string
 }
 
+/** One reference a token in a document makes, and the token it names. */
+export interface TokenReference {
+  /** JSON path of the string holding the reference, from the document root. */
+  path: Array<string | number>
+  reference: string
+  /** The direct target, looked up as `resolveAliases` does; undefined when nothing defines it. */
+  target: TokenNode | undefined
+}
+
 /**
- * Every reference in `model` whose direct target is deprecated: a
- * whole-`$value` alias, or one nested in a composite, spelled `{curly}` or as
- * a `$ref` pointer (reported at its `$ref` string). Only the direct target
- * counts, so an alias of an alias of a deprecated token is not itself a use.
- * The target is looked up as `resolveAliases` does: this document first
- * (within `localScope`), then `external`.
+ * Every reference a token in `model` makes: a whole-`$value` alias, or one
+ * nested in a composite, spelled `{curly}` or as a `$ref` pointer (reported
+ * at its `$ref` string), with its direct target looked up this document
+ * first (within `localScope`), then `external`. The one walker the
+ * deprecation readers and the delete prompt share (spec 019).
  */
-export function deprecatedReferences(
+export function tokenReferences(
   model: TokenDocumentModel,
   external?: Map<string, TokenNode>,
   localScope?: (key: string) => boolean,
-): DeprecatedReference[] {
+): TokenReference[] {
   const lookup = scopedLookup(indexTokens(model), external, localScope)
-  const out: DeprecatedReference[] = []
+  const out: TokenReference[] = []
   const report = (
     reference: string | undefined,
     path: Array<string | number>,
   ) => {
-    if (reference === undefined) return
-    const target = lookup(reference)
-    const why = target && deprecation(target)
-    if (!why) return
-    const found: DeprecatedReference = {
-      path,
-      reference,
-      message: deprecationMessage(reference, why),
-    }
-    const next = deprecationReplacement(target, lookup)
-    if (next?.token) found.replacement = next.key
-    out.push(found)
+    if (reference !== undefined)
+      out.push({ path, reference, target: lookup(reference) })
   }
   const walk = (value: unknown, path: Array<string | number>) => {
     const pointer = refPointer(value)
@@ -621,6 +619,37 @@ export function deprecatedReferences(
         token.value,
         token.valueFromRef ? token.path : [...token.path, "$value"],
       )
+  }
+  return out
+}
+
+/**
+ * Every reference in `model` whose direct target is deprecated
+ * (tokenReferences). Only the direct target counts, so an alias of an alias
+ * of a deprecated token is not itself a use.
+ */
+export function deprecatedReferences(
+  model: TokenDocumentModel,
+  external?: Map<string, TokenNode>,
+  localScope?: (key: string) => boolean,
+): DeprecatedReference[] {
+  const lookup = scopedLookup(indexTokens(model), external, localScope)
+  const out: DeprecatedReference[] = []
+  for (const { path, reference, target } of tokenReferences(
+    model,
+    external,
+    localScope,
+  )) {
+    const why = target && deprecation(target)
+    if (!why) continue
+    const found: DeprecatedReference = {
+      path,
+      reference,
+      message: deprecationMessage(reference, why),
+    }
+    const next = deprecationReplacement(target, lookup)
+    if (next?.token) found.replacement = next.key
+    out.push(found)
   }
   return out
 }

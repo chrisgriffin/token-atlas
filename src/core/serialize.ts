@@ -22,7 +22,13 @@ import {
 import { parsePointer, parseTokens, referenceTarget } from "./parse"
 import { indexTokens } from "./resolve"
 import { toPointer } from "./resolver"
-import { ILLEGAL_NAME, replacementKey } from "./validate"
+import type { TokenNode } from "./types"
+import {
+  ILLEGAL_NAME,
+  deprecation,
+  deprecationReplacement,
+  replacementKey,
+} from "./validate"
 
 export type { Edit } from "jsonc-parser"
 
@@ -367,6 +373,278 @@ function renamedReference(
   const next = moved(pointer?.key)
   if (!pointer || next === undefined) return undefined
   return "#" + toPointer([...next.split("."), ...pointer.sub])
+}
+
+type Lookup = (key: string) => TokenNode | undefined
+
+/** The reason an alias left by a rename carries, before its replacement. */
+const RENAMED = "Renamed"
+
+/**
+ * Rename under the deprecation workflow (spec 019): rename as
+ * computeRenameEdits does, and keep the old name as a deprecated alias of the
+ * new one, so whatever still uses it keeps resolving. A group leaves a group
+ * of aliases, one per token. The alias goes in right after the renamed
+ * property, on a line of its own where the parent spans lines, so the diff is
+ * the key and the added lines.
+ *
+ * Every `$deprecated` replacement naming the old path moves too, and names
+ * the end of the renamed token's own replacement chain, never a token that is
+ * itself deprecated: `a → b → c` leaves `a` pointing straight at `c`.
+ * Renaming back onto that alias is not a name clash: the two keys trade
+ * names and the alias's value is rewritten, so nothing is deleted and
+ * re-added at one offset. `external` finds a replacement in another file.
+ * Every edit is against `text`, and none overlaps another.
+ */
+export function computeAliasRenameEdits(
+  text: string,
+  nodePath: string[],
+  newName: string,
+  external?: Lookup,
+  format: FormattingOptions = inferFormat(text),
+): Edit[] {
+  if (!newName || ILLEGAL_NAME.test(newName) || newName.startsWith("$")) {
+    throw new InvalidNameError(newName)
+  }
+  const oldName = nodePath[nodePath.length - 1]
+  if (oldName === newName) return []
+  const root = parseTree(text)
+  const valueNode = root && findNodeAtLocation(root, nodePath)
+  const prop = valueNode?.parent
+  const keyNode = prop?.children?.[0]
+  if (!root || !valueNode || !prop || !keyNode) return []
+  const parentPath = nodePath.slice(0, -1)
+  const oldKey = nodePath.join(".")
+  const newKey = [...parentPath, newName].join(".")
+  const local = indexTokens(parseTokens(text))
+  const lookup: Lookup = k => local.get(k) ?? external?.(k)
+  const under = (key: string) =>
+    [...local.values()].filter(t => {
+      const k = t.path.join(".")
+      return !t.inheritedFrom && (k === key || k.startsWith(key + "."))
+    })
+  const final = finalReplacement(oldKey, newKey, lookup)
+  const renamed = under(oldKey)
+
+  const takenNode = findNodeAtLocation(root, [...parentPath, newName])
+  const taken = takenNode?.parent
+  const back =
+    renamed.length > 0 &&
+    taken !== undefined &&
+    isAliasOf(under(newKey), newKey, oldKey)
+  if (takenNode && !back) throw new NameTakenError(parentPath, newName)
+
+  // The old alias is rewritten whole when renaming back, so no edit inside it.
+  const outside = (e: Edit) =>
+    !back || e.offset < takenNode!.offset || e.offset >= end(takenNode!)
+  const edits: Edit[] = [
+    {
+      offset: keyNode.offset,
+      length: keyNode.length,
+      content: JSON.stringify(newName),
+    },
+    ...[
+      ...referenceEdits(root, oldKey, newKey),
+      ...replacementEdits(root, oldKey, final),
+    ].filter(outside),
+  ]
+  if (!renamed.length) return edits // an empty group: nothing to keep
+
+  const alias: Record<string, unknown> = {}
+  for (const t of renamed) {
+    const rest = t.path.slice(nodePath.length)
+    const leaf = {
+      $value: `{${[newKey, ...rest].join(".")}}`,
+      $deprecated: deprecatedValue(RENAMED, final([oldKey, ...rest].join("."))),
+    }
+    if (!rest.length) Object.assign(alias, leaf)
+    else setIn(alias, rest, leaf)
+  }
+  const unit =
+    format.insertSpaces === false ? "\t" : " ".repeat(format.tabSize ?? 2)
+  const eol = format.eol ?? "\n"
+  const at = back ? taken! : prop
+  const parent = at.parent!
+  const indent = indentOf(text, at)
+  const oneLine =
+    indent === undefined ||
+    !/[\r\n]/.test(text.slice(parent.offset, end(parent)))
+  const body = oneLine ? inline(alias) : renderAlias(alias, indent!, unit, eol)
+  if (back) {
+    return [
+      ...edits,
+      {
+        offset: taken!.children![0].offset,
+        length: taken!.children![0].length,
+        content: JSON.stringify(oldName),
+      },
+      { offset: takenNode!.offset, length: takenNode!.length, content: body },
+    ]
+  }
+  return [
+    ...edits,
+    {
+      offset: end(prop),
+      length: 0,
+      content: oneLine
+        ? `, ${JSON.stringify(oldName)}: ${body}`
+        : `,${eol}${indent}${JSON.stringify(oldName)}: ${body}`,
+    },
+  ]
+}
+
+/**
+ * Remove the alias a deprecation-workflow rename left at `aliasPath` for
+ * `newKey`: the rename notification's Remove alias. No edit once the node
+ * there is anything else — edited, renamed again, or gone — so a late click
+ * never deletes a token someone has since made real.
+ */
+export function computeRemoveAliasEdits(
+  text: string,
+  aliasPath: string[],
+  newKey: string,
+): Edit[] {
+  const key = aliasPath.join(".")
+  const tokens = [...indexTokens(parseTokens(text)).values()].filter(t => {
+    const k = t.path.join(".")
+    return !t.inheritedFrom && (k === key || k.startsWith(key + "."))
+  })
+  return isAliasOf(tokens, key, newKey)
+    ? computeDeleteEdits(text, aliasPath)
+    : []
+}
+
+/**
+ * The `$deprecated` half of computeReferenceRenameEdits, for a file that only
+ * uses a path the deprecation workflow renamed: every replacement naming
+ * `oldPath`, or a token under it, moves to `newPath`, at the end of its
+ * replacement chain. Local-first: a file defining `oldPath` itself gets none.
+ */
+export function computeReplacementRenameEdits(
+  text: string,
+  oldPath: string,
+  newPath: string,
+  external?: Lookup,
+): Edit[] {
+  const root = parseTree(text)
+  if (!root) return []
+  const local = indexTokens(parseTokens(text))
+  if (
+    local.has(oldPath) ||
+    [...local.keys()].some(k => k.startsWith(oldPath + "."))
+  )
+    return []
+  const lookup: Lookup = k => local.get(k) ?? external?.(k)
+  return replacementEdits(
+    root,
+    oldPath,
+    finalReplacement(oldPath, newPath, lookup),
+  )
+}
+
+/**
+ * Where a replacement that named `key` (a path being renamed from `oldPath`
+ * to `newPath`) should now point: along `key`'s own replacement chain to its
+ * end, then renamed. A cycle has no end, so it is the renamed `key` itself.
+ */
+function finalReplacement(
+  oldPath: string,
+  newPath: string,
+  lookup: Lookup,
+): (key: string) => string {
+  const map = (k: string) =>
+    k === oldPath || k.startsWith(oldPath + ".")
+      ? newPath + k.slice(oldPath.length)
+      : k
+  return start => {
+    const seen = new Set([start])
+    let key = start
+    for (;;) {
+      const token = lookup(key)
+      const next = token && deprecationReplacement(token, lookup)
+      if (!next?.token) return map(key)
+      if (seen.has(next.key)) return map(start)
+      seen.add(next.key)
+      key = next.key
+    }
+  }
+}
+
+/** Every `$deprecated` whose replacement is `oldPath` or under it, retargeted by `to`. */
+function replacementEdits(
+  root: Node,
+  oldPath: string,
+  to: (key: string) => string,
+): Edit[] {
+  const edits: Edit[] = []
+  const walk = (node: Node): void => {
+    if (node.type === "property") {
+      const [key, value] = node.children ?? []
+      if (key?.value === "$deprecated" && value?.type === "string") {
+        const reason = String(value.value)
+        const target = replacementKey(reason)
+        if (
+          target !== undefined &&
+          (target === oldPath || target.startsWith(oldPath + "."))
+        ) {
+          const next = reason.replace(/\{[^{}]+\}/, `{${to(target)}}`)
+          if (next !== reason)
+            edits.push({
+              offset: value.offset,
+              length: value.length,
+              content: JSON.stringify(next),
+            })
+        }
+        return
+      }
+    }
+    for (const child of node.children ?? []) walk(child)
+  }
+  walk(root)
+  return edits
+}
+
+/**
+ * Whether the tokens under `key` are all deprecated aliases of the matching
+ * path under `of` — the alias a rename of `of` to `key` left behind.
+ */
+function isAliasOf(tokens: TokenNode[], key: string, of: string): boolean {
+  return (
+    tokens.length > 0 &&
+    tokens.every(
+      t =>
+        deprecation(t) !== undefined &&
+        typeof t.value === "string" &&
+        referenceTarget(t.value) === of + t.path.join(".").slice(key.length),
+    )
+  )
+}
+
+function setIn(
+  into: Record<string, unknown>,
+  path: string[],
+  leaf: unknown,
+): void {
+  let at = into
+  for (const seg of path.slice(0, -1))
+    at = (at[seg] ??= {}) as Record<string, unknown>
+  at[path[path.length - 1]] = leaf
+}
+
+/** A group of aliases over lines at `indent`, each alias inline on its own. */
+function renderAlias(
+  value: Record<string, unknown>,
+  indent: string,
+  unit: string,
+  eol: string,
+): string {
+  if ("$value" in value) return inline(value)
+  const inner = indent + unit
+  const members = Object.entries(value).map(
+    ([k, v]) =>
+      `${inner}${JSON.stringify(k)}: ${renderAlias(v as Record<string, unknown>, inner, unit, eol)}`,
+  )
+  return `{${eol}${members.join("," + eol)}${eol}${indent}}`
 }
 
 /**

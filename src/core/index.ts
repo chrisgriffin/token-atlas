@@ -72,9 +72,11 @@ export {
   deprecation,
   deprecationMessage,
   deprecatedReferences,
+  tokenReferences,
   deprecationReplacement,
   replacementKey,
   type DeprecatedReference,
+  type TokenReference,
 } from "./validate"
 export {
   lintTokens,
@@ -106,6 +108,9 @@ export {
   computeDeleteEdits,
   computeRenameEdits,
   computeReferenceRenameEdits,
+  computeAliasRenameEdits,
+  computeReplacementRenameEdits,
+  computeRemoveAliasEdits,
   computeSwapEdits,
   computeReorderEdits,
   computeDeprecateEdits,

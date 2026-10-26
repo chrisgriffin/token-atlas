@@ -11,6 +11,7 @@ import {
   resolveAliases,
   retargetIdentifier,
   setTokenProperty,
+  tokenReferences,
   validate,
   type Edit,
   type TokenNode,
@@ -23,6 +24,34 @@ const refs = (
   external?: Map<string, TokenNode>,
   scope?: (k: string) => boolean,
 ) => deprecatedReferences(parseTokens(JSON.stringify(doc)), external, scope)
+
+describe("tokenReferences", () => {
+  it("reports every reference with its direct target, deprecated or not", () => {
+    const model = parseTokens(
+      JSON.stringify({
+        color: {
+          $type: "color",
+          base: { $value: color },
+          old: { $value: color, $deprecated: true },
+          a: { $value: "{color.base}" },
+          b: { $value: "{color.old}" },
+          c: { $value: "{color.missing}" },
+        },
+      }),
+    )
+    expect(
+      tokenReferences(model).map(r => [
+        r.path.join("."),
+        r.reference,
+        r.target?.path.join("."),
+      ]),
+    ).toEqual([
+      ["color.a.$value", "color.base", "color.base"],
+      ["color.b.$value", "color.old", "color.old"],
+      ["color.c.$value", "color.missing", undefined],
+    ])
+  })
+})
 
 describe("deprecatedReferences", () => {
   it("flags an alias to a deprecated token, with its reason, on the $value string", () => {

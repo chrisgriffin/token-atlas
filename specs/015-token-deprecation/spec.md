@@ -14,6 +14,16 @@ person can see that a token is deprecated but has to do every subsequent step
 by hand — edit the flag in, find each use, retype the replacement, and decide
 by eye whether anything still points at the old token before deleting it.
 
+**Behind a setting, and wired into rename** (#36, spec
+[019](../019-deprecation-workflow-setting/spec.md)). Everything this spec
+adds is off unless `tokenAtlas.deprecationWorkflow` is on: the three commands
+hide and refuse, and the quick fix is not offered. Reading `$deprecated`,
+which predates this spec, works either way. With the setting on, rename keeps
+the old name as a deprecated alias of the new one (with Remove alias on the
+notification after, and `Rename Token Without Keeping Old Name` to skip it),
+and the visual editor's delete of a token still in use offers Deprecate
+instead / Delete anyway / Cancel. The rename half is spec 019's.
+
 DTCG 2025.10 allows `$deprecated` to be `true` or a string explaining why, and
 defines **no successor field**. So where the replacement is recorded is this
 spec's first decision, not something the format settles.
@@ -60,6 +70,10 @@ With none, it just goes.
 
 ## Functional requirements
 
+0. Requirements 1, 4, 5 and 6 below act only while
+   `tokenAtlas.deprecationWorkflow` is on (spec 019); the visual editor's
+   Deprecated field and the removal guard on an already-deprecated token
+   act either way.
 1. Deprecating a token is available from the text editor and from the visual
    editor, takes a reason and an optional replacement token, and writes
    `$deprecated` as a string carrying the replacement as a `{reference}`.
@@ -107,6 +121,10 @@ With none, it just goes.
 none
 
 ## Scope notes
+
+**Rename is spec 019's.** This spec shipped with rename untouched; keeping
+the old name as an alias, collapsing `a → b → c`, and the delete prompt for a
+token that is not deprecated are specified and tested there.
 
 **Not in scope.** Deprecating a whole group in one action (the reader already
 inherits a group's flag, so the writer can follow later); bulk-moving every

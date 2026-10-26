@@ -10,7 +10,7 @@ import {
   registerCodeColorSwatches,
 } from "./host/codeColorSwatches"
 import { registerHardcodedValues } from "./host/hardcodedValues"
-import { registerRename } from "./host/rename"
+import { registerRename, setAliasNotice } from "./host/rename"
 import { registerTokenTree, type TokenTreeHandle } from "./host/tokenTree"
 import { registerActiveSet } from "./host/activeSet"
 import { openInVisualEditor, registerDefaultEditor } from "./host/defaultEditor"
@@ -20,7 +20,11 @@ import {
 } from "./host/workspaceIndex"
 import { registerNewTokenFile } from "./host/newTokenFile"
 import { registerLegacyFix } from "./host/legacyFix"
-import { registerDeprecation, setRemovalPrompt } from "./host/deprecate"
+import {
+  registerDeprecation,
+  setDeletePrompt,
+  setRemovalPrompt,
+} from "./host/deprecate"
 
 /**
  * Not a public API. Returned only so `test/integration/` can see the Tokens
@@ -40,6 +44,10 @@ export interface TokenAtlasTestHooks {
   codeSwatches: typeof codeSwatches
   /** Answers the prompt before a still-used deprecated token is removed. */
   setRemovalPrompt: typeof setRemovalPrompt
+  /** Answers the delete prompt for a used token, with the workflow on. */
+  setDeletePrompt: typeof setDeletePrompt
+  /** Answers the notification after a rename that kept the old name. */
+  setAliasNotice: typeof setAliasNotice
 }
 
 export function activate(
@@ -50,7 +58,8 @@ export function activate(
   // Hovers + go-to-definition on exported identifiers in CSS/Sass/Less/JS/TS.
   registerExportFeatures(context)
   registerHardcodedValues(context)
-  // F2 rename: key + every {reference} across the workspace in one edit.
+  // F2 rename: key + every {reference} across the workspace in one edit, and
+  // with the deprecation workflow on, the old name kept as an alias.
   registerRename(context)
   registerIndexInvalidation(context)
   // Token usages in exported code, for Find References and the unused hint.
@@ -63,8 +72,9 @@ export function activate(
   registerDiagnostics(context)
   // Lightbulb: rewrite a pre-2025.10 "#hex" / "16px" / "200ms" $value.
   registerLegacyFix(context)
-  // Carry a deprecation out: deprecate with a replacement, move each use by
-  // quick fix, list what is left, and warn before removing a used token.
+  // Carry a deprecation out, behind `tokenAtlas.deprecationWorkflow`:
+  // deprecate with a replacement, move each use by quick fix, list what is
+  // left, and warn before removing a used token.
   registerDeprecation(context)
   // "Tokens" tree in its own activity-bar container: navigation without
   // spending editor width.
@@ -126,6 +136,8 @@ export function activate(
     },
     codeSwatches,
     setRemovalPrompt,
+    setDeletePrompt,
+    setAliasNotice,
   }
 }
 
