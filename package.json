@@ -410,8 +410,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "package": "vsce package --no-dependencies --githubBranch main",
-    "vscode:prepublish": "node esbuild.mjs --production",
-    "version:recommend": "conventional-recommended-bump -p conventionalcommits"
+    "vscode:prepublish": "node esbuild.mjs --production"
   },
   "prettier": "@chrisgriffin/config/prettier",
   "devDependencies": {
@@ -425,9 +424,6 @@
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.9.1",
-    "conventional-changelog-cli": "^5.0.0",
-    "conventional-changelog-conventionalcommits": "^8.0.0",
-    "conventional-recommended-bump": "^12.1.0",
     "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "globals": "^17.13.0",

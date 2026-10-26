@@ -29,7 +29,6 @@ morning-briefing.md
 pm-briefing.md
 recovery-recap.md
 postcss.config.mjs
-changelog-preset.config.mjs
 docs/**
 specs/**
 
