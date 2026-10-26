@@ -1,5 +1,5 @@
 /**
- * Cross-file path collisions, exercised inside a real VS Code (#302).
+ * Cross-file path collisions, exercised inside a real VS Code.
  *
  * `refreshCollisions` in `src/host/diagnostics.ts` writes the
  * `token-atlas-collisions` diagnostic collection: on every file that loses a path
@@ -15,11 +15,11 @@
  * defining it, which makes it the neutral active editor. `light.tokens.json`
  * and `dark.tokens.json` both define every `theme.*` path, but
  * `themes.resolver.json` lists them only as contexts of its `theme` modifier:
- * alternatives, so never a collision (#459).
+ * alternatives, so never a collision.
  *
- * The workspace scan is sorted by URI, so brand-a wins on every rescan (#310:
- * an unsorted scan let a rescan mid-suite move the report to the other
- * brand). `before` pins that through go-to-definition.
+ * The workspace scan is sorted by URI, so brand-a wins on every rescan (an
+ * unsorted scan let a rescan mid-suite move the report to the other brand).
+ * `before` pins that through go-to-definition.
  */
 import * as assert from "node:assert/strict"
 import * as vscode from "vscode"

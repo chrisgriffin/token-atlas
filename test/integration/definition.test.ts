@@ -1,5 +1,5 @@
 /**
- * Go-to-definition *inside* token JSON, exercised inside a real VS Code (#288).
+ * Go-to-definition *inside* token JSON, exercised inside a real VS Code.
  *
  * `src/host/languageFeatures.ts` registers `TokenDefinitionProvider` over token
  * documents. It reads the alias under the cursor with `tokenReferenceAtOffset`,
@@ -235,7 +235,7 @@ describe("Token JSON go-to-definition", () => {
   })
 
   // Invariant 3: the workspace index scans only the `tokenAtlas.include` globs
-  // (#303). Narrowed to `scale/`, the index holds `scale/space.json` alone, so
+  // only. Narrowed to `scale/`, the index holds `scale/space.json` alone, so
   // the theme → primitives hop above must stop resolving, while a path the
   // active document defines itself still does (invariant 4).
   describe("with tokenAtlas.include narrowed", () => {

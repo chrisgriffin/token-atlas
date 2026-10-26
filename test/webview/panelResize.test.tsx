@@ -15,8 +15,8 @@ import { App } from "../../src/webview/App"
 import { parseTokens } from "../../src/core/parse"
 
 /**
- * The detail panel's edge resizer (#447): an interrupted drag ends, the same
- * shape as the column resizer's (#425). jsdom's window is 1024px wide, so the
+ * The detail panel's edge resizer: an interrupted drag ends, the same shape
+ * as the column resizer's. jsdom's window is 1024px wide, so the
  * panel opens at its 440px default and clamps to 300–460px; the width is read
  * from the handle's aria-valuenow.
  */

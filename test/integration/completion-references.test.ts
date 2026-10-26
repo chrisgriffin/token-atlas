@@ -1,5 +1,5 @@
 /**
- * Alias completion and find-all-references, exercised inside a real VS Code (#291).
+ * Alias completion and find-all-references, exercised inside a real VS Code.
  *
  * `src/host/languageFeatures.ts` registers `TokenCompletionProvider` and
  * `TokenReferenceProvider` over token documents. Completion inside a `$value`

@@ -6,7 +6,7 @@ import { group, sampleRoot, token } from "./fixtures"
 /**
  * Alt+↑/↓ reorders only where drag does: within a group's section, with no
  * filter. A filter leaves gaps, so the rows on screen are not the token's real
- * neighbours and a move would happen out of sight (#358).
+ * neighbours and a move would happen out of sight.
  */
 
 beforeAll(() => {

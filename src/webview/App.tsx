@@ -446,7 +446,7 @@ export function App() {
 /** Drag handle on the panel's left edge. Dragging and arrow keys resize;
  *  double-click restores the default. The width is saved when a drag is
  *  released; a cancelled drag, or one that loses pointer capture, drops back
- *  to the width it started from (#447). */
+ *  to the width it started from. */
 function PanelResizer({
   right,
   width,

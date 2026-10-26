@@ -132,7 +132,7 @@ describe("mode columns", () => {
   })
 })
 
-/** #461: in a narrow mode column the alias chip shrinks and ellipsizes
+/** In a narrow mode column the alias chip shrinks and ellipsizes
  *  inside its own pill. As an inline-block in a block cell it was atomic to
  *  the cell's ellipsis, so the whole chip turned into "…". jsdom has no
  *  layout, so this pins the computed styles that give the chip its room. */

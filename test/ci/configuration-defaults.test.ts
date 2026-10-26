@@ -4,8 +4,8 @@
  * falls back to when the setting is unset — and until this file nothing
  * compared them. Drift means VS Code's settings UI advertises one default
  * while the extension behaves as the other, with no test, type or lint to
- * catch it (#186). #170 closed the identifier half of the same table row;
- * this is the default-value half it scoped out.
+ * catch it. `manifest-couplings.test.ts` covers the identifier half of the
+ * same coupling; this is the default-value half it leaves out.
  *
  * Both sides are read from their files, so changing a default in the manifest
  * *and* the host keeps this green — it asserts they agree, never what they

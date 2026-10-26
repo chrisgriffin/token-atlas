@@ -1,5 +1,5 @@
 /**
- * Token usages in exported code, exercised inside a real VS Code (#388).
+ * Token usages in exported code, exercised inside a real VS Code.
  *
  * Find All References on a token key also lists the CSS, Sass and JS
  * identifiers `core/exportNames.ts` matches back to it (the reverse of
@@ -158,7 +158,7 @@ describe("Token usages in exported code", () => {
   })
 
   it("with the unused-token hint off, a code edit leaves token-file diagnostics alone", async () => {
-    // #449: only the hint reads code usages, so nothing else re-runs for a code edit.
+    // Only the hint reads code usages, so nothing else re-runs for a code edit.
     await config().update(
       "unusedTokens",
       "off",

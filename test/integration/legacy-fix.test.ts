@@ -55,8 +55,8 @@ describe("legacy value quick fix", () => {
    * The code actions at `line`, asked for until `ready` accepts their titles.
    * VS Code cancels a code-action request when any code-action provider
    * registers or unregisters mid-flight, and returns only the answers already
-   * in, so one request can come back without this extension's fixes (#424;
-   * the same drop #414 fixed in `hardcoded.test.ts`).
+   * in, so one request can come back without this extension's fixes
+   * (the same drop `fixAt` retries past in `hardcoded.test.ts`).
    */
   const actionsUntil = (
     line: number,

@@ -156,7 +156,7 @@ describe("Deprecated token uses", () => {
   })
 
   it("re-computes a code document's hints once per pause in typing", async () => {
-    // #449: a keystroke in code rebuilds the hints from the workspace index, so
+    // A keystroke in code rebuilds the hints from the workspace index, so
     // that waits for a pause. Each recompute makes new Diagnostic objects, so
     // the distinct objects seen while typing count the recomputes.
     const doc = await vscode.workspace.openTextDocument(css)

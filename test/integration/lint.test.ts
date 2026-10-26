@@ -1,5 +1,5 @@
 /**
- * Token lint driven by `token-atlas.lint.json`, inside a real VS Code (#307).
+ * Token lint driven by `token-atlas.lint.json`, inside a real VS Code.
  *
  * `computeDiagnostics` in `src/host/diagnostics.ts` adds `lintTokens`' findings
  * for the config at the document's workspace folder root, and a file watcher

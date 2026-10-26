@@ -442,7 +442,7 @@ async function discover(): Promise<vscode.Uri[] | undefined> {
     )
     const unique = new Map(found.flat().map(u => [u.toString(), u]))
     // findFiles has no stable order, and the index is first-file-wins: without
-    // a sort, a rescan can hand a shared path to a different file (#310).
+    // a sort, a rescan can hand a shared path to a different file.
     // Code-point order, not localeCompare: collation differs by locale and the
     // winner must be the same file on every machine.
     return [...unique.values()].sort(byUri)

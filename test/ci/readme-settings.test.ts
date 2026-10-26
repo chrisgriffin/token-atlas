@@ -1,6 +1,6 @@
 /**
  * The README is the Marketplace listing page, so its `## Settings` table is
- * where most users will ever see a `tokenAtlas.*` setting (#185). That makes it
+ * where most users will ever see a `tokenAtlas.*` setting. That makes it
  * a second copy of every default in `package.json`'s
  * `contributes.configuration`, and a copy drifts the moment someone changes a
  * default on one side only. This file is the check that keeps `package.json`

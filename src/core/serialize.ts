@@ -131,7 +131,7 @@ function assertNameFree(
  *
  * jsonc-parser's `modify` reformats every line its edit touches, and an
  * append starts on the last sibling's line — so a one-line sibling like
- * `"lg": { "$value": 2 }` came back spread over three lines (#304). When the
+ * `"lg": { "$value": 2 }` came back spread over three lines. When the
  * parent already has a sibling, we write the new property on its own line at
  * that sibling's indent and touch nothing before its closing bytes but a comma.
  */
@@ -186,7 +186,7 @@ export function computeAddEdits(
 /**
  * Delete a token or group at `nodePath`.
  *
- * Same cause as computeAddEdits (#304): `modify` reformats the surviving
+ * Same cause as computeAddEdits: `modify` reformats the surviving
  * neighbour. When the property has a sibling and only a comma and whitespace
  * separate them, we cut the property and one separator and leave the
  * survivor's bytes alone.
