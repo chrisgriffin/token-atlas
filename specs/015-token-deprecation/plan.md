@@ -64,6 +64,14 @@ specs/015-token-deprecation/
 Exact file set is the build's to settle; what matters is that no `vscode`
 import reaches `src/core/` and no file write reaches `src/webview/`.
 
+## Since: the setting and rename (spec 019)
+
+Spec 019 put this plan's commands and quick fix behind
+`tokenAtlas.deprecationWorkflow` (off by default), read once in
+`src/host/deprecate.ts`, and wired rename into the workflow
+(`computeAliasRenameEdits` in `src/core/serialize.ts`). Its plan carries the
+design; this one is kept as built.
+
 ## Surfaces touched
 
 - **`package.json`'s `contributes.commands` / `contributes.menus`** — a new

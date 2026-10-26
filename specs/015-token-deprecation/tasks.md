@@ -41,3 +41,7 @@ Feature directory: `specs/015-token-deprecation`
 - [x] T020 `CHANGELOG.md` — nothing to hand-edit; the release tooling writes it from conventional commits. Confirm in the PR body rather than editing the file
 - [x] T021 `docs/adr/` — record the decision to carry the replacement inside `$deprecated` as a `{reference}`, and why a sibling `$`-field was rejected; link it from the PR
 - [x] T022 Confirm in the PR body that no `.vscodeignore` entry, no branch-ruleset change and no `dependencies`/`mainFields` change is owed, with the reason for each (plan § Surfaces touched)
+
+## Since
+
+- [x] T023 Behind `tokenAtlas.deprecationWorkflow`, and rename keeps the old name as a deprecated alias: done in spec [019](../019-deprecation-workflow-setting/tasks.md) (#36)

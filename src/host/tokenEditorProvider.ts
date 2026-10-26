@@ -37,7 +37,7 @@ import type {
   WebviewToHost,
 } from "../shared/protocol"
 import type { ContrastTarget } from "../core/color"
-import { mayRemove } from "./deprecate"
+import { mayDelete } from "./deprecate"
 import {
   activeResolution,
   externalIndexFor,
@@ -47,7 +47,7 @@ import {
   localScopeFor,
   onDidInvalidateWorkspaceIndex,
 } from "./workspaceIndex"
-import { buildRenameEdit } from "./rename"
+import { applyRename } from "./rename"
 
 export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
   /**
@@ -334,18 +334,18 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
           )
           break
         case "deleteNode":
-          // A deprecated token still in use says how many uses remain first.
-          if (!(await mayRemove(document, msg.path))) break
+          // A deprecated token still in use says how many uses remain first;
+          // with the deprecation workflow on, so does any other (spec 019).
+          if (!(await mayDelete(document, msg.path))) break
           await this.applyEdits(
             document,
             computeDeleteEdits(document.getText(), msg.path),
           )
           break
         case "renameNode":
-          // Key + every reference to it, in this file and across the workspace.
-          await vscode.workspace.applyEdit(
-            await buildRenameEdit(document, msg.path, msg.newName),
-          )
+          // Key + every reference to it, in this file and across the workspace,
+          // keeping the old name as an alias when the workflow is on.
+          await applyRename(document, msg.path, msg.newName)
           break
         case "moveNode":
           await this.applyEdits(

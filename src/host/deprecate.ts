@@ -10,6 +10,12 @@
  * in token files, `tokenUsages` (as the strike-through does) in code — so no
  * third matcher decides what counts. A quick fix is per use on purpose: a
  * replacement need not be value-identical, so nothing here sweeps a workspace.
+ *
+ * All of it is behind `tokenAtlas.deprecationWorkflow`, off by default
+ * (spec 019): with it off the commands refuse and the quick fix is not
+ * offered. Reading `$deprecated` — the hover, the strike-through — is not.
+ * With it on, deleting a token that is still used offers to deprecate it
+ * instead, and rename keeps the old name (rename.ts).
  */
 import * as vscode from "vscode"
 import {
@@ -31,10 +37,11 @@ import {
   isGeneratedCode,
   parseTokens,
   retargetIdentifier,
+  tokenReferences,
   tokenUsages,
-  type DeprecatedReference,
   type Edit,
   type Fragment,
+  type TokenDocumentModel,
   type TokenNode,
 } from "../core"
 import { codeUsages } from "./codeUsages"
@@ -51,8 +58,26 @@ import {
   type IndexedToken,
 } from "./workspaceIndex"
 
+/** Whether the deprecation workflow is on: `tokenAtlas.deprecationWorkflow`, off by default. */
+export function deprecationWorkflow(): boolean {
+  return (
+    vscode.workspace
+      .getConfiguration("tokenAtlas")
+      .get<boolean>("deprecationWorkflow") ?? false
+  )
+}
+
+/** Says why a workflow command did nothing while the setting is off. */
+function workflowOff(): boolean {
+  if (deprecationWorkflow()) return false
+  void vscode.window.showInformationMessage(
+    "The deprecation workflow is off. Turn on the tokenAtlas.deprecationWorkflow setting to use it.",
+  )
+  return true
+}
+
 /** Every token in the workspace index, except those from `uri` — as diagnostics resolves. */
-function externalFor(
+export function externalFor(
   ws: Map<string, IndexedToken>,
   uri?: vscode.Uri,
 ): Map<string, TokenNode> {
@@ -85,35 +110,31 @@ function fragmentsOf(document: vscode.TextDocument): Fragment[] {
   return isResolverDocument(document) ? inlineSources(document.getText()) : []
 }
 
+type Reader<R> = (
+  model: TokenDocumentModel,
+  external?: Map<string, TokenNode>,
+  localScope?: (key: string) => boolean,
+) => R[]
+
 /**
- * The deprecated uses in one token document or resolver: each reference
- * `deprecatedReferences` reports, with its range in `document`. A whole token
- * file resolves against the index minus itself and its active-set scope, as
- * its diagnostics do; an inline resolver source against the whole index.
+ * The references in one token document or resolver that `read` reports —
+ * `deprecatedReferences` or `tokenReferences` — each with its range in `document`. A
+ * whole token file resolves against the index minus itself and its
+ * active-set scope, as its diagnostics do; an inline resolver source against
+ * the whole index.
  */
-function usesIn(
+function usesIn<R extends { path: Array<string | number>; reference: string }>(
   document: vscode.TextDocument,
   ws: Map<string, IndexedToken>,
-): Array<{
-  ref: DeprecatedReference
-  range: vscode.Range
-  fragment: Fragment
-}> {
-  const out: Array<{
-    ref: DeprecatedReference
-    range: vscode.Range
-    fragment: Fragment
-  }> = []
+  read: Reader<R>,
+): Array<{ ref: R; range: vscode.Range; fragment: Fragment }> {
+  const out: Array<{ ref: R; range: vscode.Range; fragment: Fragment }> = []
   const whole = isTokenDocument(document)
   const external = externalFor(ws, whole ? document.uri : undefined)
   const scope = whole ? localScopeFor(document.uri) : undefined
   for (const fragment of fragmentsOf(document)) {
     const root = parseTree(fragment.text)
-    for (const ref of deprecatedReferences(
-      parseTokens(fragment.text),
-      external,
-      scope,
-    )) {
+    for (const ref of read(parseTokens(fragment.text), external, scope)) {
       const range = stringRange(document, root, ref.path, fragment.offset)
       if (range) out.push({ ref, range, fragment })
     }
@@ -141,6 +162,43 @@ function deprecatedInIndex(
  */
 export async function deprecatedUses(key: string): Promise<vscode.Location[]> {
   const ws = await buildWorkspaceIndex()
+  const out = await fileUses(doc =>
+    usesIn(doc, ws, deprecatedReferences).filter(
+      ({ ref }) => ref.reference === key,
+    ),
+  )
+  if (!deprecatedInIndex(ws, key)) return out
+  return [...out, ...(await codeUses(ws, key))]
+}
+
+/**
+ * Every use of the token `key` defined in `document`, deprecated or not: the
+ * delete prompt's count (spec 019). The same readers as deprecatedUses, with
+ * every reference rather than only the deprecated ones; a file that defines
+ * `key` itself resolves its references to its own token (invariant 4), so
+ * they are not uses of this one.
+ */
+async function tokenUses(
+  document: vscode.TextDocument,
+  key: string,
+): Promise<vscode.Location[]> {
+  const ws = await buildWorkspaceIndex()
+  const self = document.uri.toString()
+  const out = await fileUses(doc =>
+    usesIn(doc, ws, tokenReferences).filter(
+      ({ ref, fragment }) =>
+        ref.reference === key &&
+        (doc.uri.toString() === self ||
+          !indexTokens(parseTokens(fragment.text)).has(key)),
+    ),
+  )
+  return [...out, ...(await codeUses(ws, key))]
+}
+
+/** The locations `pick` finds in every token file and resolver, read from the workspace's files. */
+async function fileUses(
+  pick: (doc: vscode.TextDocument) => Array<{ range: vscode.Range }>,
+): Promise<vscode.Location[]> {
   const out: vscode.Location[] = []
   const files = [...(await findTokenFiles()), ...(await findResolverFiles())]
   for (const { uri } of files) {
@@ -150,13 +208,21 @@ export async function deprecatedUses(key: string): Promise<vscode.Location[]> {
     } catch {
       continue // unreadable file — skip
     }
-    for (const { ref, range } of usesIn(doc, ws)) {
-      if (ref.reference === key) out.push(new vscode.Location(uri, range))
-    }
+    for (const { range } of pick(doc)) out.push(new vscode.Location(uri, range))
   }
-  if (!deprecatedInIndex(ws, key)) return out
-  // Code: the files Find References has a use in, each confirmed by the
-  // reader the strike-through uses, which skips comments and declarations.
+  return out
+}
+
+/**
+ * The uses of `key`'s exported name in CSS, Sass, Less, JS and TS: the files
+ * Find References has a use in, each confirmed by the reader the
+ * strike-through uses, which skips comments and declarations.
+ */
+async function codeUses(
+  ws: Map<string, IndexedToken>,
+  key: string,
+): Promise<vscode.Location[]> {
+  const out: vscode.Location[] = []
   const keys = [...ws.keys()]
   const byFile = new Map<string, vscode.Uri>()
   for (const usage of (await codeUsages(keys)).get(key) ?? []) {
@@ -286,6 +352,62 @@ export async function mayRemove(
   )
 }
 
+/** The delete prompt's answer: deprecate (with a reason and replacement when given), or delete. */
+export type DeleteAnswer =
+  | { action: "deprecate"; reason?: string; replacement?: string }
+  | { action: "delete" }
+  | undefined
+
+/** Asks before deleting a token that is still used; replaceable by the integration tests. */
+let askDelete = async (message: string): Promise<DeleteAnswer> => {
+  const picked = await vscode.window.showWarningMessage(
+    message,
+    { modal: true },
+    "Deprecate instead",
+    "Delete anyway",
+  )
+  if (picked === "Deprecate instead") return { action: "deprecate" }
+  return picked === "Delete anyway" ? { action: "delete" } : undefined
+}
+
+/** Not a public API: lets `test/integration/` answer the delete prompt and see its text. */
+export function setDeletePrompt(
+  prompt: (message: string) => Promise<DeleteAnswer>,
+): () => void {
+  const previous = askDelete
+  askDelete = prompt
+  return () => {
+    askDelete = previous
+  }
+}
+
+/**
+ * Whether deleting the node at `path` from the visual editor may go ahead. A
+ * deprecated token still in use asks as mayRemove does, setting or not. With
+ * the deprecation workflow on, a token that is not deprecated and still has
+ * uses offers Deprecate instead / Delete anyway / Cancel (spec 019); Cancel,
+ * and Deprecate instead, leave it in place.
+ */
+export async function mayDelete(
+  document: vscode.TextDocument,
+  path: string[],
+): Promise<boolean> {
+  if (!(await mayRemove(document, path))) return false
+  if (!deprecationWorkflow()) return true
+  const key = path.join(".")
+  const token = indexTokens(parseTokens(document.getText())).get(key)
+  if (!token || deprecation(token)) return true
+  const uses = (await tokenUses(document, key)).length
+  if (!uses) return true
+  const answer = await askDelete(
+    `"${key}" still has ${uses} ${uses === 1 ? "use" : "uses"}. Deprecate it instead?`,
+  )
+  if (answer?.action === "delete") return true
+  if (answer?.action === "deprecate")
+    await deprecate(document.uri, path, answer.reason, answer.replacement)
+  return false
+}
+
 /**
  * Deprecate a token with a reason and an optional replacement. From the
  * editor it asks for both; `test/integration/` passes them as arguments. The
@@ -297,6 +419,7 @@ async function deprecate(
   reason?: unknown,
   replacement?: unknown,
 ) {
+  if (workflowOff()) return false
   const target = await targetOf(uri, path)
   if (!target) {
     void vscode.window.showInformationMessage(
@@ -347,6 +470,7 @@ async function deprecate(
 
 /** List the remaining uses of a deprecated token in the references view; returns them too. */
 async function findUses(uri?: unknown, path?: unknown) {
+  if (workflowOff()) return []
   const target = await targetOf(uri, path)
   if (!target) {
     void vscode.window.showInformationMessage(
@@ -382,6 +506,7 @@ async function findUses(uri?: unknown, path?: unknown) {
 
 /** Remove a deprecated token, warning first while it is still used. Returns whether it went. */
 async function remove(uri?: unknown, path?: unknown) {
+  if (workflowOff()) return false
   const target = await targetOf(uri, path)
   if (!target) {
     void vscode.window.showInformationMessage(
@@ -427,7 +552,7 @@ class ReplacementFixProvider implements vscode.CodeActionProvider {
         d.code === "deprecated-token" &&
         d.range.intersection(range),
     )
-    if (!hints.length) return []
+    if (!hints.length || !deprecationWorkflow()) return []
     const ws = await buildWorkspaceIndex()
     const actions: vscode.CodeAction[] = []
     const offer = (
@@ -481,7 +606,11 @@ class ReplacementFixProvider implements vscode.CodeActionProvider {
       return actions
     }
 
-    for (const { ref, range: at, fragment } of usesIn(document, ws)) {
+    for (const { ref, range: at, fragment } of usesIn(
+      document,
+      ws,
+      deprecatedReferences,
+    )) {
       if (!ref.replacement || !at.intersection(range)) continue
       const edits = computeRetargetEdits(
         fragment.text,

@@ -37,7 +37,7 @@ Want something to poke at first? Clone this repo and open [`examples/`](examples
 - Outline view, plus _Go to Symbol in Workspace_ (Cmd+T) by token path.
 - Problems for unresolved references, reference cycles, bad values, and tokens that inherit no `$type`.
 - Deprecated tokens are struck through everywhere they are used.
-- Deprecate a token with a reason and a replacement (_Token Atlas: Deprecate Token…_, or the visual editor's Deprecated field), then move each use with a quick fix, list what still uses it, and get the remaining count before _Remove Deprecated Token_ deletes it. The replacement is written into `$deprecated` itself: `"use {color.border.default} instead"`.
+- With `tokenAtlas.deprecationWorkflow` on (off by default): deprecate a token with a reason and a replacement (_Token Atlas: Deprecate Token…_, or the visual editor's Deprecated field), then move each use with a quick fix, list what still uses it, and get the remaining count before _Remove Deprecated Token_ deletes it. The replacement is written into `$deprecated` itself: `"use {color.border.default} instead"`. Renaming a token keeps its old name as a deprecated alias of the new one, so code outside the workspace keeps working; the notification after the rename offers _Remove alias_, and _Rename Token Without Keeping Old Name_ skips the alias. Deleting a token that is still used offers _Deprecate instead_.
 - A quick fix that converts old-style string values like `"16px"` to the 2025.10 object form.
 
 ![The Problems panel listing an unresolved reference, a reference cycle, and a token with no type](media/problems.png)
@@ -75,7 +75,7 @@ The active set is remembered per workspace and never written to the repo.
 
 ## Commands
 
-Six commands in the Command Palette; the last three also sit in a token file's right-click menu and act on the token under the cursor:
+Seven commands in the Command Palette. The last four need `tokenAtlas.deprecationWorkflow` on, and also sit in a token file's right-click menu, acting on the token under the cursor:
 
 | Command                                                | What it does                                                                         |
 | ------------------------------------------------------ | ------------------------------------------------------------------------------------ |
@@ -85,6 +85,7 @@ Six commands in the Command Palette; the last three also sit in a token file's r
 | `Token Atlas: Deprecate Token…`                        | Asks for a reason and a replacement, and writes them into the token's `$deprecated`. |
 | `Token Atlas: Find Remaining Uses of Deprecated Token` | Lists every use left across the workspace, opened files or not.                      |
 | `Token Atlas: Remove Deprecated Token`                 | Deletes it, first saying how many uses remain if any do.                             |
+| `Token Atlas: Rename Token Without Keeping Old Name`   | Renames as F2 does with the workflow off, leaving no deprecated alias behind.        |
 
 In the _Design Tokens_ view, clicking a group opens the table scoped to that group, and clicking a token reveals it: in the table's detail panel if the table is open, otherwise at its line in the JSON.
 
@@ -108,6 +109,7 @@ Everything lives under `tokenAtlas.*`. The defaults work for most repos.
 | `tokenAtlas.unusedTokens`         | `"off"`                                                                                                                                                                                                 | Tokens nothing uses: `off`, `hint`, `information`. Scans every code file.                     |
 | `tokenAtlas.codeColorSwatches`    | `true`                                                                                                                                                                                                  | Swatches on color tokens in code                                                              |
 | `tokenAtlas.inlayHints`           | `true`                                                                                                                                                                                                  | `= value` hints on references and `var(--token)`                                              |
+| `tokenAtlas.deprecationWorkflow`  | `false`                                                                                                                                                                                                 | The deprecate commands and quick fix; rename keeps the old name as an alias                   |
 
 The defaults come from `package.json`, and a test fails if this table drifts from it.
 

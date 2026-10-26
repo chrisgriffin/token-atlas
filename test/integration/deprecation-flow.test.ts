@@ -2,7 +2,8 @@
  * Carrying a deprecation out, inside a real VS Code (spec 015): deprecate a
  * token with a replacement from the text editor and from the visual editor,
  * move a use onto the replacement by quick fix, list the uses that remain,
- * and say how many before removing the token.
+ * and say how many before removing the token. All of it is behind
+ * `tokenAtlas.deprecationWorkflow` (spec 019), which the suite turns on.
  *
  * The suite writes its own files and removes them after, as
  * `token-editor-writes.test.ts` does, so the token-file list `panel.test.ts`
@@ -152,6 +153,9 @@ describe("Carrying a deprecation out", () => {
     )
     assert.ok(ext, "extension not found")
     hooks = await ext.activate()
+    await vscode.workspace
+      .getConfiguration("tokenAtlas")
+      .update("deprecationWorkflow", true, vscode.ConfigurationTarget.Global)
     writeFileSync(tokens.fsPath, FIXTURE)
     writeFileSync(uses.fsPath, USES_FIXTURE)
     writeFileSync(css.fsPath, CSS)
@@ -167,6 +171,13 @@ describe("Carrying a deprecation out", () => {
   })
 
   after(async () => {
+    await vscode.workspace
+      .getConfiguration("tokenAtlas")
+      .update(
+        "deprecationWorkflow",
+        undefined,
+        vscode.ConfigurationTarget.Global,
+      )
     // Emptied of DTCG keys first, then re-scanned on the exclude lever, as
     // token-editor-writes.test.ts explains.
     await rewrite(tokens, '{ "gone": true }\n')

@@ -168,6 +168,11 @@ const SITES: { key: string; file: string; read: (text: string) => unknown }[] =
       file: "src/host/languageFeatures.ts",
       read: t => nullishFallback(t, "inlayHints"),
     },
+    {
+      key: "tokenAtlas.deprecationWorkflow",
+      file: "src/host/deprecate.ts",
+      read: t => nullishFallback(t, "deprecationWorkflow"),
+    },
   ]
 
 describe("package.json ↔ host configuration defaults", () => {

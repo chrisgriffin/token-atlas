@@ -247,6 +247,12 @@
           "scope": "window",
           "default": true,
           "markdownDescription": "Show an inlay hint after each `{reference}` in token JSON, in tokens written inline in a resolver, and after each `var(--token)` in CSS, Sass and Less, with the value it resolves to in the active set (`= #0055ff`, `= 16px`). Hover the hint for the token's card. VS Code's own `editor.inlayHints.enabled` also applies."
+        },
+        "tokenAtlas.deprecationWorkflow": {
+          "type": "boolean",
+          "scope": "window",
+          "default": false,
+          "markdownDescription": "Turn on the deprecation workflow: the `Deprecate Token…`, `Find Remaining Uses of Deprecated Token` and `Remove Deprecated Token` commands and the quick fix that moves a use to its replacement. While it is on, renaming a token keeps the old name as a deprecated alias of the new one (`Rename Token Without Keeping Old Name` skips that once), and deleting a token that is still used offers to deprecate it instead. Reading `$deprecated` (the hover and the strike-through) works either way."
         }
       }
     },
@@ -305,6 +311,11 @@
         "command": "tokenAtlas.removeDeprecatedToken",
         "title": "Remove Deprecated Token",
         "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.renameWithoutAlias",
+        "title": "Rename Token Without Keeping Old Name",
+        "category": "Token Atlas"
       }
     ],
     "menus": {
@@ -326,15 +337,19 @@
         },
         {
           "command": "tokenAtlas.deprecateToken",
-          "when": "tokenAtlas.isTokenDocument"
+          "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow"
         },
         {
           "command": "tokenAtlas.findDeprecatedUses",
-          "when": "tokenAtlas.isTokenDocument"
+          "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow"
         },
         {
           "command": "tokenAtlas.removeDeprecatedToken",
-          "when": "tokenAtlas.isTokenDocument"
+          "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow"
+        },
+        {
+          "command": "tokenAtlas.renameWithoutAlias",
+          "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow"
         }
       ],
       "view/title": [
@@ -347,18 +362,23 @@
       "editor/context": [
         {
           "command": "tokenAtlas.deprecateToken",
-          "when": "tokenAtlas.isTokenDocument",
+          "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow",
           "group": "1_tokenAtlas@1"
         },
         {
           "command": "tokenAtlas.findDeprecatedUses",
-          "when": "tokenAtlas.isTokenDocument",
+          "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow",
           "group": "1_tokenAtlas@2"
         },
         {
           "command": "tokenAtlas.removeDeprecatedToken",
-          "when": "tokenAtlas.isTokenDocument",
+          "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow",
           "group": "1_tokenAtlas@3"
+        },
+        {
+          "command": "tokenAtlas.renameWithoutAlias",
+          "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow",
+          "group": "1_tokenAtlas@4"
         }
       ]
     },
