@@ -64,15 +64,16 @@ per file: the code half of find-references, and the opt-in unused-token hint),
 `colorProvider.ts` (inline colour swatches in the raw JSON),
 `defaultEditor.ts` (the `tokenAtlas.defaultEditor` setting: reopens a token
 document in the visual editor, content-based rather than by filename),
-`deprecate.ts` (carrying a deprecation out, behind the
+`deprecate.ts` (carrying a deprecation out, mostly behind the
 `tokenAtlas.deprecationWorkflow` setting, off by default: the Deprecate Token command,
 writing `$deprecated` with a replacement as its first `{reference}`; the quick
 fix that moves one struck-through use onto that replacement, in token files,
 resolver inline tokens and code; the remaining-uses list, read from the
 workspace's files rather than its open editors; and the removal guard, shared
 by the Remove Deprecated Token command and the visual editor's delete, that
-names how many uses remain before a deprecated token goes; with the setting
-on, the visual editor's delete of a token still in use offers Deprecate
+names how many uses remain before a deprecated token goes — on the visual
+editor's delete of an already-deprecated token it works with the setting off
+too; with the setting on, the visual editor's delete of a token still in use offers Deprecate
 instead / Delete anyway / Cancel — see
 [ADR-003](./adr/ADR-003-deprecation-replacement.md)),
 `diagnostics.ts` (validation and lint results as squiggles in the Problems panel,

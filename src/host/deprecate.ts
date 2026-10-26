@@ -11,9 +11,11 @@
  * third matcher decides what counts. A quick fix is per use on purpose: a
  * replacement need not be value-identical, so nothing here sweeps a workspace.
  *
- * All of it is behind `tokenAtlas.deprecationWorkflow`, off by default
+ * The write side is behind `tokenAtlas.deprecationWorkflow`, off by default
  * (spec 019): with it off the commands refuse and the quick fix is not
- * offered. Reading `$deprecated` — the hover, the strike-through — is not.
+ * offered. Reading `$deprecated` — the hover, the strike-through — is not,
+ * and neither is the visual editor's removal guard on an already-deprecated
+ * token: `mayDelete` runs `mayRemove` before it reads the setting.
  * With it on, deleting a token that is still used offers to deprecate it
  * instead, and rename keeps the old name (rename.ts).
  */
