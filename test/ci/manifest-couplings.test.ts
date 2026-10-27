@@ -4,7 +4,7 @@
  * a view id, a custom-editor `viewType`, an activation event. A mismatch
  * means a command that never fires, a view that never appears, or a language
  * feature that never activates — all silent until someone re-reads both
- * sides by eye (#170). This file is that re-read, so those rows are out of
+ * sides by eye. This file is that re-read, so those rows are out of
  * the table per its own note that anything `npm test` already fails on is
  * left out.
  *

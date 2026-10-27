@@ -44,7 +44,7 @@ Left out on purpose because a test already covers them: the `package.json` ↔ `
 ## Non-negotiable invariants
 
 1. **Format-preserving writes.** All edits go through jsonc-parser surgical edits (`src/core/serialize.ts`) → ranged `WorkspaceEdit`s. Never `JSON.stringify` a whole document — clean git diffs are the product's reason to exist.
-2. **Self-contained extension bundle.** We package with `--no-dependencies`, so `dist/extension.js` must inline everything. esbuild uses `mainFields: ["module","main"]` (jsonc-parser's UMD `main` is un-bundleable) and `esbuild.mjs` has a post-build guard that fails on leftover relative requires. v0.0.x shipped broken because of this — don't regress it.
+2. **Self-contained extension bundle.** We package with `--no-dependencies`, so `dist/extension.js` must inline everything. esbuild uses `mainFields: ["module","main"]` (jsonc-parser's UMD `main` is un-bundleable) and `esbuild.mjs` has a post-build guard that fails on leftover relative requires. A bundle that misses this installs fine and then fails to activate — don't regress it.
 3. **Content-based detection.** Language features register for `json`/`jsonc` but no-op unless the document sniffs as DTCG (`"$value"`/`"$type"`) or has the format's extension (`.tokens`, `.tokens.json`), which is how an empty new file counts; a resolver document (`resolutionOrder` at the root) never counts. Never spam ordinary JSON. Cross-file indexing scans `tokenAtlas.include` globs.
 4. **Local-first resolution.** The active document's tokens win over the workspace index (unsaved edits + multi-brand identical paths depend on this — pinned in `test/core/architectures.test.ts`).
 

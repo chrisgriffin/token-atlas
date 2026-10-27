@@ -3,7 +3,7 @@
  * VS Code.
  *
  * `src/host/colorProvider.ts` registers a `DocumentColorProvider`, so it takes
- * `vscode.TextDocument`s and vitest cannot reach it at all (#282). The two
+ * `vscode.TextDocument`s and vitest cannot reach it at all. The two
  * halves it has to get right:
  *
  *   1. `provideDocumentColors` — one swatch per CONCRETE `color` token, ranged

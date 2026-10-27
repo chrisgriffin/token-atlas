@@ -5,8 +5,7 @@
  * the visual editor is the one place a token is edited without typing JSON.
  * `test/core/{serialize,edits}.test.ts` cover the surgical-edit primitives as
  * pure functions; what they cannot reach is `src/host/tokenEditorProvider.ts`
- * turning a webview intent into a ranged `WorkspaceEdit` on a real document
- * (#298).
+ * turning a webview intent into a ranged `WorkspaceEdit` on a real document.
  *
  * VS Code has no API for posting a message *from* a webview, so each intent
  * goes in through `hooks.tokenEditor.receive`: the same queue and handler the

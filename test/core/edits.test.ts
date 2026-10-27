@@ -253,7 +253,8 @@ describe("one-line sibling edits leave the neighbour byte-identical", () => {
 })
 
 describe("multi-line files edit exactly as jsonc-parser's formatter does", () => {
-  // The pre-#304 behaviour: jsonc-parser's modify with formatting options.
+  // The behaviour before computeAddEdits and computeDeleteEdits wrote their
+  // own edits: jsonc-parser's modify with formatting options.
   const FORMAT = {
     formattingOptions: { tabSize: 2, insertSpaces: true, eol: "\n" },
   }

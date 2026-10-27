@@ -18,7 +18,7 @@ import { parseTokens } from "../../src/core/parse"
 import { sampleRoot } from "./fixtures"
 
 /**
- * Resizable columns (#365). jsdom has no layout, so the table's width comes
+ * Resizable columns. jsdom has no layout, so the table's width comes
  * from a ResizeObserver stub and a header cell's rendered width from a
  * getBoundingClientRect stub; what is asserted is the width each `<col>` asks
  * for and what reaches `onColumnWidths`.

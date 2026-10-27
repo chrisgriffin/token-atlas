@@ -206,7 +206,7 @@ If the visual editor does `JSON.stringify(model)` on save, it will reorder keys 
 
 **Use `jsonc-parser`'s `modify()` / `applyEdits()`** to compute _surgical_ edits against the existing text: change only the bytes that actually changed, preserve key order and indentation everywhere else. The host adapter turns those into a `WorkspaceEdit`. Net effect: editing one color in the UI produces a one-line git diff.
 
-Adding or deleting a property beside a sibling is the exception: `modify()` reformats every line its edit touches, a one-line neighbour such as `"lg": { "$value": 2 }` included, so `computeAddEdits` and `computeDeleteEdits` in `src/core/serialize.ts` write that edit themselves and fall back to `modify()` everywhere else (#304). Setting or removing a `$` property goes through the same two, so a one-line token stays on one line. Every new line takes the file's own indentation (tabs, or its smallest space indent) and line ending, read from the text when the caller passes no formatting options.
+Adding or deleting a property beside a sibling is the exception: `modify()` reformats every line its edit touches, a one-line neighbour such as `"lg": { "$value": 2 }` included, so `computeAddEdits` and `computeDeleteEdits` in `src/core/serialize.ts` write that edit themselves and fall back to `modify()` everywhere else. Setting or removing a `$` property goes through the same two, so a one-line token stays on one line. Every new line takes the file's own indentation (tabs, or its smallest space indent) and line ending, read from the text when the caller passes no formatting options.
 
 ---
 

@@ -8,7 +8,7 @@
  * `computeReferenceRenameEdits` as pure functions; what it cannot reach is the
  * host wiring around them — the cross-file walk, the local-first skip and the
  * two `TokenRenameProvider` guards — because all three need the `vscode`
- * module, which vitest cannot load (#274).
+ * module, which vitest cannot load.
  *
  * Every assertion below is on what a consumer observes: the `WorkspaceEdit`
  * the rename provider hands back, and the document text once it is applied.
@@ -78,7 +78,7 @@ const FIXTURES: Record<string, string> = {
 `,
 }
 
-// Code that uses swatch.primary (#441): rename rewrites each occurrence in its
+// Code that uses swatch.primary: rename rewrites each occurrence in its
 // own spelling, declarations included, and leaves a generated file alone. Not
 // token files, so neither the panel nor the teardown's blanking concerns them.
 const CSS = "rename-usage.css"

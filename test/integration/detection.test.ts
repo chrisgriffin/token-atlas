@@ -4,7 +4,7 @@
  * `isTokenDocument` in `src/host/workspaceIndex.ts` is the one check eleven
  * call sites consult before offering a language feature, and it takes a
  * `vscode.TextDocument` — so vitest cannot reach it at all. Its three rules
- * (#254, CLAUDE.md invariant 3):
+ * (CLAUDE.md invariant 3):
  *
  *   1. `.tokens` / `.tokens.json` wins by declaration, even when the file is `{}`.
  *   2. A `languageId` that is not `json` or `jsonc` never counts, whatever the

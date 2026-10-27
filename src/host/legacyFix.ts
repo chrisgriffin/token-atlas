@@ -34,7 +34,7 @@ class LegacyFixProvider implements vscode.CodeActionProvider {
           d => d.source === "Token Atlas" && span(f).intersection(d.range),
         )
         // Not isPreferred: Auto Fix and a "quickfix" codeActionsOnSave would
-        // then apply it unasked, and Chris wants this strictly opt-in (#387).
+        // then apply it unasked, and the fix is meant to be strictly opt-in.
         return action
       })
     if (actions.length && fixes.length > 1) {

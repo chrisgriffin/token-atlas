@@ -183,7 +183,8 @@ class ReplaceWithToken implements vscode.CodeActionProvider {
         action.edit = new vscode.WorkspaceEdit()
         action.edit.replace(document.uri, diagnostic.range, name)
         action.diagnostics = [diagnostic]
-        // Never isPreferred: Auto Fix would then apply it unasked (Chris, #387).
+        // Never isPreferred: Auto Fix would then apply it unasked, and the fix
+        // is meant to be strictly opt-in.
         actions.push(action)
       }
     }

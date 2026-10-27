@@ -1,6 +1,6 @@
 /**
  * Token hovers and go-to-definition inside *exported* code, exercised inside a
- * real VS Code (#283).
+ * real VS Code.
  *
  * `src/host/exportFeatures.ts` registers a hover provider and a definition
  * provider over eight languages and matches the identifier under the cursor

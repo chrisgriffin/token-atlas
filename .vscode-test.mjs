@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { defineConfig } from "@vscode/test-cli"
 
-// A short userDataDir (#434): VS Code binds its IPC socket inside it and macOS
+// A short userDataDir: VS Code binds its IPC socket inside it and macOS
 // caps a socket path at 103 characters, so the default under the checkout fails
 // `listen EINVAL` from a long worktree path. One per checkout, so two worktrees
 // running at once never share a VS Code instance.

@@ -1,5 +1,5 @@
 /**
- * `tokenAtlas.validation: off`, exercised inside a real VS Code (#301).
+ * `tokenAtlas.validation: off`, exercised inside a real VS Code.
  *
  * `refresh` in `src/host/diagnostics.ts` reads `tokenAtlas.validation` per
  * document and, when it is `off`, deletes the document from the `token-atlas`

@@ -4,7 +4,7 @@ import "../../src/webview/styles"
 /**
  * The column header and group headings stick while the rows scroll. In a
  * collapsed-border table a sticky cell's border stays behind with the rows,
- * leaving a 1px gap the rows show through, so the line is a shadow (#417).
+ * leaving a 1px gap the rows show through, so the line is a shadow.
  */
 describe("sticky table header line", () => {
   it("draws the column header and group heading lines as inset shadows", () => {

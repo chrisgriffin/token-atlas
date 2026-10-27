@@ -1,5 +1,5 @@
 /**
- * `tokenAtlas.hardcodedValues` inside a real VS Code (#384): a literal in a
+ * `tokenAtlas.hardcodedValues` inside a real VS Code: a literal in a
  * stylesheet that equals a token is reported, the quick fix offers the token's
  * exported name (one fix per matching token), a variable definition in an exported stylesheet is not, and
  * turning the setting off clears it. The matching itself is unit-tested in
@@ -39,7 +39,7 @@ const hardcoded = (name: string) =>
  * The code action titled `title` on `range`, asked for until it appears.
  * VS Code cancels a code-action request when any code-action provider
  * registers or unregisters mid-flight, and returns only the answers already in,
- * so one request can come back without this extension's fix (#412).
+ * so one request can come back without this extension's fix.
  */
 const fixAt = (name: string, range: vscode.Range, title: string) => {
   let titles: string[] = []
