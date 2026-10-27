@@ -49,11 +49,18 @@ specs/
   002-marketplace-listing/      →  003-marketplace-listing/
   002-ovsx-release-secret/      →  004-ovsx-release-secret/
   019-deprecation-workflow-setting/ keeps 019
-  019-drop-changelog-tooling/   →  005-drop-changelog-tooling/ (kept: PR #42 carried the code)
-  020-drop-changelog-tooling/   →  deleted (PR #43 added only this folder)
+  019-drop-changelog-tooling/   →  005-drop-changelog-tooling/ (kept: PR #42 merged first)
+  020-drop-changelog-tooling/   →  deleted (PR #43 carried the same code)
   020-inline-issue-reasons/        keeps 020
   021-unique-spec-numbers/         this change
 ```
+
+PR #42 (`3ecb2ca`) and PR #43 (`591dc83`) carried identical code: each deletes
+`changelog-preset.config.mjs` and its `.vscodeignore` line and edits
+`package.json` and `package-lock.json`. #43's merge commit `891d69d` adds only
+its spec folder because #42 had already landed that change. Both records
+describe the tree that merged, so the `019` folder is kept because it merged
+first.
 
 Each renumbered folder's own `tasks.md` and any sibling spec that cites its old
 path are updated in the same commit.
