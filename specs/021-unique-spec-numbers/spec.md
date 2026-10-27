@@ -12,11 +12,11 @@ runs and both pull requests merged seconds apart
 
 Measured on `develop@b44bc51`:
 
-| number | folders |
-| --- | --- |
-| `002` | `002-core-model-fixes`, `002-marketplace-listing`, `002-ovsx-release-secret` |
-| `019` | `019-deprecation-workflow-setting` (#36 / PR #39), `019-drop-changelog-tooling` (#40 / PR #42) |
-| `020` | `020-drop-changelog-tooling` (#40 / PR #43), `020-inline-issue-reasons` (#41 / PR #44) |
+| number | folders                                                                                        |
+| ------ | ---------------------------------------------------------------------------------------------- |
+| `002`  | `002-core-model-fixes`, `002-marketplace-listing`, `002-ovsx-release-secret`                   |
+| `019`  | `019-deprecation-workflow-setting` (#36 / PR #39), `019-drop-changelog-tooling` (#40 / PR #42) |
+| `020`  | `020-drop-changelog-tooling` (#40 / PR #43), `020-inline-issue-reasons` (#41 / PR #44)         |
 
 `ls specs | cut -d- -f1 | sort | uniq -d` prints `002`, `019`, `020`.
 
@@ -27,8 +27,8 @@ duplicated another.
 
 ## User scenarios
 
-1. **A reader follows a `Spec:` line.** An issue says `Spec:
-   specs/019-…`; the reader lists `specs/` and finds exactly one folder
+1. **A reader follows a `Spec:` line.** An issue's `Spec:` line
+   names a folder numbered `019`; the reader lists `specs/` and finds exactly one folder
    beginning `019-`, and it is the one that specced that issue.
 2. **A reader asks what specced issue #40.** They find one folder, not two
    that disagree with each other.

@@ -15,7 +15,7 @@ Spec: [`spec.md`](./spec.md) · Branch: `021-unique-spec-numbers`
   differ, so the choice of which to keep is a reading of what landed, not a
   coin toss.
 - `.agents/**` is operator content laid over the checkout at runtime and is
-  never committed here, so its mentions of `specs/019-…` and `specs/020-…`
+  never committed here, so its mentions of the `019` and `020` folders
   are outside this repo's tree and must not be edited.
 
 ## Design decisions
@@ -29,10 +29,9 @@ Spec: [`spec.md`](./spec.md) · Branch: `021-unique-spec-numbers`
    tree's rough chronology readable.
 3. **Free numbers are taken from the first unused values below the current
    high-water mark**, not appended after it, so the sequence stays dense and
-   the next spec still gets the next number. `003` through `018` are each held
-   by exactly one folder, so the free values are whatever `seq` minus the
-   present set yields — `001` is taken, so the first genuinely free numbers
-   come above `021`.
+   the next spec still gets the next number. On `develop@b44bc51` the free
+   values below `021` are `003`, `004`, `005`, `007`, `008`, `009` and `010`,
+   so the three folders that move take `003`, `004` and `005`.
 4. **Which drop-changelog folder to keep is decided by reading `develop`.**
    The kept folder is the one whose `tasks.md` matches the state of the tree
    after both PRs merged (the changelog tooling is gone, `package.json` and
@@ -47,11 +46,11 @@ Spec: [`spec.md`](./spec.md) · Branch: `021-unique-spec-numbers`
 ```
 specs/
   002-core-model-fixes/            keeps 002
-  002-marketplace-listing/      →  renumbered
-  002-ovsx-release-secret/      →  renumbered
+  002-marketplace-listing/      →  003-marketplace-listing/
+  002-ovsx-release-secret/      →  004-ovsx-release-secret/
   019-deprecation-workflow-setting/ keeps 019
-  019-drop-changelog-tooling/   →  one of these two is deleted,
-  020-drop-changelog-tooling/   →  the other renumbered if needed
+  019-drop-changelog-tooling/   →  005-drop-changelog-tooling/ (kept: PR #42 carried the code)
+  020-drop-changelog-tooling/   →  deleted (PR #43 added only this folder)
   020-inline-issue-reasons/        keeps 020
   021-unique-spec-numbers/         this change
 ```
