@@ -454,6 +454,12 @@ export function Table({
               <tr className="section">
                 <th
                   scope="rowgroup"
+                  // The whole heading is the innermost group's; each parent
+                  // name's own context overrides it (spec 022).
+                  data-vscode-context={JSON.stringify({
+                    webviewSection: "group",
+                    path: [...scopeRoot.path, ...group],
+                  })}
                   colSpan={
                     2 +
                     (modes?.shown.length ?? 1) +

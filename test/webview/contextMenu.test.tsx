@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
-import { act, cleanup, render } from "@testing-library/react"
+import { act, cleanup, fireEvent, render } from "@testing-library/react"
 
 // App.tsx imports vscodeApi, which calls acquireVsCodeApi() at load.
 vi.mock("../../src/webview/vscodeApi", () => ({
@@ -12,6 +12,7 @@ vi.mock("../../src/webview/vscodeApi", () => ({
 
 import { parseTokens, resolveAliases, validate } from "../../src/core"
 import { App } from "../../src/webview/App"
+import { setSelectedPathState } from "../../src/webview/vscodeApi"
 
 /**
  * The right-click menu (spec 022) is VS Code's `webview/context`, filtered by
@@ -124,5 +125,58 @@ describe("right-click contexts in the visual editor", () => {
       webviewSection: "group",
       path: ["legacy"],
     })
+  })
+
+  it("the rest of a group heading is the group's too", () => {
+    open()
+    const heading = [...document.querySelectorAll("tr.section th")].find(
+      th => th.textContent === "legacy",
+    )!
+    expect(contextAt(heading)).toEqual({
+      uri: URI,
+      webviewSection: "group",
+      path: ["legacy"],
+    })
+  })
+})
+
+describe("the detail panel after a menu rename or delete", () => {
+  const send = (data: unknown) =>
+    act(() => {
+      window.dispatchEvent(new MessageEvent("message", { data }))
+    })
+  const openPanel = (title: string) =>
+    fireEvent.doubleClick(row(title).closest("tr")!)
+  const panel = () => document.querySelector("aside.panel")
+
+  it("follows the renamed token", () => {
+    open()
+    openPanel("color.ink")
+    expect(panel()).not.toBeNull()
+    send({ type: "renamed", path: ["color", "ink"], newName: "black" })
+    expect(vi.mocked(setSelectedPathState)).toHaveBeenLastCalledWith([
+      "color",
+      "black",
+    ])
+  })
+
+  it("follows a token whose group was renamed", () => {
+    open()
+    openPanel("color.ink")
+    send({ type: "renamed", path: ["color"], newName: "paint" })
+    expect(vi.mocked(setSelectedPathState)).toHaveBeenLastCalledWith([
+      "paint",
+      "ink",
+    ])
+  })
+
+  it("closes on the deleted token, and stays open on another", () => {
+    open()
+    openPanel("color.ink")
+    send({ type: "deleted", path: ["color", "old"] })
+    expect(panel()).not.toBeNull()
+    send({ type: "deleted", path: ["color", "ink"] })
+    expect(panel()).toBeNull()
+    expect(vi.mocked(setSelectedPathState)).toHaveBeenLastCalledWith(null)
   })
 })

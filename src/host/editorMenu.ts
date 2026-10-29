@@ -6,7 +6,8 @@
  *
  * Rename and Delete go through the editor's own intent queue, so they are
  * the edits the name cell and the panels make: the rename alias, the delete
- * prompt and the name errors are theirs.
+ * prompt and the name errors are theirs, and the detail panel follows the
+ * renamed node or closes on the deleted one.
  */
 import * as vscode from "vscode"
 import { TokenEditorProvider } from "./tokenEditorProvider"
@@ -56,6 +57,8 @@ async function findReferences(arg?: unknown) {
     )
     return found
   }
+  // The peek opens the file as text: marked first, as Show in JSON is.
+  TokenEditorProvider.preferText(row.uri)
   void vscode.commands.executeCommand(
     "editor.action.showReferences",
     row.uri,
@@ -85,14 +88,16 @@ async function showInJson(arg?: unknown) {
 async function renameNode(arg?: unknown, newName?: unknown) {
   const row = noRow(arg)
   if (!row) return
-  const name =
+  // Trimmed, as the name cell trims; nothing left is no rename.
+  const name = (
     typeof newName === "string"
       ? newName
       : await vscode.window.showInputBox({
           title: `Rename ${row.path.join(".")}`,
           value: row.path[row.path.length - 1],
         })
-  if (name === undefined || name === row.path[row.path.length - 1]) return
+  )?.trim()
+  if (!name || name === row.path[row.path.length - 1]) return
   await TokenEditorProvider.receive(row.uri, {
     type: "renameNode",
     path: row.path,

@@ -48,6 +48,7 @@ import {
 } from "../core"
 import { codeUsages } from "./codeUsages"
 import { LANGUAGES } from "./exportFeatures"
+import { TokenEditorProvider } from "./tokenEditorProvider"
 import {
   TOKEN_SELECTOR,
   buildWorkspaceIndex,
@@ -503,6 +504,9 @@ async function findUses(uri?: unknown, path?: unknown) {
     ...target.fragment.path,
     ...target.path,
   ])
+  // The peek opens the file as text; from a visual editor row, mark it so
+  // `tokenAtlas.defaultEditor` does not swap that tab straight back.
+  if (rowTarget(uri)) TokenEditorProvider.preferText(target.document.uri)
   void vscode.commands.executeCommand(
     "editor.action.showReferences",
     target.document.uri,

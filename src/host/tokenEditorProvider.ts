@@ -342,11 +342,14 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
             document,
             computeDeleteEdits(document.getText(), msg.path),
           )
+          // The right-click menu deletes from here, not from the panel.
+          post({ type: "deleted", path: msg.path })
           break
         case "renameNode":
           // Key + every reference to it, in this file and across the workspace,
           // keeping the old name as an alias when the workflow is on.
-          await applyRename(document, msg.path, msg.newName)
+          if (await applyRename(document, msg.path, msg.newName))
+            post({ type: "renamed", path: msg.path, newName: msg.newName })
           break
         case "moveNode":
           await this.applyEdits(
