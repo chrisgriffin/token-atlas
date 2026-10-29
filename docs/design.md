@@ -53,7 +53,7 @@ Even scoped to VS Code only, a three-layer split pays for itself in testability 
 
 ### 2.1 `src/host/` — the file map
 
-The only vscode-aware code — all 17 files, alphabetical:
+The only vscode-aware code — all 18 files, alphabetical:
 `activeSet.ts` (the status-bar chooser for which files a `{reference}`
 resolves against: DTCG resolver resolutions first, stepping through each
 modifier when there are more than 12, then Tokens Studio `$themes`),
@@ -81,6 +81,11 @@ the unused-token hint, a struck-through hint on each use of a deprecated token
 in token files, resolver inline tokens and open code files,
 the workspace folder's `token-atlas.lint.json`, re-read on every write, and
 resolver documents: their structure and that every file and fragment they name exists),
+`editorMenu.ts` (the visual editor's right-click menu: Copy Reference, Find
+All References, Show in JSON, Rename… and Delete on the row clicked, read from
+its `data-vscode-context` by `workspaceIndex.ts` `rowTarget`, which the
+deprecation commands on the same menu read too; rename and delete go through
+`tokenEditorProvider.ts`'s intent queue),
 `exportFeatures.ts` (hover, definition and completion on exported
 identifiers in CSS/Sass/Less/JS/TS, matching via `src/core/exportNames.ts`,
 and an inlay hint with the resolved value after each `var(--token)` in
@@ -109,7 +114,7 @@ a root, expanding into its groups and tokens),
 icons, kept free of `vscode` imports so vitest can check it),
 and `workspaceIndex.ts` (the workspace-wide token index behind cross-file
 completion, go-to-def, references and rename, and the scan that finds resolver
-documents).
+documents, and `rowTarget`, the row a right-click menu command acts on).
 
 ---
 

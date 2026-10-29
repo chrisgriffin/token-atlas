@@ -18,6 +18,7 @@ import { DeprecatedPill, InheritedPill } from "./shared"
 import { AliasPicker } from "./AliasPicker"
 import { wouldCycle } from "../../core/aliases"
 import { isReference, referenceTarget } from "../../core/parse"
+import { deprecation } from "../../core/validate"
 import {
   ChevronDown,
   ErrorIcon,
@@ -467,6 +468,10 @@ export function Table({
                       <button
                         className="section-name"
                         tabIndex={-1}
+                        data-vscode-context={JSON.stringify({
+                          webviewSection: "group",
+                          path: [...scopeRoot.path, ...group.slice(0, i + 1)],
+                        })}
                         title={`Open ${[...scopeRoot.path, ...group.slice(0, i + 1)].join(".")}`}
                         onClick={() =>
                           onOpen([...scopeRoot.path, ...group.slice(0, i + 1)])
@@ -609,6 +614,7 @@ function TokenRow({
     <tr
       className={`token${active ? " active" : ""}${focused ? " focused" : ""}${extraClass}`}
       {...rowProps}
+      data-vscode-context={rowContext(token)}
       onClick={e => {
         // Focus first: moving focus blurs the table wrapper, which clears the
         // row's focus, and onClick then sets it again.
@@ -695,6 +701,23 @@ function TokenRow({
         </button>
       </td>
     </tr>
+  )
+}
+
+/**
+ * What a right-click on the row tells VS Code's `webview/context` menu
+ * (spec 022): its section, its path, and whether it is deprecated. An
+ * inherited token has no key of its own, so it is a section of its own.
+ */
+function rowContext(token: TokenNode): string {
+  return JSON.stringify(
+    token.inheritedFrom
+      ? { webviewSection: "inherited", path: token.path }
+      : {
+          webviewSection: "token",
+          path: token.path,
+          tokenDeprecated: deprecation(token) !== undefined,
+        },
   )
 }
 

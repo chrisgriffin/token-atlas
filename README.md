@@ -59,6 +59,8 @@ Token Atlas knows that `--color-brand-primary`, `$color-brand-primary`, `colorBr
 
 Right-click a token file and choose _Reopen Editor With… → Token Editor_. It is a table over the same JSON: grouped by path, swatches on colors, aliases shown with what they resolve to. Open it beside the text editor and the two stay in sync. Every edit you make in the table lands as a one-line change in the file, so diffs stay readable.
 
+Right-click a token for _Copy Reference_ (its `{reference}`), _Find All References_, _Show in JSON_, _Rename…_ and _Delete_, or a group heading for _Show in JSON_, _Rename…_ and _Delete_. With `tokenAtlas.deprecationWorkflow` on, the same menu carries the deprecation commands that fit the token: _Deprecate Token…_ on one that is not deprecated, _Find Remaining Uses of Deprecated Token_ and _Remove Deprecated Token_ on one that is, and _Rename Token Without Keeping Old Name_ on any token or group.
+
 The _Design Tokens_ view in the activity bar lists every token file in the workspace, with its groups. The **+** button creates a new file.
 
 ![The Token Editor table beside the JSON it edits, with the Design Tokens view listing the file's groups](media/token-editor.png)
@@ -76,7 +78,7 @@ The active set is remembered per workspace and never written to the repo.
 
 ## Commands
 
-Seven commands in the Command Palette. The last four need `tokenAtlas.deprecationWorkflow` on, and also sit in a token file's right-click menu, acting on the token under the cursor:
+Seven commands in the Command Palette. The last four need `tokenAtlas.deprecationWorkflow` on, and also sit in a token file's right-click menu, acting on the token under the cursor, and in the visual editor's, acting on the row clicked:
 
 | Command                                                | What it does                                                                         |
 | ------------------------------------------------------ | ------------------------------------------------------------------------------------ |

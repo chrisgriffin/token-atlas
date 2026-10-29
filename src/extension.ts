@@ -19,6 +19,7 @@ import {
   registerIndexInvalidation,
 } from "./host/workspaceIndex"
 import { registerNewTokenFile } from "./host/newTokenFile"
+import { registerEditorMenu } from "./host/editorMenu"
 import { registerLegacyFix } from "./host/legacyFix"
 import {
   registerDeprecation,
@@ -84,6 +85,9 @@ export function activate(
   // default when `tokenAtlas.defaultEditor` says so.
   context.subscriptions.push(TokenEditorProvider.register(context))
   registerDefaultEditor(context)
+  // Its right-click menu: copy, find, show, rename and delete on a row; the
+  // deprecation commands there read the same row (spec 022).
+  registerEditorMenu(context)
 
   // Context key behind the editor-title "open in Token Atlas" button: true only
   // while the active editor is a token document (same check every provider uses).

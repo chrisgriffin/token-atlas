@@ -41,6 +41,7 @@ import {
   isResolverDocument,
   isTokenDocument,
   keyRange,
+  rowTarget,
   tokenScopeAt,
 } from "./workspaceIndex"
 
@@ -376,8 +377,8 @@ class TokenRenameProvider implements vscode.RenameProvider {
 
 /**
  * `Rename Token Without Keeping Old Name`: rename as the setting being off
- * does, leaving no alias. The token under the cursor, or `uri` and `path`
- * as `test/integration/` passes them, with `newName` asked for unless given.
+ * does, leaving no alias. The token under the cursor, the visual editor row
+ * it was right-clicked on, or `uri` and `path` as `test/integration/` passes them, with `newName` asked for unless given.
  * Offered only while the deprecation workflow is on: off, F2 already does it.
  */
 async function renameWithoutAlias(
@@ -391,6 +392,8 @@ async function renameWithoutAlias(
     )
     return false
   }
+  const row = rowTarget(uri)
+  if (row) ({ uri, path } = row)
   let target: { document: vscode.TextDocument; path: string[]; scope: Fragment }
   if (uri instanceof vscode.Uri && Array.isArray(path)) {
     const document = await vscode.workspace.openTextDocument(uri)

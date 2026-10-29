@@ -84,6 +84,8 @@ export interface EditorSettings {
 }
 
 interface State {
+  /** The document's URI: the right-click menu's commands act on it (spec 022). */
+  uri: string
   model: TokenDocumentModel
   validation: ValidationResult
   /** Tokens defined in other files (for cross-file alias references). */

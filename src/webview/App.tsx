@@ -38,6 +38,7 @@ export function clampPanelWidth(w: number, viewportWidth: number): number {
 }
 
 export function App() {
+  const [uri, setUri] = useState("")
   const [model, setModel] = useState<TokenDocumentModel | null>(null)
   const [validation, setValidation] = useState<ValidationResult>({ issues: [] })
   const [externalTokens, setExternalTokens] = useState<TokenNode[]>([])
@@ -78,6 +79,7 @@ export function App() {
         // column back to the width saved before it.
         if (msg.type === "init") setColumnWidths(msg.columnWidths ?? {})
         pendingNames.current.clear()
+        setUri(msg.uri)
         setModel(msg.model)
         setValidation(msg.validation)
         setExternalTokens(msg.externalTokens)
@@ -203,6 +205,9 @@ export function App() {
         height: "100vh",
         overflow: "hidden",
       }}
+      // The right-click menu's commands act on this document; each row and
+      // group heading adds its own section and path (spec 022).
+      data-vscode-context={JSON.stringify({ uri })}
       onKeyDown={e => {
         if (e.key === "Escape" && panelOpen) setPanelOpen(false)
       }}

@@ -197,6 +197,7 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
         )
         post({
           type,
+          uri: key,
           model,
           validation,
           externalTokens: [...external.values()],

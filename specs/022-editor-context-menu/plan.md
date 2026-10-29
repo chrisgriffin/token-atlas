@@ -58,13 +58,13 @@ src/webview/components/Table.tsx      # row and heading contexts
 test/webview/contextMenu.test.tsx     # the contexts the webview sets
 test/ci/manifest-couplings.test.ts    # sections and commands match
 test/integration/editor-menu.test.ts  # each command run with a row's context
-README.md, docs/design.md             # the menu; editorMenu.ts in § 2.1
+README.md, docs/design.md, docs/architecture.md  # the menu; editorMenu.ts in the host maps
 ```
 
 ## Surfaces touched
 
 - `package.json` `contributes.commands` / `contributes.menus` — five commands and a `webview/context` menu; its `when` clauses read webview context keys and `config.tokenAtlas.deprecationWorkflow`, not `tokenAtlas.isTokenDocument`, so the `setContext` call in `src/extension.ts` is unchanged
 - `src/shared/protocol.ts` — `State.uri`, sent by the host and read by the webview in the same change
-- a published surface (extension commands and a menu) — `README.md` § Commands and the visual editor section, `docs/design.md` § 2.1, CHANGELOG from release tooling
+- a published surface (extension commands and a menu) — `README.md` § Commands and the visual editor section, `docs/design.md` § 2.1, `docs/architecture.md`, CHANGELOG from release tooling
 - `test/integration/` — commands, clipboard and the references view are host behaviour vitest cannot load
 - none — no `.vscodeignore` entry (no new top-level directory), no workflow job renamed (ruleset untouched), no `dependencies`/`mainFields` change (invariant 2 unaffected), no setting added, no ADR

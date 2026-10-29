@@ -855,3 +855,18 @@ export function registerIndexInvalidation(
     }),
   )
 }
+
+/**
+ * The token or group a right-click in the visual editor acted on (spec 022).
+ * VS Code passes a `webview/context` command the merged `data-vscode-context`
+ * of the element clicked: the editor's root gives `uri`, the row or heading
+ * `path`. Anything else — a command's own arguments, none — is undefined.
+ */
+export function rowTarget(
+  arg: unknown,
+): { uri: vscode.Uri; path: string[] } | undefined {
+  if (typeof arg !== "object" || arg === null) return undefined
+  const { uri, path } = arg as { uri?: unknown; path?: unknown }
+  if (typeof uri !== "string" || !uri || !Array.isArray(path)) return undefined
+  return { uri: vscode.Uri.parse(uri), path: path.map(String) }
+}
