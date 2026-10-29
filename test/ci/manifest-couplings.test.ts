@@ -108,4 +108,39 @@ describe("package.json ↔ src identifiers", () => {
     )
     expect(missing).toEqual([])
   })
+
+  // The visual editor's right-click menu (spec 022): its `when` clauses read
+  // the `data-vscode-context` the webview sets, a string on each side.
+  describe("the visual editor's right-click menu", () => {
+    const entries: { command: string; when: string }[] =
+      pkg.contributes.menus["webview/context"]
+    const viewType = pkg.contributes.customEditors[0].viewType
+
+    it("runs only contributed commands, only in the visual editor", () => {
+      const contributed = pkg.contributes.commands.map(
+        (c: { command: string }) => c.command,
+      )
+      expect(entries.length).toBeGreaterThan(0)
+      for (const e of entries) {
+        expect(contributed).toContain(e.command)
+        expect(e.when).toContain(`webviewId == '${viewType}'`)
+      }
+    })
+
+    it("names only sections and keys the webview sets", () => {
+      const set = new Set(
+        [...srcText.matchAll(/webviewSection: "([^"]+)"/g)].map(m => m[1]),
+      )
+      const named = entries.flatMap(e => [
+        ...[...e.when.matchAll(/webviewSection == '([^']+)'/g)].map(m => m[1]),
+        ...[
+          ...e.when.matchAll(/webviewSection =~ \/\^\(([^)]+)\)\$\//g),
+        ].flatMap(m => m[1].split("|")),
+      ])
+      expect(named.length).toBeGreaterThan(0)
+      expect(named.filter(s => !set.has(s))).toEqual([])
+      if (entries.some(e => e.when.includes("tokenDeprecated")))
+        expect(srcText).toContain("tokenDeprecated:")
+    })
+  })
 })

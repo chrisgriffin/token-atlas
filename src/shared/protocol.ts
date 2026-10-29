@@ -84,6 +84,8 @@ export interface EditorSettings {
 }
 
 interface State {
+  /** The document's URI: the right-click menu's commands act on it (spec 022). */
+  uri: string
   model: TokenDocumentModel
   validation: ValidationResult
   /** Tokens defined in other files (for cross-file alias references). */
@@ -107,3 +109,7 @@ export type HostToWebview =
   /** The Tokens panel selected a group; scope the table to it, and open the
    *  detail panel on `select` when it picked a token rather than a group. */
   | { type: "scope"; path: string[]; select?: string[] }
+  /** A rename landed: a detail panel on `path` (or inside it) follows it. */
+  | { type: "renamed"; path: string[]; newName: string }
+  /** A delete landed: a detail panel on `path` (or inside it) closes. */
+  | { type: "deleted"; path: string[] }

@@ -37,13 +37,21 @@ export function clampPanelWidth(w: number, viewportWidth: number): number {
   )
 }
 
+/** Whether `path` is `node` or lies inside it. */
+const isWithin = (path: string[], node: string[]) =>
+  node.length <= path.length && node.every((seg, i) => path[i] === seg)
+
 export function App() {
+  const [uri, setUri] = useState("")
   const [model, setModel] = useState<TokenDocumentModel | null>(null)
   const [validation, setValidation] = useState<ValidationResult>({ issues: [] })
   const [externalTokens, setExternalTokens] = useState<TokenNode[]>([])
   const [selectedPath, setSelectedPath] = useState<string[] | null>(() =>
     getSelectedPath(),
   )
+  // The message handler is bound once, so it reads the selection from here.
+  const selectedRef = useRef(selectedPath)
+  selectedRef.current = selectedPath
   const [panelOpen, setPanelOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [scope, setScope] = useState("")
@@ -78,12 +86,27 @@ export function App() {
         // column back to the width saved before it.
         if (msg.type === "init") setColumnWidths(msg.columnWidths ?? {})
         pendingNames.current.clear()
+        setUri(msg.uri)
         setModel(msg.model)
         setValidation(msg.validation)
         setExternalTokens(msg.externalTokens)
         setModes(msg.modes)
         setModeView(msg.settings.modeView)
         setError(null)
+      } else if (msg.type === "renamed" || msg.type === "deleted") {
+        // From the right-click menu, which skips the panel's own handlers:
+        // the panel follows a renamed node and closes on a deleted one.
+        const p = selectedRef.current
+        if (!p || !isWithin(p, msg.path)) return
+        if (msg.type === "deleted") {
+          setSelectedPath(null)
+          setPanelOpen(false)
+        } else
+          setSelectedPath([
+            ...msg.path.slice(0, -1),
+            msg.newName,
+            ...p.slice(msg.path.length),
+          ])
       } else if (msg.type === "error") {
         setError(msg.message)
       }
@@ -203,6 +226,9 @@ export function App() {
         height: "100vh",
         overflow: "hidden",
       }}
+      // The right-click menu's commands act on this document; each row and
+      // group heading adds its own section and path (spec 022).
+      data-vscode-context={JSON.stringify({ uri })}
       onKeyDown={e => {
         if (e.key === "Escape" && panelOpen) setPanelOpen(false)
       }}

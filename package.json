@@ -316,6 +316,31 @@
         "command": "tokenAtlas.renameWithoutAlias",
         "title": "Rename Token Without Keeping Old Name",
         "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.copyReference",
+        "title": "Copy Reference",
+        "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.findReferences",
+        "title": "Find All References",
+        "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.showInJson",
+        "title": "Show in JSON",
+        "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.renameNode",
+        "title": "Rename…",
+        "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.deleteNode",
+        "title": "Delete",
+        "category": "Token Atlas"
       }
     ],
     "menus": {
@@ -350,6 +375,26 @@
         {
           "command": "tokenAtlas.renameWithoutAlias",
           "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow"
+        },
+        {
+          "command": "tokenAtlas.copyReference",
+          "when": "false"
+        },
+        {
+          "command": "tokenAtlas.findReferences",
+          "when": "false"
+        },
+        {
+          "command": "tokenAtlas.showInJson",
+          "when": "false"
+        },
+        {
+          "command": "tokenAtlas.renameNode",
+          "when": "false"
+        },
+        {
+          "command": "tokenAtlas.deleteNode",
+          "when": "false"
         }
       ],
       "view/title": [
@@ -379,6 +424,53 @@
           "command": "tokenAtlas.renameWithoutAlias",
           "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow",
           "group": "1_tokenAtlas@4"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "tokenAtlas.copyReference",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection =~ /^(token|inherited)$/",
+          "group": "1_reference@1"
+        },
+        {
+          "command": "tokenAtlas.findReferences",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection == 'token'",
+          "group": "1_reference@2"
+        },
+        {
+          "command": "tokenAtlas.showInJson",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection =~ /^(token|group)$/",
+          "group": "1_reference@3"
+        },
+        {
+          "command": "tokenAtlas.renameNode",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection =~ /^(token|group)$/",
+          "group": "2_modify@1"
+        },
+        {
+          "command": "tokenAtlas.renameWithoutAlias",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection =~ /^(token|group)$/ && config.tokenAtlas.deprecationWorkflow",
+          "group": "2_modify@2"
+        },
+        {
+          "command": "tokenAtlas.deprecateToken",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection == 'token' && !tokenDeprecated && config.tokenAtlas.deprecationWorkflow",
+          "group": "3_deprecate@1"
+        },
+        {
+          "command": "tokenAtlas.findDeprecatedUses",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection == 'token' && tokenDeprecated && config.tokenAtlas.deprecationWorkflow",
+          "group": "3_deprecate@2"
+        },
+        {
+          "command": "tokenAtlas.removeDeprecatedToken",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection == 'token' && tokenDeprecated && config.tokenAtlas.deprecationWorkflow",
+          "group": "3_deprecate@3"
+        },
+        {
+          "command": "tokenAtlas.deleteNode",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection =~ /^(token|group)$/",
+          "group": "9_delete@1"
         }
       ]
     },

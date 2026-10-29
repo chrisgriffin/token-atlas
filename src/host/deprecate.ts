@@ -48,6 +48,7 @@ import {
 } from "../core"
 import { codeUsages } from "./codeUsages"
 import { LANGUAGES } from "./exportFeatures"
+import { TokenEditorProvider } from "./tokenEditorProvider"
 import {
   TOKEN_SELECTOR,
   buildWorkspaceIndex,
@@ -57,6 +58,7 @@ import {
   isTokenDocument,
   keyRange,
   localScopeFor,
+  rowTarget,
   type IndexedToken,
 } from "./workspaceIndex"
 
@@ -277,7 +279,10 @@ function tokenAt(
   return undefined
 }
 
-/** Where a deprecate or remove command acts: its arguments, else the token under the cursor. */
+/**
+ * Where a deprecate or remove command acts: the visual editor row it was
+ * right-clicked on, its arguments, else the token under the cursor.
+ */
 async function targetOf(
   uri: unknown,
   path: unknown,
@@ -285,6 +290,8 @@ async function targetOf(
   | { document: vscode.TextDocument; path: string[]; fragment: Fragment }
   | undefined
 > {
+  const row = rowTarget(uri)
+  if (row) ({ uri, path } = row)
   if (uri instanceof vscode.Uri && Array.isArray(path)) {
     const document = await vscode.workspace.openTextDocument(uri)
     const fragment = fragmentsOf(document).find(f =>
@@ -497,6 +504,9 @@ async function findUses(uri?: unknown, path?: unknown) {
     ...target.fragment.path,
     ...target.path,
   ])
+  // The peek opens the file as text; from a visual editor row, mark it so
+  // `tokenAtlas.defaultEditor` does not swap that tab straight back.
+  if (rowTarget(uri)) TokenEditorProvider.preferText(target.document.uri)
   void vscode.commands.executeCommand(
     "editor.action.showReferences",
     target.document.uri,
