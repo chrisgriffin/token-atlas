@@ -21,11 +21,11 @@ When a token is renamed or deleted from the visual editor's right-click menu, th
 
 ## Success criteria
 
-- [ ] After Rename Token Without Keeping Old Name from the menu, an open panel on that token shows the token under its new name.
-- [ ] After Remove Deprecated Token from the menu, an open panel on that token closes.
-- [ ] A delete that changes nothing in the file leaves the panel open on the node.
-- [ ] **Runnable:** `npm test -- -t "panel follows menu" 2>&1 | grep -cE "Tests +[0-9]+ passed"` prints `1` (today `0`: vitest reports `Tests  948 skipped (948)`, so no test matches).
-- [ ] The build gate is green: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`.
+- [x] After Rename Token Without Keeping Old Name from the menu, an open panel on that token shows the token under its new name.
+- [x] After Remove Deprecated Token from the menu, an open panel on that token closes.
+- [x] A delete that changes nothing in the file leaves the panel open on the node.
+- [x] **Runnable:** `npm test -- -t "panel follows menu" 2>&1 | grep -cE "Tests +[0-9]+ passed"` prints `1` (today `0`: vitest reports `Tests  948 skipped (948)`, so no test matches).
+- [x] The build gate is green: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`.
 
 ## Needs from Chris
 

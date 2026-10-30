@@ -132,6 +132,13 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
     }
   }
 
+  /** Tell every editor open on `uri` about an edit made outside its intent
+   *  queue — a menu command's — so the detail panel follows it. */
+  public static notify(uri: vscode.Uri, message: HostToWebview): void {
+    for (const panel of TokenEditorProvider.panels.get(uri.toString()) ?? [])
+      void panel.webview.postMessage(message)
+  }
+
   constructor(private readonly context: vscode.ExtensionContext) {}
 
   public static register(context: vscode.ExtensionContext): vscode.Disposable {
@@ -338,12 +345,15 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
           // A deprecated token still in use says how many uses remain first;
           // with the deprecation workflow on, so does any other (spec 019).
           if (!(await mayDelete(document, msg.path))) break
-          await this.applyEdits(
-            document,
-            computeDeleteEdits(document.getText(), msg.path),
+          // The right-click menu deletes from here, not from the panel; a
+          // delete that changed nothing leaves the panel on the node.
+          if (
+            await this.applyEdits(
+              document,
+              computeDeleteEdits(document.getText(), msg.path),
+            )
           )
-          // The right-click menu deletes from here, not from the panel.
-          post({ type: "deleted", path: msg.path })
+            post({ type: "deleted", path: msg.path })
           break
         case "renameNode":
           // Key + every reference to it, in this file and across the workspace,
@@ -472,12 +482,13 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
     return computeSwapEdits(text, parentPath, names[index], names[neighbor])
   }
 
-  /** Translate core edits into a ranged WorkspaceEdit (good undo + clean diffs). */
+  /** Translate core edits into a ranged WorkspaceEdit (good undo + clean
+   *  diffs). Returns whether the document changed. */
   private async applyEdits(
     document: vscode.TextDocument,
     edits: Edit[],
-  ): Promise<void> {
-    if (edits.length === 0) return
+  ): Promise<boolean> {
+    if (edits.length === 0) return false
     const workspaceEdit = new vscode.WorkspaceEdit()
     for (const edit of edits) {
       const start = document.positionAt(edit.offset)
@@ -488,7 +499,7 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
         edit.content,
       )
     }
-    await vscode.workspace.applyEdit(workspaceEdit)
+    return vscode.workspace.applyEdit(workspaceEdit)
   }
 
   private getHtml(webview: vscode.Webview): string {
