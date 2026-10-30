@@ -14,4 +14,4 @@
 
 - [x] T005 `README.md`: the right-click paragraph says Delete asks first.
 - [x] T006 `docs/design.md`, `docs/architecture.md`: the `editorMenu.ts` entries say Delete asks first.
-- [ ] T007 Published surface: none changed; say so in the PR body.
+- [x] T007 Published surface: none changed; say so in the PR body.

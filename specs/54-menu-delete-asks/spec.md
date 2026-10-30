@@ -19,10 +19,10 @@ The visual editor's right-click menu (spec 022) has a Delete entry. The detail p
 
 ## Success criteria
 
-- [ ] Delete from the menu on a group heading removes nothing until the user confirms, and cancelling leaves the file unchanged.
-- [ ] Delete from the menu on a single token asks the same way the panel's Delete does.
-- [ ] **Runnable:** `npm test -- -t "menu delete asks" 2>&1 | grep "Tests:" | grep -v failed | grep -c passed` prints `1` (today `0`: no test matches).
-- [ ] The build gate is green: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`.
+- [x] Delete from the menu on a group heading removes nothing until the user confirms, and cancelling leaves the file unchanged.
+- [x] Delete from the menu on a single token asks the same way the panel's Delete does.
+- [x] **Runnable:** `npm test -- -t "menu delete asks" 2>&1 | grep -cE "Tests +[0-9]+ passed"` prints `1` (today `0`: vitest reports `Tests  948 skipped (948)`, so no test matches).
+- [x] The build gate is green: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`.
 
 ## Needs from Chris
 
