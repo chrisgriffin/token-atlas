@@ -84,7 +84,8 @@ resolver documents: their structure and that every file and fragment they name e
 `editorMenu.ts` (the visual editor's right-click menu: Copy Reference, Find
 All References, Show in JSON, Rename… and Delete on the row clicked, read from
 its `data-vscode-context` by `workspaceIndex.ts` `rowTarget`, which the
-deprecation commands on the same menu read too; rename and delete go through
+deprecation commands on the same menu read too; Delete asks first, naming how
+many tokens a group holds, and rename and delete go through
 `tokenEditorProvider.ts`'s intent queue),
 `exportFeatures.ts` (hover, definition and completion on exported
 identifiers in CSS/Sass/Less/JS/TS, matching via `src/core/exportNames.ts`,

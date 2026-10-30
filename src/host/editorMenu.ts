@@ -7,9 +7,11 @@
  * Rename and Delete go through the editor's own intent queue, so they are
  * the edits the name cell and the panels make: the rename alias, the delete
  * prompt and the name errors are theirs, and the detail panel follows the
- * renamed node or closes on the deleted one.
+ * renamed node or closes on the deleted one. Delete asks first (spec 054):
+ * the panel's button wants a second click, which a menu has no room for.
  */
 import * as vscode from "vscode"
+import { countTokens, indexTokens, parseTokens, type GroupNode } from "../core"
 import { TokenEditorProvider } from "./tokenEditorProvider"
 import { keyRange, rowTarget } from "./workspaceIndex"
 
@@ -105,10 +107,48 @@ async function renameNode(arg?: unknown, newName?: unknown) {
   })
 }
 
-/** Delete the row's token or group, asking first where the panel's delete does. */
+/** Asks before the menu deletes; replaceable by the integration tests. */
+let confirmDelete = async (message: string): Promise<boolean> =>
+  (await vscode.window.showWarningMessage(
+    message,
+    { modal: true },
+    "Delete",
+  )) === "Delete"
+
+/** Not a public API: lets `test/` answer the menu's delete prompt and see its text. */
+export function setMenuDeletePrompt(
+  prompt: (message: string) => Promise<boolean>,
+): () => void {
+  const previous = confirmDelete
+  confirmDelete = prompt
+  return () => {
+    confirmDelete = previous
+  }
+}
+
+/** What the prompt asks: a group says how many tokens go with it. */
+function deletePrompt(text: string, path: string[]): string {
+  const key = path.join(".")
+  const model = parseTokens(text)
+  if (indexTokens(model).has(key)) return `Delete "${key}"?`
+  let group: GroupNode | undefined = model.root
+  for (const name of path)
+    group = group?.children.find(
+      (c): c is GroupNode => c.kind === "group" && c.name === name,
+    )
+  const n = group ? countTokens(group) : 0
+  return `Delete group "${key}" and the ${n} ${n === 1 ? "token" : "tokens"} in it?`
+}
+
+/**
+ * Delete the row's token or group once the user confirms; the editor's own
+ * delete then asks what the panel's does about a token still in use.
+ */
 async function deleteNode(arg?: unknown) {
   const row = noRow(arg)
   if (!row) return
+  const document = await vscode.workspace.openTextDocument(row.uri)
+  if (!(await confirmDelete(deletePrompt(document.getText(), row.path)))) return
   await TokenEditorProvider.receive(row.uri, {
     type: "deleteNode",
     path: row.path,

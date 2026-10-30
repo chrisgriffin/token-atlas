@@ -230,24 +230,42 @@ describe("The visual editor's right-click menu", () => {
     assert.ok(!text.includes('"spare"'))
   })
 
-  it("Delete removes the row's token", async () => {
+  /** Run Delete on `path`, answering its prompt with `yes`; returns what it asked. */
+  async function menuDelete(target: object, yes: boolean) {
+    const asked: string[] = []
+    const restore = hooks.setMenuDeletePrompt(async message => {
+      asked.push(message)
+      return yes
+    })
+    try {
+      await vscode.commands.executeCommand("tokenAtlas.deleteNode", target)
+    } finally {
+      restore()
+    }
+    return asked
+  }
+
+  it("Delete asks, then removes the row's token", async () => {
     await openEditor()
-    await vscode.commands.executeCommand(
-      "tokenAtlas.deleteNode",
-      row(["menu", "spare"]),
-    )
+    const asked = await menuDelete(row(["menu", "spare"]), true)
+    assert.deepEqual(asked, ['Delete "menu.spare"?'])
     await waitFor(
       async () => !(await textOf()).includes('"spare"'),
       "the delete",
     )
   })
 
-  it("Delete on a group heading removes the group", async () => {
+  it("Delete on a group heading asks, and a cancel leaves the file", async () => {
     await openEditor()
-    await vscode.commands.executeCommand(
-      "tokenAtlas.deleteNode",
-      row(["menu"], "group"),
-    )
+    const before = await textOf()
+    const asked = await menuDelete(row(["menu"], "group"), false)
+    assert.deepEqual(asked, ['Delete group "menu" and the 4 tokens in it?'])
+    assert.equal(await textOf(), before)
+  })
+
+  it("Delete on a group heading removes the group once confirmed", async () => {
+    await openEditor()
+    await menuDelete(row(["menu"], "group"), true)
     await waitFor(
       async () => !(await textOf()).includes('"menu"'),
       "the group delete",
