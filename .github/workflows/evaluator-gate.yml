@@ -21,5 +21,10 @@ jobs:
       OPS_GH_TOKEN: ${{ secrets.OPS_GH_TOKEN }}
       # ops#1919: a user token, so the gate can resolve an inline finding thread.
       # Passed as TARGET_TOKEN, the name the reusable at v1 already declares; a
-      # secret the callee does not declare fails the run at parse time.
+      # secret the callee does not declare fails the run at parse time. At v1
+      # the reusable also reads it as the ops-checkout fallback
+      # (`OPS_GH_TOKEN || TARGET_TOKEN`), so an empty or expired OPS_GH_TOKEN
+      # checks ops out with this write-scoped token instead of failing red;
+      # chrisgriffin/workflows#40 keeps that fallback and also hands this token
+      # to the gate as `target-token`, which is what resolves the thread.
       TARGET_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
