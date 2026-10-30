@@ -20,4 +20,6 @@ jobs:
       AUTOFIX_FIRE_TOKEN: ${{ secrets.AUTOFIX_FIRE_TOKEN }}
       OPS_GH_TOKEN: ${{ secrets.OPS_GH_TOKEN }}
       # ops#1919: a user token, so the gate can resolve an inline finding thread.
-      RELEASE_PR_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+      # Passed as TARGET_TOKEN, the name the reusable at v1 already declares; a
+      # secret the callee does not declare fails the run at parse time.
+      TARGET_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
