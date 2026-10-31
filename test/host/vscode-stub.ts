@@ -4,7 +4,9 @@
  * Files live in `disk`, open documents in `workspace.textDocuments`, and
  * `stats` counts what the index asks the file system for, so a test can pin
  * how much work an event costs. `emit` fires the workspace events the index
- * subscribes to.
+ * subscribes to. `commands` and `applyEdit` are enough to run a command the
+ * host registers and see the edit it makes, with `applyEditRefuses` standing
+ * in for VS Code turning an edit down.
  */
 export class EventEmitter<T> {
   private listeners: Array<(e: T) => void> = []
@@ -34,6 +36,9 @@ export class Uri {
   }
   static file(path: string): Uri {
     return new Uri(path)
+  }
+  static parse(value: string): Uri {
+    return new Uri(value.replace(/^file:\/\//, ""))
   }
   static joinPath(base: Uri, ...parts: string[]): Uri {
     const segments: string[] = []
@@ -71,6 +76,21 @@ export class Range {
     readonly end: unknown,
     ..._rest: unknown[]
   ) {}
+}
+
+export class Location {
+  constructor(
+    readonly uri: Uri,
+    readonly range: Range,
+  ) {}
+}
+
+/** Replacements by document; offsets are a stub document's `positionAt` characters. */
+export class WorkspaceEdit {
+  readonly replacements: Array<{ uri: Uri; range: Range; content: string }> = []
+  replace(uri: Uri, range: Range, content: string): void {
+    this.replacements.push({ uri, range, content })
+  }
 }
 
 export class Diagnostic {
@@ -132,16 +152,18 @@ export function openDocument(path: string, text: string, languageId = "json") {
     getText: () => current,
     positionAt: offset => new Position(0, offset),
   }
+  /** Replace the text and fire the change event, as typing does. */
+  const edit = (next: string) => {
+    current = next
+    doc.version++
+    emit("onDidChangeTextDocument", { document: doc, contentChanges: [{}] })
+  }
   workspace.textDocuments.push(doc)
+  editors.set(doc.uri.toString(), edit)
   emit("onDidOpenTextDocument", doc)
   return {
     doc,
-    /** Replace the text and fire the change event, as typing does. */
-    edit(next: string) {
-      current = next
-      doc.version++
-      emit("onDidChangeTextDocument", { document: doc, contentChanges: [{}] })
-    },
+    edit,
     close() {
       doc.isClosed = true
       workspace.textDocuments.splice(workspace.textDocuments.indexOf(doc), 1)
@@ -149,6 +171,9 @@ export function openDocument(path: string, text: string, languageId = "json") {
     },
   }
 }
+
+/** How `applyEdit` changes each open document's text, by URI. */
+const editors = new Map<string, (next: string) => void>()
 
 /** Every diagnostic collection created, by name, keyed by document URI. */
 export const collections = new Map<string, Map<string, Diagnostic[]>>()
@@ -166,9 +191,34 @@ export const languages = {
     }
   },
   registerCodeActionsProvider: () => ({ dispose: () => {} }),
+  registerRenameProvider: () => ({ dispose: () => {} }),
+}
+
+/** Every command registered, by id; `executeCommand` runs one. */
+const registered = new Map<string, (...args: unknown[]) => unknown>()
+
+export const commands = {
+  registerCommand(id: string, run: (...args: unknown[]) => unknown) {
+    registered.set(id, run)
+    return { dispose: () => registered.delete(id) }
+  },
+  async executeCommand(id: string, ...args: unknown[]) {
+    return registered.get(id)?.(...args)
+  },
+}
+
+/** Messages the host showed, newest last. */
+export const shown: string[] = []
+const show = async (message: string) => {
+  shown.push(message)
+  return undefined
 }
 
 export const window = {
+  showInformationMessage: show,
+  showWarningMessage: show,
+  showErrorMessage: show,
+  showInputBox: async () => undefined,
   activeTextEditor: undefined,
   onDidChangeActiveTextEditor: (listener: (e: unknown) => void) =>
     on("onDidChangeActiveTextEditor")(listener),
@@ -180,6 +230,8 @@ export const stats = {
   readFile: 0,
   findFilesArgs: [] as unknown[],
 }
+/** Set to make `applyEdit` refuse, as VS Code does an edit on a stale version. */
+export const applyEditRefuses = { value: false }
 /** `tokenAtlas.*` values: `global`, then one set per workspace folder path. */
 export const settings: {
   global: Record<string, unknown>
@@ -205,6 +257,10 @@ export function emit(name: string, payload?: unknown): void {
 export function reset(): void {
   disk.clear()
   listeners.clear()
+  editors.clear()
+  registered.clear()
+  shown.length = 0
+  applyEditRefuses.value = false
   collections.clear()
   workspace.textDocuments.length = 0
   workspace.workspaceFolders = [{ uri: Uri.file("/ws"), name: "ws", index: 0 }]
@@ -267,6 +323,37 @@ export const workspace = {
       if (text === undefined) throw new Error(`ENOENT ${uri.path}`)
       return Buffer.from(text)
     },
+  },
+  async openTextDocument(uri: Uri) {
+    const open = workspace.textDocuments.find(
+      d => d.uri.toString() === uri.toString(),
+    )
+    if (open) return open
+    const text = disk.get(uri.path)
+    if (text === undefined) throw new Error(`ENOENT ${uri.path}`)
+    return openDocument(uri.path, text).doc
+  },
+  /** Applies each document's replacements back to front, so offsets hold. */
+  async applyEdit(edit: WorkspaceEdit) {
+    if (applyEditRefuses.value) return false
+    const byDoc = new Map<string, typeof edit.replacements>()
+    for (const r of edit.replacements)
+      byDoc.set(r.uri.toString(), [...(byDoc.get(r.uri.toString()) ?? []), r])
+    for (const [key, replacements] of byDoc) {
+      const doc = workspace.textDocuments.find(d => d.uri.toString() === key)
+      if (!doc) return false
+      let text = doc.getText()
+      const at = (p: unknown) => (p as Position).character
+      for (const r of replacements.sort(
+        (a, b) => at(b.range.start) - at(a.range.start),
+      ))
+        text =
+          text.slice(0, at(r.range.start)) +
+          r.content +
+          text.slice(at(r.range.end))
+      editors.get(key)!(text)
+    }
+    return true
   },
   asRelativePath: (uri: Uri) => uri.path.replace(/^\/ws\//, ""),
   getWorkspaceFolder: (uri: Uri) =>
