@@ -33,6 +33,7 @@ import {
 } from "../core"
 import { codeUsages } from "./codeUsages"
 import { deprecationWorkflow, externalFor } from "./deprecate"
+import { TokenEditorProvider } from "./tokenEditorProvider"
 import {
   TOKEN_SELECTOR,
   buildWorkspaceIndex,
@@ -431,13 +432,21 @@ async function renameWithoutAlias(
         })
   if (name === undefined) return false
   try {
-    return await applyRename(
+    const renamed = await applyRename(
       target.document,
       target.path,
       name,
       target.scope,
       false,
     )
+    // Outside the editor's intent queue, so its detail panel is told here.
+    if (renamed)
+      TokenEditorProvider.notify(target.document.uri, {
+        type: "renamed",
+        path: [...target.scope.path.map(String), ...target.path],
+        newName: name,
+      })
+    return renamed
   } catch (err) {
     if (err instanceof NameTakenError || err instanceof InvalidNameError) {
       void vscode.window.showErrorMessage(err.message)

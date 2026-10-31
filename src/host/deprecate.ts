@@ -542,7 +542,14 @@ async function remove(uri?: unknown, path?: unknown) {
     computeDeleteEdits(fragment.text, target.path),
     fragment.offset,
   )
-  return vscode.workspace.applyEdit(edit)
+  const removed = await vscode.workspace.applyEdit(edit)
+  // Outside the editor's intent queue, so its detail panel is told here.
+  if (removed)
+    TokenEditorProvider.notify(document.uri, {
+      type: "deleted",
+      path: [...fragment.path.map(String), ...target.path],
+    })
+  return removed
 }
 
 /**
