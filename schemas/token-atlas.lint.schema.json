@@ -85,7 +85,9 @@
         "token-atlas/vocabulary-invalid": { "$ref": "#/definitions/severity" },
         "token-atlas/ramp-not-monotonic": { "$ref": "#/definitions/severity" },
         "token-atlas/name-case": { "$ref": "#/definitions/severity" },
-        "token-atlas/contrast-insufficient": { "$ref": "#/definitions/severity" }
+        "token-atlas/contrast-insufficient": {
+          "$ref": "#/definitions/severity"
+        }
       }
     }
   },

@@ -5,7 +5,8 @@ date: 2026-09-07
 
 # ADR-001: Match exported identifiers to tokens by normalized name, not by export config
 
-Implemented by [#108](https://github.com/chrisgriffin/token-atlas/issues/108).
+Implemented before the code moved to this repository, under an issue in a
+tracker that is not public.
 
 ## Context
 
