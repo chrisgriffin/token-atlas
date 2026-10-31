@@ -45,6 +45,7 @@ describe("$extends (§6.4)", () => {
     expect(text.resolvedValue).toMatchObject({ hex: "#ffffff" })
     expect(text.type).toBe("color")
     expect(text.inheritedFrom).toBe("button.text")
+    expect(text.inheritedVia).toBe("$extends")
     const bg = index.get("button-primary.background")!
     expect(bg.inheritedFrom).toBeUndefined()
     expect(bg.resolvedValue).toMatchObject({ hex: "#cc0066" })

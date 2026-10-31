@@ -86,7 +86,8 @@ All References, Show in JSON, Rename… and Delete on the row clicked, read from
 its `data-vscode-context` by `workspaceIndex.ts` `rowTarget`, which the
 deprecation commands on the same menu read too; Delete asks first, naming how
 many tokens a group takes with it (its own keys in the file plus the inherited
-rows that leave the view), those that groups extending it inherit named apart,
+rows that leave the view), those that groups extending it in the same file
+inherit named apart,
 and refuses a row with no key in the file, saying it is inherited
 through `$extends` or `$ref` or no longer in the file; rename and delete go through
 `tokenEditorProvider.ts`'s intent queue, and Rename Token Without Keeping Old

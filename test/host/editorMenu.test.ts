@@ -46,6 +46,14 @@ const OVERRIDE = JSON.stringify({
   },
 })
 
+// `dark` extends `palette`, and its own `fg` `$ref`s `palette.light.fg`:
+// `palette` has no `fg`, so `dark.fg.ink` comes through the inner `$ref`,
+// while `dark.light.fg.ink` comes through the outer `$extends`.
+const INNER = JSON.stringify({
+  palette: { $type: "color", light: { fg: { ink: { $value: "#000000" } } } },
+  dark: { $extends: "{palette}", fg: { $ref: "#/palette/light/fg" } },
+})
+
 // `dark` extends `light`, and its own `fg` also `$ref`s `other`: `dark.fg.ink`
 // reaches the view through `dark`'s `$extends`, the outer one, and goes with
 // `light`; `dark.fg.z` comes through the inner `$ref` and stays.
@@ -59,6 +67,7 @@ const OUTER = JSON.stringify({
 })
 
 let TEXT = PLAIN
+let EXTERNAL = new Map<string, TokenNode>()
 const info = vi.fn()
 const commands = new Map<string, (...args: unknown[]) => unknown>()
 
@@ -85,13 +94,14 @@ vi.mock("../../src/host/workspaceIndex", () => ({
     path: arg.path,
   }),
   keyRange: () => undefined,
-  externalIndexFor: async () => new Map(),
+  externalIndexFor: async () => EXTERNAL,
 }))
 
 import {
   registerEditorMenu,
   setMenuDeletePrompt,
 } from "../../src/host/editorMenu"
+import { indexTokens, parseTokens, type TokenNode } from "../../src/core"
 
 registerEditorMenu({ subscriptions: [] } as never)
 const deleteNode = (path: string[]) =>
@@ -106,6 +116,7 @@ const answer = (yes: boolean) =>
 
 beforeEach(() => {
   TEXT = PLAIN
+  EXTERNAL = new Map()
   asked = []
   receive.mockClear()
   info.mockClear()
@@ -285,6 +296,44 @@ describe("menu delete asks", () => {
       'Delete group "light" and the 2 tokens in it? 2 more rows that $extends gives other groups leave the view with it.',
     ])
     expect(receive).not.toHaveBeenCalled()
+  })
+
+  it("menu delete asks naming the inner $ref when the outer $extends target has no such row", async () => {
+    TEXT = INNER
+    const restore = answer(false)
+    try {
+      await deleteNode(["dark", "fg", "ink"])
+      await deleteNode(["palette", "light"])
+    } finally {
+      restore()
+    }
+    expect(info).toHaveBeenCalledWith(
+      '"dark.fg.ink" is inherited through $ref and has no key in this file to delete.',
+    )
+    expect(asked).toEqual([
+      'Delete group "palette.light" and the 1 token in it? 2 more rows that $extends or $ref gives other groups leave the view with it.',
+    ])
+  })
+
+  it("menu delete asks resolving a local target before the workspace index, as the view does", async () => {
+    // Another file has `other.ink`; this file's own `other` has no `ink`, and
+    // the local group wins (invariant 4), so `dark.fg.ink` still comes through
+    // `dark`'s `$extends`, not the `$ref` to `other`.
+    TEXT = OUTER
+    EXTERNAL = indexTokens(
+      parseTokens(
+        JSON.stringify({ other: { $type: "color", ink: { $value: "#999" } } }),
+      ),
+    )
+    const restore = answer(false)
+    try {
+      await deleteNode(["dark", "fg", "ink"])
+    } finally {
+      restore()
+    }
+    expect(info).toHaveBeenCalledWith(
+      '"dark.fg.ink" is inherited through $extends and has no key in this file to delete.',
+    )
   })
 
   it("menu delete asks naming $ref when a group-level $ref gives the rows", async () => {

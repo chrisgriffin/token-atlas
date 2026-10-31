@@ -18,7 +18,6 @@ import {
   expandExtends,
   indexTokens,
   parseTokens,
-  type GroupNode,
   type TokenNode,
 } from "../core"
 import { TokenEditorProvider } from "./tokenEditorProvider"
@@ -136,80 +135,30 @@ export function setMenuDeletePrompt(
   }
 }
 
-/** The keys the editor shows: the file's own plus what `$extends` gives it. */
-function viewKeys(text: string, external: Map<string, TokenNode>): Set<string> {
+/** The rows the editor shows: the file's own tokens plus what `$extends` gives it. */
+function viewIndex(
+  text: string,
+  external: Map<string, TokenNode>,
+): Map<string, TokenNode> {
   const model = parseTokens(text)
   expandExtends(model.root, external)
-  return new Set(indexTokens(model).keys())
+  return indexTokens(model)
 }
 
-/** Whether one dotted key is the other or lies under it. */
-const overlaps = (a: string, b: string): boolean =>
-  a === b || a.startsWith(b + ".") || b.startsWith(a + ".")
-
 /**
- * The key, `$extends` or `$ref`, through which a row other groups lose
- * reached the view: the one on the extending group whose target is the
- * deleted key, lies under it or above it, the group whose source went away,
- * not the deepest extending group on the row's path (an inner `$ref` to
- * some other group still holds). None matching, the deepest one. Run per
- * row, the keys are named together when more than one is at work.
+ * The key, `$extends` or `$ref`, that gave each of `keys` to the view, as
+ * `expandExtends` recorded it on the copy (`inheritedVia`), named together
+ * when more than one is at work. It resolved the target as the view did,
+ * local group first, so an inner `$ref` to a group without the row is never
+ * the one named.
  */
-function viaOf(root: GroupNode, keys: string[], deleted: string): string {
+function viaOf(view: Map<string, TokenNode>, keys: string[]): string {
   const vias = new Set<string>()
   for (const key of keys) {
-    let deepest: string | undefined
-    let lost: string | undefined
-    let group: GroupNode | undefined = root
-    for (const segment of key.split(".")) {
-      const next: TokenNode | GroupNode | undefined = group.children.find(
-        c => c.kind === "group" && c.name === segment,
-      )
-      if (!next || next.kind !== "group") break
-      group = next
-      if (!group.extends) continue
-      deepest = group.extends.via
-      const { via, target } = group.extends
-      if (target && overlaps(target, deleted)) lost ??= via
-    }
-    const via = lost ?? deepest
+    const via = view.get(key)?.inheritedVia
     if (via) vias.add(via)
   }
   return [...vias].sort().join(" or ") || "$extends"
-}
-
-/**
- * The key, `$extends` or `$ref`, that supplies the inherited row `key`: the
- * deepest extending group on its path whose target, with the rest of the
- * path under it, is a row of the view or of another workspace file, or a
- * heading over one (an inner `$ref` to a group that has no such row is not
- * the one). None matching, the deepest one.
- */
-function suppliedVia(
-  root: GroupNode,
-  key: string,
-  view: Set<string>,
-  external: Map<string, TokenNode>,
-): string {
-  const keys = [...view, ...external.keys()]
-  const holds = (p: string) => keys.some(k => k === p || k.startsWith(p + "."))
-  const segments = key.split(".")
-  let deepest: string | undefined
-  let supplier: string | undefined
-  let group: GroupNode | undefined = root
-  for (const [i, segment] of segments.entries()) {
-    const next: TokenNode | GroupNode | undefined = group.children.find(
-      c => c.kind === "group" && c.name === segment,
-    )
-    if (!next || next.kind !== "group") break
-    group = next
-    if (!group.extends) continue
-    const { via, target } = group.extends
-    deepest = via
-    const rest = segments.slice(i + 1).join(".")
-    if (target && rest && holds(`${target}.${rest}`)) supplier = via
-  }
-  return supplier ?? deepest ?? "$extends"
 }
 
 /** Whether the tolerant delete finds `path` in `text`; it throws on some broken text. */
@@ -247,21 +196,23 @@ function deletePrompt(
       : { tell: `"${key}" is not in this file, which does not parse.` }
   const fileKeys = indexTokens(model)
   if (fileKeys.has(key)) return { ask: `Delete "${key}"?` }
-  const before = viewKeys(text, external)
+  const before = viewIndex(text, external)
   const group = findGroup(model.root, path)
   if (!group) {
-    const inView = [...before].some(k => k === key || k.startsWith(key + "."))
+    const rows = [...before.keys()].filter(
+      k => k === key || k.startsWith(key + "."),
+    )
     return {
-      tell: inView
-        ? `"${key}" is inherited through ${suppliedVia(model.root, key, before, external)} and has no key in this file to delete.`
+      tell: rows.length
+        ? `"${key}" is inherited through ${viaOf(before, rows)} and has no key in this file to delete.`
         : `"${key}" is no longer in this file.`,
     }
   }
-  const after = viewKeys(
+  const after = viewIndex(
     applyEdits(text, computeDeleteEdits(text, path)),
     external,
   )
-  const gone = [...before].filter(k => !after.has(k))
+  const gone = [...before.keys()].filter(k => !after.has(k))
   const own = gone.filter(k => k.startsWith(key + "."))
   // The file's token keys under the group, overrides of inherited rows
   // included, plus the inherited rows that leave the view with it.
@@ -269,7 +220,7 @@ function deletePrompt(
   const others = gone.filter(k => !own.includes(k))
   const more = others.length
   const also = more
-    ? ` ${more} more ${more === 1 ? "row" : "rows"} that ${viaOf(model.root, others, key)} gives other groups ${more === 1 ? "leaves" : "leave"} the view with it.`
+    ? ` ${more} more ${more === 1 ? "row" : "rows"} that ${viaOf(before, others)} gives other groups ${more === 1 ? "leaves" : "leave"} the view with it.`
     : ""
   if (!n) return { ask: `Delete group "${key}"?${also}` }
   return {
