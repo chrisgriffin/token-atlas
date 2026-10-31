@@ -36,6 +36,15 @@ const REF = JSON.stringify({
   dark: { $ref: "#/light" },
 })
 
+// `dark` extends `light`, and its own `fg` also `$ref`s `other`: `dark.fg.ink`
+// reaches the view through `dark`'s `$extends`, the outer one, and goes with
+// `light`; `dark.fg.z` comes through the inner `$ref` and stays.
+const OUTER = JSON.stringify({
+  light: { $type: "color", fg: { ink: { $value: "#000000" } } },
+  other: { $type: "color", z: { $value: "#111111" } },
+  dark: { $extends: "{light}", fg: { $ref: "#/other" } },
+})
+
 let TEXT = PLAIN
 const info = vi.fn()
 const commands = new Map<string, (...args: unknown[]) => unknown>()
@@ -227,6 +236,20 @@ describe("menu delete asks", () => {
       type: "deleteNode",
       path: ["a", "b"],
     })
+  })
+
+  it("menu delete asks naming the outer $extends that loses the row, not an inner $ref that holds", async () => {
+    TEXT = OUTER
+    const restore = answer(false)
+    try {
+      await deleteNode(["light"])
+    } finally {
+      restore()
+    }
+    expect(asked).toEqual([
+      'Delete group "light" and the 1 token in it? 1 more row that $extends gives other groups leaves the view with it.',
+    ])
+    expect(receive).not.toHaveBeenCalled()
   })
 
   it("menu delete asks naming $ref when a group-level $ref gives the rows", async () => {

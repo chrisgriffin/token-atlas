@@ -143,15 +143,24 @@ function viewKeys(text: string, external: Map<string, TokenNode>): Set<string> {
   return new Set(indexTokens(model).keys())
 }
 
+/** Whether one dotted key is the other or lies under it. */
+const overlaps = (a: string, b: string): boolean =>
+  a === b || a.startsWith(b + ".") || b.startsWith(a + ".")
+
 /**
- * The key, `$extends` or `$ref`, that hands `key` to the view: the deepest
- * group along its path that extends another. Run per row, the keys are named
- * together when more than one is at work.
+ * The key, `$extends` or `$ref`, that hands `key` to the view. With
+ * `deleted`, it is the one on the extending group whose target is the
+ * deleted key, lies under it or above it: the group whose source went away,
+ * not the deepest extending group on the row's path (an inner `$ref` to
+ * some other group still holds). Without, or when none matches, the deepest
+ * one. Run per row, the keys are named together when more than one is at
+ * work.
  */
-function viaOf(root: GroupNode, keys: string[]): string {
+function viaOf(root: GroupNode, keys: string[], deleted?: string): string {
   const vias = new Set<string>()
   for (const key of keys) {
-    let via: string | undefined
+    let deepest: string | undefined
+    let lost: string | undefined
     let group: GroupNode | undefined = root
     for (const segment of key.split(".")) {
       const next: TokenNode | GroupNode | undefined = group.children.find(
@@ -159,8 +168,12 @@ function viaOf(root: GroupNode, keys: string[]): string {
       )
       if (!next || next.kind !== "group") break
       group = next
-      if (group.extends) via = group.extends.via
+      if (!group.extends) continue
+      deepest = group.extends.via
+      const { via, target } = group.extends
+      if (deleted && target && overlaps(target, deleted)) lost ??= via
     }
+    const via = lost ?? deepest
     if (via) vias.add(via)
   }
   return [...vias].sort().join(" or ") || "$extends"
@@ -218,7 +231,7 @@ function deletePrompt(
   const others = gone.filter(k => !own.includes(k))
   const more = others.length
   const also = more
-    ? ` ${more} more ${more === 1 ? "row" : "rows"} that ${viaOf(model.root, others)} gives other groups ${more === 1 ? "leaves" : "leave"} the view with it.`
+    ? ` ${more} more ${more === 1 ? "row" : "rows"} that ${viaOf(model.root, others, key)} gives other groups ${more === 1 ? "leaves" : "leave"} the view with it.`
     : ""
   if (!n && countTokens(group)) return { ask: `Delete group "${key}"?${also}` }
   return {
