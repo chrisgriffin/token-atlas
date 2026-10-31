@@ -19,7 +19,7 @@ import {
   registerIndexInvalidation,
 } from "./host/workspaceIndex"
 import { registerNewTokenFile } from "./host/newTokenFile"
-import { registerEditorMenu } from "./host/editorMenu"
+import { registerEditorMenu, setMenuDeletePrompt } from "./host/editorMenu"
 import { registerLegacyFix } from "./host/legacyFix"
 import {
   registerDeprecation,
@@ -47,6 +47,8 @@ export interface TokenAtlasTestHooks {
   setRemovalPrompt: typeof setRemovalPrompt
   /** Answers the delete prompt for a used token, with the workflow on. */
   setDeletePrompt: typeof setDeletePrompt
+  /** Answers the right-click menu's Delete prompt. */
+  setMenuDeletePrompt: typeof setMenuDeletePrompt
   /** Answers the notification after a rename that kept the old name. */
   setAliasNotice: typeof setAliasNotice
 }
@@ -141,6 +143,7 @@ export function activate(
     codeSwatches,
     setRemovalPrompt,
     setDeletePrompt,
+    setMenuDeletePrompt,
     setAliasNotice,
   }
 }

@@ -96,6 +96,8 @@ export interface TokenNode {
    * dotted path of the token it was copied from. It has no key in the text.
    */
   inheritedFrom?: string
+  /** With `inheritedFrom`: the key on the extending group that placed the copy. */
+  inheritedVia?: "$extends" | "$ref"
   /**
    * Set on a token written with `$ref` and no `$value` (§6.6.2): `value` is
    * that `{ $ref }` object, which sits at the token's own key in the text.

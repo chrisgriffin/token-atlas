@@ -110,6 +110,7 @@ export function contextValues(
   const children = [...merged.values()].map(t => ({
     ...t,
     inheritedFrom: undefined,
+    inheritedVia: undefined,
   }))
   const resolved = resolveAliases({
     root: { kind: "group", name: "", path: [], children },
