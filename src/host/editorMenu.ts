@@ -11,9 +11,18 @@
  * the panel's button wants a second click, which a menu has no room for.
  */
 import * as vscode from "vscode"
-import { countTokens, indexTokens, parseTokens, type GroupNode } from "../core"
+import {
+  computeDeleteEdits,
+  countTokens,
+  expandExtends,
+  indexTokens,
+  parseTokens,
+  type Edit,
+  type TokenNode,
+} from "../core"
 import { TokenEditorProvider } from "./tokenEditorProvider"
-import { keyRange, rowTarget } from "./workspaceIndex"
+import { findGroup } from "./tokenTree"
+import { externalIndexFor, keyRange, rowTarget } from "./workspaceIndex"
 
 /** The row a menu command acts on; run from anywhere else, it says it needs one. */
 function noRow(arg: unknown): { uri: vscode.Uri; path: string[] } | undefined {
@@ -126,17 +135,48 @@ export function setMenuDeletePrompt(
   }
 }
 
-/** What the prompt asks: a group says how many tokens go with it. */
-function deletePrompt(text: string, path: string[]): string {
+/** `text` with `edits` applied, last offset first so earlier ones stay put. */
+function applied(text: string, edits: Edit[]): string {
+  return [...edits]
+    .sort((a, b) => b.offset - a.offset)
+    .reduce(
+      (out, e) =>
+        out.slice(0, e.offset) + e.content + out.slice(e.offset + e.length),
+      text,
+    )
+}
+
+/** The keys the editor shows: the file's own plus what `$extends` gives it. */
+function viewKeys(text: string, external: Map<string, TokenNode>): Set<string> {
+  const model = parseTokens(text)
+  expandExtends(model.root, external)
+  return new Set(indexTokens(model).keys())
+}
+
+/**
+ * What the prompt asks, or undefined when the row has no key in the file: a
+ * row `$extends` gives the view has nothing to delete. A group counts the
+ * rows that leave the view, inherited ones included; a row that the
+ * `$extends` still gives once the key is gone stays, so it is not counted.
+ */
+function deletePrompt(
+  text: string,
+  path: string[],
+  external: Map<string, TokenNode>,
+): string | undefined {
   const key = path.join(".")
   const model = parseTokens(text)
   if (indexTokens(model).has(key)) return `Delete "${key}"?`
-  let group: GroupNode | undefined = model.root
-  for (const name of path)
-    group = group?.children.find(
-      (c): c is GroupNode => c.kind === "group" && c.name === name,
-    )
-  const n = group ? countTokens(group) : 0
+  const group = findGroup(model.root, path)
+  if (!group) return undefined
+  const after = viewKeys(
+    applied(text, computeDeleteEdits(text, path)),
+    external,
+  )
+  const n = [...viewKeys(text, external)].filter(
+    k => k.startsWith(key + ".") && !after.has(k),
+  ).length
+  if (!n && countTokens(group)) return `Delete group "${key}"?`
   return `Delete group "${key}" and the ${n} ${n === 1 ? "token" : "tokens"} in it?`
 }
 
@@ -148,7 +188,18 @@ async function deleteNode(arg?: unknown) {
   const row = noRow(arg)
   if (!row) return
   const document = await vscode.workspace.openTextDocument(row.uri)
-  if (!(await confirmDelete(deletePrompt(document.getText(), row.path)))) return
+  const prompt = deletePrompt(
+    document.getText(),
+    row.path,
+    await externalIndexFor(row.uri),
+  )
+  if (!prompt) {
+    void vscode.window.showInformationMessage(
+      `"${row.path.join(".")}" is inherited through $extends and has no key in this file to delete.`,
+    )
+    return
+  }
+  if (!(await confirmDelete(prompt))) return
   await TokenEditorProvider.receive(row.uri, {
     type: "deleteNode",
     path: row.path,

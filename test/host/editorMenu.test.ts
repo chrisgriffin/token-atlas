@@ -6,7 +6,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const TEXT = JSON.stringify({
+const PLAIN = JSON.stringify({
   color: {
     $type: "color",
     ink: { $value: "#000000" },
@@ -14,6 +14,24 @@ const TEXT = JSON.stringify({
   },
 })
 
+// `dark` extends `light`: `dark.bg` and `dark.fg.muted` are its own keys,
+// `dark.fg.ink` and `dark.fg.line` (and the whole of `dark.border`) are not.
+const EXTENDS = JSON.stringify({
+  light: {
+    $type: "color",
+    bg: { $value: "#ffffff" },
+    fg: { ink: { $value: "#000000" }, line: { $value: "#cccccc" } },
+    border: { hair: { $value: "#eeeeee" } },
+  },
+  dark: {
+    $extends: "{light}",
+    bg: { $value: "#000000" },
+    fg: { muted: { $value: "#888888" } },
+  },
+})
+
+let TEXT = PLAIN
+const info = vi.fn()
 const commands = new Map<string, (...args: unknown[]) => unknown>()
 
 vi.mock("vscode", () => ({
@@ -23,7 +41,7 @@ vi.mock("vscode", () => ({
       return { dispose: () => {} }
     },
   },
-  window: { showInformationMessage: vi.fn() },
+  window: { showInformationMessage: (...args: unknown[]) => info(...args) },
   workspace: {
     openTextDocument: async () => ({ getText: () => TEXT }),
   },
@@ -39,6 +57,7 @@ vi.mock("../../src/host/workspaceIndex", () => ({
     path: arg.path,
   }),
   keyRange: () => undefined,
+  externalIndexFor: async () => new Map(),
 }))
 
 import {
@@ -58,8 +77,10 @@ const answer = (yes: boolean) =>
   })
 
 beforeEach(() => {
+  TEXT = PLAIN
   asked = []
   receive.mockClear()
+  info.mockClear()
 })
 
 describe("menu delete asks", () => {
@@ -110,5 +131,37 @@ describe("menu delete asks", () => {
       type: "deleteNode",
       path: ["color", "ink"],
     })
+  })
+
+  it("menu delete asks nothing of an inherited group, and sends nothing", async () => {
+    TEXT = EXTENDS
+    const restore = answer(true)
+    try {
+      await deleteNode(["dark", "border"])
+    } finally {
+      restore()
+    }
+    expect(asked).toEqual([])
+    expect(info).toHaveBeenCalledWith(
+      '"dark.border" is inherited through $extends and has no key in this file to delete.',
+    )
+    expect(receive).not.toHaveBeenCalled()
+  })
+
+  it("menu delete asks with the inherited rows that leave the view counted", async () => {
+    TEXT = EXTENDS
+    const restore = answer(false)
+    try {
+      await deleteNode(["dark"])
+      // `dark.fg.muted` goes; `dark.fg.ink` and `.line` stay, from `light`.
+      await deleteNode(["dark", "fg"])
+    } finally {
+      restore()
+    }
+    expect(asked).toEqual([
+      'Delete group "dark" and the 5 tokens in it?',
+      'Delete group "dark.fg" and the 1 token in it?',
+    ])
+    expect(receive).not.toHaveBeenCalled()
   })
 })
