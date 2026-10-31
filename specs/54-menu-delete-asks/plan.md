@@ -13,7 +13,7 @@
 ## Surfaces touched
 
 - `src/host/editorMenu.ts` — the prompt before `deleteNode`, and `setMenuDeletePrompt`.
-- `src/core/extends.ts`, `src/core/types.ts` — each inherited copy (token or holder group) carries `inheritedVia`, the key on the extending group that placed it; nothing else reads it yet.
+- `src/core/extends.ts`, `src/core/types.ts` — each inherited token copy carries `inheritedVia`, the key on the extending group that placed it (`modes.ts` clears it with `inheritedFrom` when it flattens); nothing else reads it yet.
 - `src/host/tokenTree.ts` — `findGroup` exported for the menu's group lookup.
 - `src/extension.ts` — `setMenuDeletePrompt` on `TokenAtlasTestHooks` (test-only, not a public API).
 - `test/host/editorMenu.test.ts` — new: confirm, cancel, group count.

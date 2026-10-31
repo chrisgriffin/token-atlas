@@ -134,8 +134,6 @@ export interface GroupNode {
   extends?: { via: "$extends" | "$ref"; target?: string; error?: string }
   /** Set on a group that exists only to hold inherited tokens: the origin group's path. */
   inheritedFrom?: string
-  /** With `inheritedFrom`: the key on the extending group that placed it. */
-  inheritedVia?: "$extends" | "$ref"
   children: Array<GroupNode | TokenNode>
 }
 

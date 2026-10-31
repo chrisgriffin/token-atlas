@@ -5,8 +5,8 @@
  * replacement"); groups merge.
  *
  * Inherited tokens are copies placed in the model tree, marked
- * `inheritedFrom` and `inheritedVia` (the key on the group that placed
- * them, which the editor's Delete prompt names), so everything that reads a resolved model — hover,
+ * `inheritedFrom` and, on a token, `inheritedVia` (the key on the group
+ * that placed it, which the editor's Delete prompt names), so everything that reads a resolved model — hover,
  * completion, validation, the Tokens panel, the visual editor — sees them
  * like any other token. Code that works on the text's own keys (edits,
  * swatches, the outline) parses without expanding and never meets them.
@@ -269,7 +269,6 @@ function holder(
         name,
         path: [...at.path, name],
         inheritedFrom: [target, ...segments.slice(0, i + 1)].join("."),
-        inheritedVia: g.extends!.via,
         children: [],
       }
       at.children.push(next)
