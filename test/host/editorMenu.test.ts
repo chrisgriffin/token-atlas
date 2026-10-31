@@ -264,10 +264,15 @@ describe("menu delete asks", () => {
     TEXT = OUTER
     const restore = answer(false)
     try {
+      await deleteNode(["dark", "fg", "ink"])
       await deleteNode(["light"])
     } finally {
       restore()
     }
+    // The refusal names the `$extends` that supplies the row, as the count does.
+    expect(info).toHaveBeenCalledWith(
+      '"dark.fg.ink" is inherited through $extends and has no key in this file to delete.',
+    )
     expect(asked).toEqual([
       'Delete group "light" and the 1 token in it? 1 more row that $extends gives other groups leaves the view with it.',
     ])

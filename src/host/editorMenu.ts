@@ -148,15 +148,14 @@ const overlaps = (a: string, b: string): boolean =>
   a === b || a.startsWith(b + ".") || b.startsWith(a + ".")
 
 /**
- * The key, `$extends` or `$ref`, that hands `key` to the view. With
- * `deleted`, it is the one on the extending group whose target is the
- * deleted key, lies under it or above it: the group whose source went away,
+ * The key, `$extends` or `$ref`, through which a row other groups lose
+ * reached the view: the one on the extending group whose target is the
+ * deleted key, lies under it or above it, the group whose source went away,
  * not the deepest extending group on the row's path (an inner `$ref` to
- * some other group still holds). Without, or when none matches, the deepest
- * one. Run per row, the keys are named together when more than one is at
- * work.
+ * some other group still holds). None matching, the deepest one. Run per
+ * row, the keys are named together when more than one is at work.
  */
-function viaOf(root: GroupNode, keys: string[], deleted?: string): string {
+function viaOf(root: GroupNode, keys: string[], deleted: string): string {
   const vias = new Set<string>()
   for (const key of keys) {
     let deepest: string | undefined
@@ -171,12 +170,38 @@ function viaOf(root: GroupNode, keys: string[], deleted?: string): string {
       if (!group.extends) continue
       deepest = group.extends.via
       const { via, target } = group.extends
-      if (deleted && target && overlaps(target, deleted)) lost ??= via
+      if (target && overlaps(target, deleted)) lost ??= via
     }
     const via = lost ?? deepest
     if (via) vias.add(via)
   }
   return [...vias].sort().join(" or ") || "$extends"
+}
+
+/**
+ * The key, `$extends` or `$ref`, that supplies the inherited row `key`: the
+ * deepest extending group on its path whose target, with the rest of the
+ * path under it, is a row of the view (an inner `$ref` to a group that has
+ * no such row is not the one). None matching, the deepest one.
+ */
+function suppliedVia(root: GroupNode, key: string, view: Set<string>): string {
+  const segments = key.split(".")
+  let deepest: string | undefined
+  let supplier: string | undefined
+  let group: GroupNode | undefined = root
+  for (const [i, segment] of segments.entries()) {
+    const next: TokenNode | GroupNode | undefined = group.children.find(
+      c => c.kind === "group" && c.name === segment,
+    )
+    if (!next || next.kind !== "group") break
+    group = next
+    if (!group.extends) continue
+    const { via, target } = group.extends
+    deepest = via
+    const rest = segments.slice(i + 1).join(".")
+    if (target && rest && view.has(`${target}.${rest}`)) supplier = via
+  }
+  return supplier ?? deepest ?? "$extends"
 }
 
 /** Whether the tolerant delete finds `path` in `text`; it throws on some broken text. */
@@ -220,7 +245,7 @@ function deletePrompt(
     const inView = [...before].some(k => k === key || k.startsWith(key + "."))
     return {
       tell: inView
-        ? `"${key}" is inherited through ${viaOf(model.root, [key])} and has no key in this file to delete.`
+        ? `"${key}" is inherited through ${suppliedVia(model.root, key, before)} and has no key in this file to delete.`
         : `"${key}" is no longer in this file.`,
     }
   }
