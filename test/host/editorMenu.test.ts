@@ -164,4 +164,32 @@ describe("menu delete asks", () => {
     ])
     expect(receive).not.toHaveBeenCalled()
   })
+
+  it("menu delete asks with the rows a group extending it loses counted", async () => {
+    TEXT = EXTENDS
+    const restore = answer(false)
+    try {
+      // `dark.fg.ink`, `dark.fg.line` and `dark.border.hair` go with `light`.
+      await deleteNode(["light"])
+    } finally {
+      restore()
+    }
+    expect(asked).toEqual([
+      'Delete group "light" and the 4 tokens in it? 3 more rows that $extends gives other groups leave the view with it.',
+    ])
+    expect(receive).not.toHaveBeenCalled()
+  })
+
+  it("menu delete asks nothing of a row no longer in the file, and says so", async () => {
+    TEXT = "{ not json"
+    const restore = answer(true)
+    try {
+      await deleteNode(["color", "ink"])
+    } finally {
+      restore()
+    }
+    expect(asked).toEqual([])
+    expect(info).toHaveBeenCalledWith('"color.ink" is no longer in this file.')
+    expect(receive).not.toHaveBeenCalled()
+  })
 })

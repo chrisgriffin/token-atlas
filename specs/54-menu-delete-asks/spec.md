@@ -8,13 +8,14 @@ The visual editor's right-click menu (spec 022) has a Delete entry. The detail p
 
 ## User scenarios
 
-- Right-click a group heading → Delete: a modal asks `Delete group "<path>" and the <n> tokens in it?` with a Delete button. Cancel (or Escape) leaves the file unchanged.
+- Right-click a group heading → Delete: a modal asks `Delete group "<path>" and the <n> tokens in it?` with a Delete button, adding how many more rows leave the view when a group extending it inherits them. Cancel (or Escape) leaves the file unchanged.
 - Right-click a token → Delete: a modal asks `Delete "<path>"?` with a Delete button, the menu's form of the panel's click-again confirmation.
 
 ## Functional requirements
 
 1. `tokenAtlas.deleteNode` run with a row asks before sending `deleteNode`; nothing is sent unless the answer is Delete.
-2. A group's prompt names the group and how many tokens it holds (`countTokens`); a token's names the token.
+2. A group's prompt names the group and how many rows leave the view with it: its own, `$extends`-inherited ones included, and, named apart, those a group extending it loses; a token's names the token. A row with no key in the file sends nothing and says why: inherited through `$extends`, or no longer in the file.
+   _Corrected 2026-10-31 (PR #56 review): this read "how many tokens it holds (`countTokens`)", which undercounts what a delete removes from the view when `$extends` is in play (`dark` extending `light` loses rows when `light` goes), and said nothing of inherited headings, which have no key to delete._
 3. The prompt is replaceable from `test/integration/`, as `setDeletePrompt` and `setRemovalPrompt` are, so the suite can answer it.
 
 ## Success criteria

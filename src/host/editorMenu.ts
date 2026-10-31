@@ -11,13 +11,13 @@
  * the panel's button wants a second click, which a menu has no room for.
  */
 import * as vscode from "vscode"
+import { applyEdits } from "jsonc-parser"
 import {
   computeDeleteEdits,
   countTokens,
   expandExtends,
   indexTokens,
   parseTokens,
-  type Edit,
   type TokenNode,
 } from "../core"
 import { TokenEditorProvider } from "./tokenEditorProvider"
@@ -135,17 +135,6 @@ export function setMenuDeletePrompt(
   }
 }
 
-/** `text` with `edits` applied, last offset first so earlier ones stay put. */
-function applied(text: string, edits: Edit[]): string {
-  return [...edits]
-    .sort((a, b) => b.offset - a.offset)
-    .reduce(
-      (out, e) =>
-        out.slice(0, e.offset) + e.content + out.slice(e.offset + e.length),
-      text,
-    )
-}
-
 /** The keys the editor shows: the file's own plus what `$extends` gives it. */
 function viewKeys(text: string, external: Map<string, TokenNode>): Set<string> {
   const model = parseTokens(text)
@@ -154,30 +143,46 @@ function viewKeys(text: string, external: Map<string, TokenNode>): Set<string> {
 }
 
 /**
- * What the prompt asks, or undefined when the row has no key in the file: a
- * row `$extends` gives the view has nothing to delete. A group counts the
- * rows that leave the view, inherited ones included; a row that the
- * `$extends` still gives once the key is gone stays, so it is not counted.
+ * What the menu says before it deletes: `ask` is the prompt, `tell` why
+ * there is nothing to delete. A row `$extends` gives the view has no key in
+ * the file; a row that is in neither the file nor the view (the file no
+ * longer parses, or changed under the panel) is gone. A group counts the
+ * rows that leave the view: its own, inherited ones included, then those
+ * that groups extending it lose with it. A row the `$extends` still gives
+ * once the key is gone stays, so it is not counted.
  */
 function deletePrompt(
   text: string,
   path: string[],
   external: Map<string, TokenNode>,
-): string | undefined {
+): { ask: string } | { tell: string } {
   const key = path.join(".")
   const model = parseTokens(text)
-  if (indexTokens(model).has(key)) return `Delete "${key}"?`
+  if (indexTokens(model).has(key)) return { ask: `Delete "${key}"?` }
+  const before = viewKeys(text, external)
   const group = findGroup(model.root, path)
-  if (!group) return undefined
+  if (!group) {
+    const inView = [...before].some(k => k === key || k.startsWith(key + "."))
+    return {
+      tell: inView
+        ? `"${key}" is inherited through $extends and has no key in this file to delete.`
+        : `"${key}" is no longer in this file.`,
+    }
+  }
   const after = viewKeys(
-    applied(text, computeDeleteEdits(text, path)),
+    applyEdits(text, computeDeleteEdits(text, path)),
     external,
   )
-  const n = [...viewKeys(text, external)].filter(
-    k => k.startsWith(key + ".") && !after.has(k),
-  ).length
-  if (!n && countTokens(group)) return `Delete group "${key}"?`
-  return `Delete group "${key}" and the ${n} ${n === 1 ? "token" : "tokens"} in it?`
+  const gone = [...before].filter(k => !after.has(k))
+  const n = gone.filter(k => k.startsWith(key + ".")).length
+  const more = gone.length - n
+  const also = more
+    ? ` ${more} more ${more === 1 ? "row" : "rows"} that $extends gives other groups ${more === 1 ? "leaves" : "leave"} the view with it.`
+    : ""
+  if (!n && countTokens(group)) return { ask: `Delete group "${key}"?${also}` }
+  return {
+    ask: `Delete group "${key}" and the ${n} ${n === 1 ? "token" : "tokens"} in it?${also}`,
+  }
 }
 
 /**
@@ -188,18 +193,16 @@ async function deleteNode(arg?: unknown) {
   const row = noRow(arg)
   if (!row) return
   const document = await vscode.workspace.openTextDocument(row.uri)
-  const prompt = deletePrompt(
+  const said = deletePrompt(
     document.getText(),
     row.path,
     await externalIndexFor(row.uri),
   )
-  if (!prompt) {
-    void vscode.window.showInformationMessage(
-      `"${row.path.join(".")}" is inherited through $extends and has no key in this file to delete.`,
-    )
+  if ("tell" in said) {
+    void vscode.window.showInformationMessage(said.tell)
     return
   }
-  if (!(await confirmDelete(prompt))) return
+  if (!(await confirmDelete(said.ask))) return
   await TokenEditorProvider.receive(row.uri, {
     type: "deleteNode",
     path: row.path,
