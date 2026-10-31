@@ -84,7 +84,14 @@ resolver documents: their structure and that every file and fragment they name e
 `editorMenu.ts` (the visual editor's right-click menu: Copy Reference, Find
 All References, Show in JSON, Rename… and Delete on the row clicked, read from
 its `data-vscode-context` by `workspaceIndex.ts` `rowTarget`, which the
-deprecation commands on the same menu read too; rename and delete go through
+deprecation commands on the same menu read too; Delete asks first, naming how
+many tokens a group takes with it (its own keys in the file plus the inherited
+rows that leave the view), those that groups extending it in the same file
+inherit named apart,
+and refuses a row with no key in the file, saying it is inherited
+through `$extends` or `$ref`, no longer in the file, or not found in a file that
+does not parse (there, a key the tolerant delete still finds is asked about and
+sent); rename and delete go through
 `tokenEditorProvider.ts`'s intent queue, and Rename Token Without Keeping Old
 Name and Remove Deprecated Token, which do not, tell the open editor through
 `TokenEditorProvider.notify`, so the detail panel follows the rename or closes

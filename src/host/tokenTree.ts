@@ -238,7 +238,8 @@ class TokenTreeProvider implements vscode.TreeDataProvider<Item> {
   }
 }
 
-function findGroup(
+/** The group at `path` under `root`, or undefined when there is none. */
+export function findGroup(
   root: GroupNode | undefined,
   path: string[],
 ): GroupNode | undefined {
