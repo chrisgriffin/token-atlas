@@ -14,7 +14,8 @@ The visual editor's right-click menu (spec 022) has a Delete entry. The detail p
 ## Functional requirements
 
 1. `tokenAtlas.deleteNode` run with a row asks before sending `deleteNode`; nothing is sent unless the answer is Delete.
-2. A group's prompt names the group and how many rows leave the view with it: its own, `$extends`-inherited ones included, and, named apart, those a group extending it loses; a token's names the token. A row with no key in the file sends nothing and says why: inherited through `$extends`, or no longer in the file.
+2. A group's prompt names the group and how many rows leave the view with it: its own, `$extends`-inherited ones included, and, named apart, those a group extending it loses; a token's names the token. A row with no key in the file sends nothing and says why: inherited through `$extends` or a group-level `$ref` (the message names the one at work), or no longer in the file. In a file that does not parse there is no model to count from: a key the delete still finds gets the token's prompt and is sent as before, and one it does not find is refused, saying the file does not parse.
+   _Corrected 2026-10-31 (PR #56 review, round 5): the refusals named `$extends` alone, though a group-level `$ref` inherits the same way (`src/core/extends.ts`), and a parse error was reported as "no longer in the file" while the key was still there, blocking a delete that worked before this PR._
    _Corrected 2026-10-31 (PR #56 review): this read "how many tokens it holds (`countTokens`)", which undercounts what a delete removes from the view when `$extends` is in play (`dark` extending `light` loses rows when `light` goes), and said nothing of inherited headings, which have no key to delete._
 3. The prompt is replaceable from `test/integration/`, as `setDeletePrompt` and `setRemovalPrompt` are, so the suite can answer it.
 

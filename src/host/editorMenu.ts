@@ -18,6 +18,7 @@ import {
   expandExtends,
   indexTokens,
   parseTokens,
+  type GroupNode,
   type TokenNode,
 } from "../core"
 import { TokenEditorProvider } from "./tokenEditorProvider"
@@ -143,13 +144,47 @@ function viewKeys(text: string, external: Map<string, TokenNode>): Set<string> {
 }
 
 /**
+ * The key, `$extends` or `$ref`, that hands `key` to the view: the deepest
+ * group along its path that extends another. Run per row, the keys are named
+ * together when more than one is at work.
+ */
+function viaOf(root: GroupNode, keys: string[]): string {
+  const vias = new Set<string>()
+  for (const key of keys) {
+    let via: string | undefined
+    let group: GroupNode | undefined = root
+    for (const segment of key.split(".")) {
+      const next: TokenNode | GroupNode | undefined = group.children.find(
+        c => c.kind === "group" && c.name === segment,
+      )
+      if (!next || next.kind !== "group") break
+      group = next
+      if (group.extends) via = group.extends.via
+    }
+    if (via) vias.add(via)
+  }
+  return [...vias].sort().join(" or ") || "$extends"
+}
+
+/** Whether the tolerant delete finds `path` in `text`; it throws on some broken text. */
+function hasDelete(text: string, path: string[]): boolean {
+  try {
+    return computeDeleteEdits(text, path).length > 0
+  } catch {
+    return false
+  }
+}
+
+/**
  * What the menu says before it deletes: `ask` is the prompt, `tell` why
- * there is nothing to delete. A row `$extends` gives the view has no key in
- * the file; a row that is in neither the file nor the view (the file no
- * longer parses, or changed under the panel) is gone. A group counts the
- * rows that leave the view: its own, inherited ones included, then those
- * that groups extending it lose with it. A row the `$extends` still gives
- * once the key is gone stays, so it is not counted.
+ * there is nothing to delete. A row `$extends` (or a group-level `$ref`)
+ * gives the view has no key in the file; a row in neither the file nor the
+ * view (it changed under the panel) is gone. A group counts the rows that
+ * leave the view: its own, inherited ones included, then those that groups
+ * extending it lose with it. A row the extension still gives once the key
+ * is gone stays, so it is not counted. A file that does not parse has no
+ * model to count from, so the key the tolerant delete still finds gets the
+ * token's prompt, as the menu's Delete did before it asked.
  */
 function deletePrompt(
   text: string,
@@ -158,6 +193,10 @@ function deletePrompt(
 ): { ask: string } | { tell: string } {
   const key = path.join(".")
   const model = parseTokens(text)
+  if (model.issues?.some(i => i.message.startsWith("JSON syntax error")))
+    return hasDelete(text, path)
+      ? { ask: `Delete "${key}"?` }
+      : { tell: `"${key}" is not in this file, which does not parse.` }
   if (indexTokens(model).has(key)) return { ask: `Delete "${key}"?` }
   const before = viewKeys(text, external)
   const group = findGroup(model.root, path)
@@ -165,7 +204,7 @@ function deletePrompt(
     const inView = [...before].some(k => k === key || k.startsWith(key + "."))
     return {
       tell: inView
-        ? `"${key}" is inherited through $extends and has no key in this file to delete.`
+        ? `"${key}" is inherited through ${viaOf(model.root, [key])} and has no key in this file to delete.`
         : `"${key}" is no longer in this file.`,
     }
   }
@@ -174,10 +213,12 @@ function deletePrompt(
     external,
   )
   const gone = [...before].filter(k => !after.has(k))
-  const n = gone.filter(k => k.startsWith(key + ".")).length
-  const more = gone.length - n
+  const own = gone.filter(k => k.startsWith(key + "."))
+  const n = own.length
+  const others = gone.filter(k => !own.includes(k))
+  const more = others.length
   const also = more
-    ? ` ${more} more ${more === 1 ? "row" : "rows"} that $extends gives other groups ${more === 1 ? "leaves" : "leave"} the view with it.`
+    ? ` ${more} more ${more === 1 ? "row" : "rows"} that ${viaOf(model.root, others)} gives other groups ${more === 1 ? "leaves" : "leave"} the view with it.`
     : ""
   if (!n && countTokens(group)) return { ask: `Delete group "${key}"?${also}` }
   return {

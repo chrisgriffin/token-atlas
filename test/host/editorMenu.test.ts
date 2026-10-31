@@ -30,6 +30,12 @@ const EXTENDS = JSON.stringify({
   },
 })
 
+// `dark` takes all of `light` through a group-level `$ref`, not `$extends`.
+const REF = JSON.stringify({
+  light: { $type: "color", fg: { ink: { $value: "#000000" } } },
+  dark: { $ref: "#/light" },
+})
+
 let TEXT = PLAIN
 const info = vi.fn()
 const commands = new Map<string, (...args: unknown[]) => unknown>()
@@ -181,6 +187,19 @@ describe("menu delete asks", () => {
   })
 
   it("menu delete asks nothing of a row no longer in the file, and says so", async () => {
+    TEXT = PLAIN
+    const restore = answer(true)
+    try {
+      await deleteNode(["color", "gone"])
+    } finally {
+      restore()
+    }
+    expect(asked).toEqual([])
+    expect(info).toHaveBeenCalledWith('"color.gone" is no longer in this file.')
+    expect(receive).not.toHaveBeenCalled()
+  })
+
+  it("menu delete asks nothing of a key a file that does not parse lacks, and says it does not parse", async () => {
     TEXT = "{ not json"
     const restore = answer(true)
     try {
@@ -189,7 +208,42 @@ describe("menu delete asks", () => {
       restore()
     }
     expect(asked).toEqual([])
-    expect(info).toHaveBeenCalledWith('"color.ink" is no longer in this file.')
+    expect(info).toHaveBeenCalledWith(
+      '"color.ink" is not in this file, which does not parse.',
+    )
+    expect(receive).not.toHaveBeenCalled()
+  })
+
+  it("menu delete asks before a key a file that does not parse still has, and sends it", async () => {
+    TEXT = '{"a":{"b":{"$value":"#fff","$type":"color"}},}x'
+    const restore = answer(true)
+    try {
+      await deleteNode(["a", "b"])
+    } finally {
+      restore()
+    }
+    expect(asked).toEqual(['Delete "a.b"?'])
+    expect(receive).toHaveBeenCalledWith("file:///t.json", {
+      type: "deleteNode",
+      path: ["a", "b"],
+    })
+  })
+
+  it("menu delete asks naming $ref when a group-level $ref gives the rows", async () => {
+    TEXT = REF
+    const restore = answer(false)
+    try {
+      await deleteNode(["dark", "fg"])
+      await deleteNode(["light"])
+    } finally {
+      restore()
+    }
+    expect(info).toHaveBeenCalledWith(
+      '"dark.fg" is inherited through $ref and has no key in this file to delete.',
+    )
+    expect(asked).toEqual([
+      'Delete group "light" and the 1 token in it? 1 more row that $ref gives other groups leaves the view with it.',
+    ])
     expect(receive).not.toHaveBeenCalled()
   })
 })

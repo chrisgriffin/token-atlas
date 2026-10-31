@@ -230,7 +230,7 @@ describe("The visual editor's right-click menu", () => {
     assert.ok(!text.includes('"spare"'))
   })
 
-  /** Run Delete on `path`, answering its prompt with `yes`; returns what it asked. */
+  /** Run Delete on the row `target`, answering its prompt with `yes`; returns what it asked. */
   async function menuDelete(target: object, yes: boolean) {
     const asked: string[] = []
     const restore = hooks.setMenuDeletePrompt(async message => {
