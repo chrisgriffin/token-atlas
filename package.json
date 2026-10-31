@@ -2,7 +2,7 @@
   "name": "token-atlas",
   "displayName": "Token Atlas",
   "description": "Language features for W3C/DTCG design tokens in VS Code: hovers, completion, go-to-definition, rename and validation on token JSON and on exported CSS/Sass/JS, plus an opt-in visual editor.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "chrisgriffinio",
   "author": {
     "name": "Chris Griffin",
