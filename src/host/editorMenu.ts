@@ -194,8 +194,10 @@ function hasDelete(text: string, path: string[]): boolean {
  * gives the view has no key in the file; a row in neither the file nor the
  * view (it changed under the panel) is gone. A group counts the rows that
  * leave the view: its own, inherited ones included, then those that groups
- * extending it lose with it. A row the extension still gives once the key
- * is gone stays, so it is not counted. A file that does not parse has no
+ * extending it lose with it. An own key is counted even where the view
+ * keeps its row: an override of an inherited token is a value the delete
+ * loses. An inherited row the extension still gives once the key is gone
+ * stays, so it is not counted. A file that does not parse has no
  * model to count from, so the key the tolerant delete still finds gets the
  * token's prompt, as the menu's Delete did before it asked.
  */
@@ -210,7 +212,8 @@ function deletePrompt(
     return hasDelete(text, path)
       ? { ask: `Delete "${key}"?` }
       : { tell: `"${key}" is not in this file, which does not parse.` }
-  if (indexTokens(model).has(key)) return { ask: `Delete "${key}"?` }
+  const fileKeys = indexTokens(model)
+  if (fileKeys.has(key)) return { ask: `Delete "${key}"?` }
   const before = viewKeys(text, external)
   const group = findGroup(model.root, path)
   if (!group) {
@@ -227,13 +230,15 @@ function deletePrompt(
   )
   const gone = [...before].filter(k => !after.has(k))
   const own = gone.filter(k => k.startsWith(key + "."))
-  const n = own.length
+  // The file's token keys under the group, overrides of inherited rows
+  // included, plus the inherited rows that leave the view with it.
+  const n = countTokens(group) + own.filter(k => !fileKeys.has(k)).length
   const others = gone.filter(k => !own.includes(k))
   const more = others.length
   const also = more
     ? ` ${more} more ${more === 1 ? "row" : "rows"} that ${viaOf(model.root, others, key)} gives other groups ${more === 1 ? "leaves" : "leave"} the view with it.`
     : ""
-  if (!n && countTokens(group)) return { ask: `Delete group "${key}"?${also}` }
+  if (!n) return { ask: `Delete group "${key}"?${also}` }
   return {
     ask: `Delete group "${key}" and the ${n} ${n === 1 ? "token" : "tokens"} in it?${also}`,
   }

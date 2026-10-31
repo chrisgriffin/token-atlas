@@ -36,6 +36,16 @@ const REF = JSON.stringify({
   dark: { $ref: "#/light" },
 })
 
+// `dark.fg.ink` overrides the inherited `light.fg.ink`: the view keeps a
+// `dark.fg.ink` row after `dark.fg` goes, but the override's value is lost.
+const OVERRIDE = JSON.stringify({
+  light: { $type: "color", fg: { ink: { $value: "#000000" } } },
+  dark: {
+    $extends: "{light}",
+    fg: { ink: { $value: "#222222" }, muted: { $value: "#888888" } },
+  },
+})
+
 // `dark` extends `light`, and its own `fg` also `$ref`s `other`: `dark.fg.ink`
 // reaches the view through `dark`'s `$extends`, the outer one, and goes with
 // `light`; `dark.fg.z` comes through the inner `$ref` and stays.
@@ -236,6 +246,18 @@ describe("menu delete asks", () => {
       type: "deleteNode",
       path: ["a", "b"],
     })
+  })
+
+  it("menu delete asks counting an override the view keeps a row for, since its value goes", async () => {
+    TEXT = OVERRIDE
+    const restore = answer(false)
+    try {
+      await deleteNode(["dark", "fg"])
+    } finally {
+      restore()
+    }
+    expect(asked).toEqual(['Delete group "dark.fg" and the 2 tokens in it?'])
+    expect(receive).not.toHaveBeenCalled()
   })
 
   it("menu delete asks naming the outer $extends that loses the row, not an inner $ref that holds", async () => {
