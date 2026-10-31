@@ -181,10 +181,18 @@ function viaOf(root: GroupNode, keys: string[], deleted: string): string {
 /**
  * The key, `$extends` or `$ref`, that supplies the inherited row `key`: the
  * deepest extending group on its path whose target, with the rest of the
- * path under it, is a row of the view (an inner `$ref` to a group that has
- * no such row is not the one). None matching, the deepest one.
+ * path under it, is a row of the view or of another workspace file, or a
+ * heading over one (an inner `$ref` to a group that has no such row is not
+ * the one). None matching, the deepest one.
  */
-function suppliedVia(root: GroupNode, key: string, view: Set<string>): string {
+function suppliedVia(
+  root: GroupNode,
+  key: string,
+  view: Set<string>,
+  external: Map<string, TokenNode>,
+): string {
+  const keys = [...view, ...external.keys()]
+  const holds = (p: string) => keys.some(k => k === p || k.startsWith(p + "."))
   const segments = key.split(".")
   let deepest: string | undefined
   let supplier: string | undefined
@@ -199,7 +207,7 @@ function suppliedVia(root: GroupNode, key: string, view: Set<string>): string {
     const { via, target } = group.extends
     deepest = via
     const rest = segments.slice(i + 1).join(".")
-    if (target && rest && view.has(`${target}.${rest}`)) supplier = via
+    if (target && rest && holds(`${target}.${rest}`)) supplier = via
   }
   return supplier ?? deepest ?? "$extends"
 }
@@ -245,7 +253,7 @@ function deletePrompt(
     const inView = [...before].some(k => k === key || k.startsWith(key + "."))
     return {
       tell: inView
-        ? `"${key}" is inherited through ${suppliedVia(model.root, key, before)} and has no key in this file to delete.`
+        ? `"${key}" is inherited through ${suppliedVia(model.root, key, before, external)} and has no key in this file to delete.`
         : `"${key}" is no longer in this file.`,
     }
   }

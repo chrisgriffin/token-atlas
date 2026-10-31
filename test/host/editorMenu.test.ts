@@ -50,7 +50,10 @@ const OVERRIDE = JSON.stringify({
 // reaches the view through `dark`'s `$extends`, the outer one, and goes with
 // `light`; `dark.fg.z` comes through the inner `$ref` and stays.
 const OUTER = JSON.stringify({
-  light: { $type: "color", fg: { ink: { $value: "#000000" } } },
+  light: {
+    $type: "color",
+    fg: { ink: { $value: "#000000" }, sub: { x: { $value: "#333333" } } },
+  },
   other: { $type: "color", z: { $value: "#111111" } },
   dark: { $extends: "{light}", fg: { $ref: "#/other" } },
 })
@@ -265,16 +268,21 @@ describe("menu delete asks", () => {
     const restore = answer(false)
     try {
       await deleteNode(["dark", "fg", "ink"])
+      await deleteNode(["dark", "fg", "sub"])
       await deleteNode(["light"])
     } finally {
       restore()
     }
-    // The refusal names the `$extends` that supplies the row, as the count does.
+    // The refusal names the `$extends` that supplies the row, as the count
+    // does; a heading too, though it is no key, only a prefix of some.
     expect(info).toHaveBeenCalledWith(
       '"dark.fg.ink" is inherited through $extends and has no key in this file to delete.',
     )
+    expect(info).toHaveBeenCalledWith(
+      '"dark.fg.sub" is inherited through $extends and has no key in this file to delete.',
+    )
     expect(asked).toEqual([
-      'Delete group "light" and the 1 token in it? 1 more row that $extends gives other groups leaves the view with it.',
+      'Delete group "light" and the 2 tokens in it? 2 more rows that $extends gives other groups leave the view with it.',
     ])
     expect(receive).not.toHaveBeenCalled()
   })
