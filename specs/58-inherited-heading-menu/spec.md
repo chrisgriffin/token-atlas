@@ -19,11 +19,11 @@ In the visual editor, a group heading that exists only because `$extends` (or a 
 
 ## Success criteria
 
-- [ ] Right-clicking a group heading that exists only through `$extends` offers neither Rename nor Delete; Copy Reference still works on it.
-- [ ] A group heading that exists in the file keeps Rename and Delete exactly as today.
-- [ ] A test whose name contains "inherited group heading" covers both cases.
-- [ ] **Runnable:** `npm test -- -t "inherited group heading" 2>&1 | grep -cE "Tests +[0-9]+ passed"` prints `1` (prints `0` on `develop` today: no test matches, vitest reports every test skipped).
-- [ ] `npm run lint`, `npm run typecheck` and `npm test` all exit 0.
+- [x] Right-clicking a group heading that exists only through `$extends` offers neither Rename nor Delete; Copy Reference still works on it.
+- [x] A group heading that exists in the file keeps Rename and Delete exactly as today.
+- [x] A test whose name contains "inherited group heading" covers both cases.
+- [x] **Runnable:** `npm test -- -t "inherited group heading" 2>&1 | grep -cE "Tests +[0-9]+ passed"` prints `1` (prints `0` on `develop` today: no test matches, vitest reports every test skipped).
+- [x] `npm run lint`, `npm run typecheck` and `npm test` all exit 0.
 
 ## Needs from Chris
 

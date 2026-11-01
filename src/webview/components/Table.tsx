@@ -456,10 +456,10 @@ export function Table({
                   scope="rowgroup"
                   // The whole heading is the innermost group's; each parent
                   // name's own context overrides it (spec 022).
-                  data-vscode-context={JSON.stringify({
-                    webviewSection: "group",
-                    path: [...scopeRoot.path, ...group],
-                  })}
+                  data-vscode-context={headingContext(root, [
+                    ...scopeRoot.path,
+                    ...group,
+                  ])}
                   colSpan={
                     2 +
                     (modes?.shown.length ?? 1) +
@@ -474,10 +474,10 @@ export function Table({
                       <button
                         className="section-name"
                         tabIndex={-1}
-                        data-vscode-context={JSON.stringify({
-                          webviewSection: "group",
-                          path: [...scopeRoot.path, ...group.slice(0, i + 1)],
-                        })}
+                        data-vscode-context={headingContext(root, [
+                          ...scopeRoot.path,
+                          ...group.slice(0, i + 1),
+                        ])}
                         title={`Open ${[...scopeRoot.path, ...group.slice(0, i + 1)].join(".")}`}
                         onClick={() =>
                           onOpen([...scopeRoot.path, ...group.slice(0, i + 1)])
@@ -707,6 +707,20 @@ function TokenRow({
         </button>
       </td>
     </tr>
+  )
+}
+
+/**
+ * What a right-click on a group heading, or a name in one, tells the menu
+ * (spec 022). A group `$extends` alone gives (`inheritedFrom`) has no key of
+ * its own to rename or delete, so it is the inherited section, as an
+ * inherited token is.
+ */
+function headingContext(root: GroupNode, path: string[]): string {
+  return JSON.stringify(
+    findGroup(root, path)?.inheritedFrom
+      ? { webviewSection: "inherited", path }
+      : { webviewSection: "group", path },
   )
 }
 

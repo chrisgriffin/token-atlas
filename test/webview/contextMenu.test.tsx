@@ -46,6 +46,8 @@ function open() {
       },
       legacy: { $type: "color", $deprecated: true, grey: { $value: black } },
       brand: { $extends: "{color}" },
+      light: { $type: "color", bg: { base: { $value: black } } },
+      dark: { $extends: "{light}" },
     }),
   )
   resolveAliases(model)
@@ -136,6 +138,44 @@ describe("right-click contexts in the visual editor", () => {
       uri: URI,
       webviewSection: "group",
       path: ["legacy"],
+    })
+  })
+
+  it("an inherited group heading has no key to edit, and an owned one keeps its edits", () => {
+    open()
+    // The last name in the heading of `group`, shown as `dark/bg`.
+    const heading = (group: string) =>
+      [...document.querySelectorAll("tr.section th")].find(
+        th => th.textContent === group.replace(".", "/"),
+      )!
+    const name = (group: string) =>
+      [...heading(group).querySelectorAll("button.section-name")].pop()!
+    // `dark.bg` exists only because `dark` extends `light`.
+    expect(contextAt(name("dark.bg"))).toEqual({
+      uri: URI,
+      webviewSection: "inherited",
+      path: ["dark", "bg"],
+    })
+    const darkHeading = heading("dark.bg")
+    expect(contextAt(darkHeading)).toEqual({
+      uri: URI,
+      webviewSection: "inherited",
+      path: ["dark", "bg"],
+    })
+    // `dark` itself is a key in the file.
+    const parent = [
+      ...darkHeading.querySelectorAll("button.section-name"),
+    ].find(b => b.textContent === "dark")!
+    expect(contextAt(parent)).toEqual({
+      uri: URI,
+      webviewSection: "group",
+      path: ["dark"],
+    })
+    // `light.bg` is the file's own.
+    expect(contextAt(name("light.bg"))).toEqual({
+      uri: URI,
+      webviewSection: "group",
+      path: ["light", "bg"],
     })
   })
 })

@@ -82,7 +82,8 @@ in token files, resolver inline tokens and open code files,
 the workspace folder's `token-atlas.lint.json`, re-read on every write, and
 resolver documents: their structure and that every file and fragment they name exists),
 `editorMenu.ts` (the visual editor's right-click menu: Copy Reference, Find
-All References, Show in JSON, Rename… and Delete on the row clicked, read from
+All References, Show in JSON, Rename… and Delete on the row clicked, Copy
+Reference alone on an inherited token or a heading `$extends` alone gives, read from
 its `data-vscode-context` by `workspaceIndex.ts` `rowTarget`, which the
 deprecation commands on the same menu read too; Delete asks first, naming how
 many tokens a group takes with it (its own keys in the file plus the inherited
