@@ -1,6 +1,6 @@
 # Releasing
 
-A release of Token Atlas is a packaged `.vsix` extension, attached to a GitHub Release and published to the VS Code Marketplace as `chrisgriffinio.token-atlas`.
+A release of Token Atlas is a packaged `.vsix` extension, attached to a GitHub Release and published as `chrisgriffinio.token-atlas` to both the VS Code Marketplace and Open VSX.
 
 ## How a release happens
 
@@ -43,10 +43,13 @@ through `release-pr.yml`. Merging it runs steps 4 and 5 above.
 
 - `create-github-release.yml` runs `npm ci && npm run build && npm run package`, so the release builds the extension bundle and then packages it with `vsce package --no-dependencies --githubBranch main`.
 - `--githubBranch main` points the README's relative links and screenshots at `main`, so the listing shows what was released rather than whatever is on `develop`. The screenshots are not in the `.vsix`; the listing loads them from GitHub.
-- Every `./*.vsix` the package step produces is attached to the GitHub Release, and the same file is published to the VS Code Marketplace in that job, with the publisher credential `create-github-release.yml` passes in. Without one, the publish step logs a notice and skips. Nothing is published to npm or GitHub Packages.
+- Every `./*.vsix` the package step produces is attached to the GitHub Release, and the same file is then published to two registries: the VS Code Marketplace with the `VSCE_PAT` secret, and Open VSX (namespace `chrisgriffinio`) with the `OVSX_PAT` secret. `create-github-release.yml` passes both by name.
+- The two publishes are independent. A registry whose token is missing is skipped with a notice in the run log, and the other still publishes; with neither token, one notice says so and nothing is published. A publish that fails does not stop the other, and the step fails once both have run. A version already on a registry is a no-op, so re-running a release is safe.
+- Nothing is published to npm or GitHub Packages.
 - Because the package runs with `--no-dependencies`, `dist/extension.js` must already inline everything it needs; `esbuild.mjs`'s post-build guard is what catches a dependency that did not bundle.
-- To install a release, install `chrisgriffinio.token-atlas` from the Marketplace, or download its `.vsix` and run `code --install-extension token-atlas-<version>.vsix --force`, then reload the window.
+- To install a release, install `chrisgriffinio.token-atlas` from the Marketplace, or from Open VSX in an editor that uses it, or download its `.vsix` and run `code --install-extension token-atlas-<version>.vsix --force`, then reload the window.
+- A copy installed from a `.vsix` released before the publisher changed to `chrisgriffinio` has the id `chrisgriffin.token-atlas`. Uninstall it first (`code --uninstall-extension chrisgriffin.token-atlas`), or both copies run side by side.
 
 ## Manual steps
 
-None. Merging the `release/next` PR is the only human step: it tags, attaches the `.vsix` and publishes to the Marketplace.
+None. Merging the `release/next` PR is the only human step: it tags, attaches the `.vsix` and publishes to the Marketplace and Open VSX.
