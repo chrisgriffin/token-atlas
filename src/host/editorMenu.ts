@@ -35,12 +35,14 @@ function noRow(arg: unknown): { uri: vscode.Uri; path: string[] } | undefined {
 }
 
 /**
- * Whether the editor the row came from is still open; a prompt can outlive
- * it. Closed, it says so, and the menu sends nothing. Checked with no
- * `await` before the `receive` it guards, so the editor cannot close between.
+ * Whether an editor on the row's file is still there to take the intent; a
+ * prompt can outlive the one it came from. It reads what `receive` reads, so
+ * the two cannot disagree. None left, it says so, and the menu sends nothing.
+ * Checked with no `await` before the `receive` it guards, so the editor
+ * cannot close between.
  */
 function editorOpen(row: { uri: vscode.Uri; path: string[] }, verb: string) {
-  if (TokenEditorProvider.isOpen(row.uri)) return true
+  if (TokenEditorProvider.canReceive(row.uri)) return true
   void vscode.window.showInformationMessage(
     `The Token Editor for this file was closed, so "${row.path.join(".")}" was not ${verb}.`,
   )

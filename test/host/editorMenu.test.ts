@@ -95,7 +95,7 @@ const receive = vi.fn(async (..._args: unknown[]) => {})
 vi.mock("../../src/host/tokenEditorProvider", () => ({
   TokenEditorProvider: {
     receive: (...args: unknown[]) => receive(...args),
-    isOpen: () => OPEN,
+    canReceive: () => OPEN,
   },
 }))
 vi.mock("../../src/host/workspaceIndex", () => ({

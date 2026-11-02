@@ -65,12 +65,14 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
     { path: string[]; select?: string[] }
   >()
 
-  /** Each open editor's intent queue, by document. A test hook: VS Code has
-   *  no way to post a message *from* a webview, so `test/integration/` sends
-   *  an intent through here to reach the same handler the webview does. */
+  /** Each open editor's intent queue, by document, newest last: one per
+   *  panel, so closing one editor leaves the others' queues in place. A test
+   *  hook too: VS Code has no way to post a message *from* a webview, so
+   *  `test/integration/` sends an intent through here to reach the same
+   *  handler the webview does. */
   private static readonly receivers = new Map<
     string,
-    (msg: WebviewToHost) => Promise<void>
+    Array<(msg: WebviewToHost) => Promise<void>>
   >()
 
   /** The token table's column widths, one set for every token file. */
@@ -78,10 +80,16 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
 
   /** Run `msg` as if the editor showing `uri` had received it from its webview. */
   public static receive(uri: vscode.Uri, msg: WebviewToHost): Promise<void> {
-    const receive = TokenEditorProvider.receivers.get(uri.toString())
+    const receive = TokenEditorProvider.receivers.get(uri.toString())?.at(-1)
     if (!receive)
       throw new Error(`No Token Atlas editor is open on ${uri.toString()}`)
     return receive(msg)
+  }
+
+  /** Whether `receive` on `uri` has an editor to take the intent: the state
+   *  `receive` itself reads, so a check of it cannot disagree with a send. */
+  public static canReceive(uri: vscode.Uri): boolean {
+    return (TokenEditorProvider.receivers.get(uri.toString())?.length ?? 0) > 0
   }
 
   /** Files sent back to JSON with "Open as JSON": the `defaultEditor` setting
@@ -253,12 +261,16 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
           } else post({ type: "error", message: String(err) })
         }))
     webviewPanel.webview.onDidReceiveMessage(receive)
-    TokenEditorProvider.receivers.set(key, receive)
+    const queues = TokenEditorProvider.receivers.get(key) ?? []
+    queues.push(receive)
+    TokenEditorProvider.receivers.set(key, queues)
     webviewPanel.onDidDispose(() => {
-      // Only its own entry: a newer editor on the same document has replaced it.
-      if (TokenEditorProvider.receivers.get(key) === receive) {
-        TokenEditorProvider.receivers.delete(key)
-      }
+      // Only its own entry: another editor on the same document keeps its own.
+      const left = (TokenEditorProvider.receivers.get(key) ?? []).filter(
+        r => r !== receive,
+      )
+      if (left.length) TokenEditorProvider.receivers.set(key, left)
+      else TokenEditorProvider.receivers.delete(key)
     })
 
     const handle = async (msg: WebviewToHost): Promise<void> => {
