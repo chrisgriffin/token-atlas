@@ -93,7 +93,8 @@ and refuses a row with no key in the file, saying it is inherited
 through `$extends` or `$ref`, no longer in the file, or not found in a file that
 does not parse (there, a key the tolerant delete still finds is asked about and
 sent); rename and delete go through
-`tokenEditorProvider.ts`'s intent queue, and Rename Token Without Keeping Old
+`tokenEditorProvider.ts`'s intent queue, and when the editor closed while
+their prompt was up they say so and send nothing (`TokenEditorProvider.isOpen`), and Rename Token Without Keeping Old
 Name and Remove Deprecated Token, which do not, tell the open editor through
 `TokenEditorProvider.notify`, so the detail panel follows the rename or closes
 only on a delete that changed the file),

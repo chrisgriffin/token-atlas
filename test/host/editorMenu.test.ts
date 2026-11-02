@@ -69,6 +69,10 @@ const OUTER = JSON.stringify({
 let TEXT = PLAIN
 let EXTERNAL = new Map<string, TokenNode>()
 const info = vi.fn()
+// Whether the Token Editor is still open on the file; a test flips it from
+// inside a prompt to close the editor while the prompt is up.
+let OPEN = true
+let typed: () => string | undefined = () => undefined
 const commands = new Map<string, (...args: unknown[]) => unknown>()
 
 vi.mock("vscode", () => ({
@@ -78,7 +82,10 @@ vi.mock("vscode", () => ({
       return { dispose: () => {} }
     },
   },
-  window: { showInformationMessage: (...args: unknown[]) => info(...args) },
+  window: {
+    showInformationMessage: (...args: unknown[]) => info(...args),
+    showInputBox: async () => typed(),
+  },
   workspace: {
     openTextDocument: async () => ({ getText: () => TEXT }),
   },
@@ -86,7 +93,10 @@ vi.mock("vscode", () => ({
 
 const receive = vi.fn(async (..._args: unknown[]) => {})
 vi.mock("../../src/host/tokenEditorProvider", () => ({
-  TokenEditorProvider: { receive: (...args: unknown[]) => receive(...args) },
+  TokenEditorProvider: {
+    receive: (...args: unknown[]) => receive(...args),
+    isOpen: () => OPEN,
+  },
 }))
 vi.mock("../../src/host/workspaceIndex", () => ({
   rowTarget: (arg: { uri: string; path: string[] }) => ({
@@ -116,6 +126,8 @@ const answer = (yes: boolean) =>
 
 beforeEach(() => {
   TEXT = PLAIN
+  OPEN = true
+  typed = () => undefined
   EXTERNAL = new Map()
   asked = []
   receive.mockClear()
@@ -351,6 +363,50 @@ describe("menu delete asks", () => {
     expect(asked).toEqual([
       'Delete group "light" and the 1 token in it? 1 more row that $ref gives other groups leaves the view with it.',
     ])
+    expect(receive).not.toHaveBeenCalled()
+  })
+})
+
+describe("menu after the editor closed", () => {
+  const renameNode = (path: string[]) =>
+    commands.get("tokenAtlas.renameNode")!({ uri: "file:///t.json", path })
+
+  it("menu rename confirmed after the editor closed says so and changes nothing", async () => {
+    typed = () => {
+      OPEN = false
+      return "paper"
+    }
+    await expect(renameNode(["color", "ink"])).resolves.toBeUndefined()
+    expect(info).toHaveBeenCalledWith(
+      'The Token Editor for this file was closed, so "color.ink" was not renamed.',
+    )
+    expect(receive).not.toHaveBeenCalled()
+  })
+
+  it("menu rename confirmed with the editor open still renames (not editor closed)", async () => {
+    typed = () => "paper"
+    await renameNode(["color", "ink"])
+    expect(receive).toHaveBeenCalledWith("file:///t.json", {
+      type: "renameNode",
+      path: ["color", "ink"],
+      newName: "paper",
+    })
+    expect(info).not.toHaveBeenCalled()
+  })
+
+  it("menu delete confirmed after the editor closed says so and changes nothing", async () => {
+    const restore = setMenuDeletePrompt(async () => {
+      OPEN = false
+      return true
+    })
+    try {
+      await expect(deleteNode(["color", "ink"])).resolves.toBeUndefined()
+    } finally {
+      restore()
+    }
+    expect(info).toHaveBeenCalledWith(
+      'The Token Editor for this file was closed, so "color.ink" was not deleted.',
+    )
     expect(receive).not.toHaveBeenCalled()
   })
 })
