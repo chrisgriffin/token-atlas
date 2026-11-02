@@ -20,11 +20,11 @@ In the visual editor, the detail panel of a group heading that exists only becau
 
 ## Success criteria
 
-- [ ] The detail panel of a group heading that only `$extends` or a group-level `$ref` gives offers no Rename, Delete or Move.
-- [ ] The detail panel of an inherited token offers no Rename, Delete or Move.
-- [ ] A group or token that has its own key in the file keeps Rename, Delete and Move in its panel exactly as today, and a test whose name contains "inherited row panel" covers both cases.
-- [ ] **Runnable:** `npm test -- -t "inherited row panel" 2>&1 | grep -cE "Tests +[0-9]+ passed"` prints `1` (prints `0` on `develop` today: no test matches, vitest reports every test skipped).
-- [ ] `npm run lint`, `npm run typecheck` and `npm test` all exit 0.
+- [x] The detail panel of a group heading that only `$extends` or a group-level `$ref` gives offers no Rename, Delete or Move.
+- [x] The detail panel of an inherited token offers no Rename, Delete or Move.
+- [x] A group or token that has its own key in the file keeps Rename, Delete and Move in its panel exactly as today, and a test whose name contains "inherited row panel" covers both cases.
+- [x] **Runnable:** `npm test -- -t "inherited row panel" 2>&1 | grep -cE "Tests +[0-9]+ passed"` prints `1` (prints `0` on `develop` today: no test matches, vitest reports every test skipped).
+- [x] `npm run lint`, `npm run typecheck` and `npm test` all exit 0.
 
 ## Out of scope
 

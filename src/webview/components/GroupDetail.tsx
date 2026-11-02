@@ -60,9 +60,8 @@ export function GroupDetail({
         }
         summary={`${tokens} ${tokens === 1 ? "token" : "tokens"}`}
         onOpenPath={onOpenPath}
-        onRename={onRename}
-        onMove={onMove}
-        onDelete={onDelete}
+        // A group `$extends` alone gives has no key in the file to edit.
+        {...(!group.inheritedFrom && { onRename, onMove, onDelete })}
         onClose={onClose}
       />
 
