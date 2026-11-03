@@ -34,6 +34,21 @@ function noRow(arg: unknown): { uri: vscode.Uri; path: string[] } | undefined {
   return row
 }
 
+/**
+ * Whether an editor on the row's file is still there to take the intent; a
+ * prompt can outlive the one it came from. It reads what `receive` reads, so
+ * the two cannot disagree. None left, it says so, and the menu sends nothing.
+ * Checked with no `await` before the `receive` it guards, so the editor
+ * cannot close between.
+ */
+function editorOpen(row: { uri: vscode.Uri; path: string[] }, verb: string) {
+  if (TokenEditorProvider.canReceive(row.uri)) return true
+  void vscode.window.showInformationMessage(
+    `The Token Editor for this file was closed, so "${row.path.join(".")}" was not ${verb}.`,
+  )
+  return false
+}
+
 /** Copy `{path}`, the reference another token's `$value` would use. Returns it. */
 async function copyReference(arg?: unknown) {
   const row = noRow(arg)
@@ -109,6 +124,7 @@ async function renameNode(arg?: unknown, newName?: unknown) {
         })
   )?.trim()
   if (!name || name === row.path[row.path.length - 1]) return
+  if (!editorOpen(row, "renamed")) return
   await TokenEditorProvider.receive(row.uri, {
     type: "renameNode",
     path: row.path,
@@ -246,6 +262,7 @@ async function deleteNode(arg?: unknown) {
     return
   }
   if (!(await confirmDelete(said.ask))) return
+  if (!editorOpen(row, "deleted")) return
   await TokenEditorProvider.receive(row.uri, {
     type: "deleteNode",
     path: row.path,

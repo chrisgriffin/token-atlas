@@ -245,6 +245,75 @@ describe("The visual editor's right-click menu", () => {
     return asked
   }
 
+  /** The Token Editor tabs open on the fixture. */
+  const editorTabs = () =>
+    vscode.window.tabGroups.all
+      .flatMap(g => g.tabs)
+      .filter(
+        t =>
+          t.input instanceof vscode.TabInputCustom &&
+          t.input.uri.toString() === tokens.toString(),
+      )
+
+  it("Delete confirmed after the editor closed says so and changes nothing (editor closed)", async () => {
+    await openEditor()
+    const before = await textOf()
+    const restore = hooks.setMenuDeletePrompt(async () => {
+      // The editor goes away while the prompt is up, then the user confirms.
+      await vscode.commands.executeCommand("workbench.action.closeAllEditors")
+      await waitFor(() => editorTabs().length === 0, "the editor to close")
+      return true
+    })
+    try {
+      // A raw "No Token Atlas editor is open" would reject here.
+      await vscode.commands.executeCommand(
+        "tokenAtlas.deleteNode",
+        row(["menu", "spare"]),
+      )
+    } finally {
+      restore()
+    }
+    assert.equal(await textOf(), before)
+  })
+
+  it("Rename… after the editor closed says so and changes nothing (editor closed)", async () => {
+    await openEditor()
+    await vscode.commands.executeCommand("workbench.action.closeAllEditors")
+    await waitFor(() => editorTabs().length === 0, "the editor to close")
+    const before = await textOf()
+    await vscode.commands.executeCommand(
+      "tokenAtlas.renameNode",
+      row(["menu", "spare"]),
+      "white",
+    )
+    assert.equal(await textOf(), before)
+  })
+
+  it("Rename… after a second editor on the file closed goes to the one still open (editor closed)", async () => {
+    await openEditor()
+    await vscode.commands.executeCommand(
+      "vscode.openWith",
+      tokens,
+      "tokenAtlas.tokenEditor.any",
+      vscode.ViewColumn.Two,
+    )
+    await waitFor(() => editorTabs().length === 2, "a second Token Editor")
+    // The newer editor closes; the older one is still showing the file.
+    const newer = editorTabs().find(t => t.group.viewColumn === 2)!
+    await vscode.window.tabGroups.close(newer)
+    await waitFor(() => editorTabs().length === 1, "the newer editor to close")
+    await vscode.commands.executeCommand(
+      "tokenAtlas.renameNode",
+      row(["menu", "spare"]),
+      "white",
+    )
+    const text = await waitFor(async () => {
+      const t = await textOf()
+      return t.includes('"white"') ? t : undefined
+    }, "the rename through the editor still open")
+    assert.ok(!text.includes('"spare"'))
+  })
+
   it("Delete asks, then removes the row's token", async () => {
     await openEditor()
     const asked = await menuDelete(row(["menu", "spare"]), true)
