@@ -10,6 +10,14 @@ import { Detail } from "../../src/webview/components/Detail"
 import type { TokenNode, TokenType } from "../../src/core/types"
 import { token } from "./fixtures"
 
+/** The panel's three edits on a row: rename (click the name), move, delete. */
+const panelEdits = () => ({
+  rename: screen.queryByTitle("Click to rename"),
+  moveUp: screen.queryByLabelText("Move up"),
+  moveDown: screen.queryByLabelText("Move down"),
+  remove: screen.queryByTitle("Delete"),
+})
+
 /**
  * The detail panel is where every value, rename, description, type and
  * deprecation edit is made, and each one is a callback it must fire once with
@@ -289,5 +297,21 @@ describe("Detail value edits", () => {
       blur: { value: 12, unit: "px" },
       inset: true,
     })
+  })
+})
+
+describe("Detail inherited row panel", () => {
+  it("inherited row panel: an inherited token offers no rename, move or delete; an owned one keeps all three", () => {
+    renderDetail({
+      ...plain(),
+      inheritedFrom: "light.brand.primary",
+      inheritedVia: "$extends",
+    })
+    expect(Object.values(panelEdits())).toEqual([null, null, null, null])
+    expect(screen.getByRole("heading", { name: "primary" })).toBeTruthy()
+    cleanup()
+
+    renderDetail(plain())
+    for (const edit of Object.values(panelEdits())) expect(edit).toBeTruthy()
   })
 })

@@ -176,9 +176,8 @@ export function Detail({
         }
         summary={resolvedText && <span className="mono">{resolvedText}</span>}
         onOpenPath={onOpenPath}
-        onRename={onRename}
-        onMove={onMove}
-        onDelete={onDelete}
+        // An inherited token has no key in the file to edit.
+        {...(!token.inheritedFrom && { onRename, onMove, onDelete })}
         onClose={onClose}
       />
 

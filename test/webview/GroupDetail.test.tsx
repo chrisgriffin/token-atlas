@@ -5,6 +5,14 @@ import { COMMIT_DELAY_MS } from "../../src/webview/editors/fields"
 import type { GroupNode } from "../../src/core/types"
 import { group, token } from "./fixtures"
 
+/** The panel's three edits on a row: rename (click the name), move, delete. */
+const panelEdits = () => ({
+  rename: screen.queryByTitle("Click to rename"),
+  moveUp: screen.queryByLabelText("Move up"),
+  moveDown: screen.queryByLabelText("Move down"),
+  remove: screen.queryByTitle("Delete"),
+})
+
 afterEach(cleanup)
 
 const handlers = () => ({
@@ -84,5 +92,24 @@ describe("GroupDetail", () => {
     fireEvent.change(input, { target: { value: " marque " } })
     fireEvent.blur(input)
     expect(props.onRename.mock.calls).toEqual([["marque"]])
+  })
+
+  it("inherited row panel: a heading $extends alone gives offers no rename, move or delete; an owned one keeps all three", () => {
+    const inherited: GroupNode = {
+      ...group(["dark", "bg"], [token(["dark", "bg", "base"], "#000")]),
+      inheritedFrom: "light.bg",
+    }
+    const props = renderGroup(inherited)
+    expect(Object.values(panelEdits())).toEqual([null, null, null, null])
+    // The name is still shown, as plain text.
+    expect(screen.getByRole("heading", { name: "bg" })).toBeTruthy()
+    fireEvent.click(screen.getByRole("heading", { name: "bg" }))
+    expect(screen.queryByDisplayValue("bg")).toBeNull()
+    expect(props.onRename).not.toHaveBeenCalled()
+    cleanup()
+
+    renderGroup(nested())
+    const edits = panelEdits()
+    for (const edit of Object.values(edits)) expect(edit).toBeTruthy()
   })
 })

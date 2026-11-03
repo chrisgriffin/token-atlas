@@ -24,7 +24,11 @@ interface GroupDetailProps {
   onChangeType: (type: TokenType | undefined, starterValue?: unknown) => void
 }
 
-/** Right-panel editor for a group: rename, description, move, delete. */
+/**
+ * Right-panel editor for a group: description, type and deprecation, plus
+ * rename, move and delete for an owned group only — a heading that only
+ * `$extends` or a group-level `$ref` gives has no key of its own to edit.
+ */
 export function GroupDetail({
   group,
   issues,
@@ -60,9 +64,9 @@ export function GroupDetail({
         }
         summary={`${tokens} ${tokens === 1 ? "token" : "tokens"}`}
         onOpenPath={onOpenPath}
-        onRename={onRename}
-        onMove={onMove}
-        onDelete={onDelete}
+        // A group only `$extends` or a group-level `$ref` gives has no key in
+        // the file to edit.
+        {...(!group.inheritedFrom && { onRename, onMove, onDelete })}
         onClose={onClose}
       />
 
