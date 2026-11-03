@@ -28,10 +28,15 @@ interface HeaderProps {
   summary?: ReactNode
   /** Opens the group at a parent path; the breadcrumb segments call it. */
   onOpenPath?: (path: string[]) => void
-  /** False refuses the name (a sibling has it): Enter keeps the box open. */
-  onRename: (newName: string) => boolean | void
-  onMove: (direction: "up" | "down") => void
-  onDelete: () => void
+  /**
+   * The row's own edits. False from `onRename` refuses the name (a sibling
+   * has it): Enter keeps the box open. Leave all three out for a row with no
+   * key of its own in the file (an inherited token or heading): the name is
+   * then plain text and the move and delete group is not shown.
+   */
+  onRename?: (newName: string) => boolean | void
+  onMove?: (direction: "up" | "down") => void
+  onDelete?: () => void
   onClose: () => void
 }
 
@@ -66,7 +71,7 @@ export function NodeHeader({
   /** Renames to the draft; false when the name is refused. */
   const submit = () => {
     const next = nameDraft.trim()
-    return !next || next === name || onRename(next) !== false
+    return !next || next === name || onRename?.(next) !== false
   }
   const close = () => {
     closed.current = true
@@ -124,6 +129,9 @@ export function NodeHeader({
                 setRenaming(false)
               }}
             />
+          ) : !onRename ? (
+            // No key of its own to rename: the name is plain text.
+            <h2 className="readonly">{name}</h2>
           ) : (
             // The name is a button, so Tab reaches it and Enter or Space renames.
             <h2 onClick={startRename}>
@@ -134,25 +142,27 @@ export function NodeHeader({
           )}
           {badge}
         </div>
-        <div className="btn-group" role="group" aria-label="Actions">
-          <button
-            className="ghost"
-            onClick={() => onMove("up")}
-            title="Move up"
-            aria-label="Move up"
-          >
-            <ArrowUp />
-          </button>
-          <button
-            className="ghost"
-            onClick={() => onMove("down")}
-            title="Move down"
-            aria-label="Move down"
-          >
-            <ArrowDown />
-          </button>
-          <DeleteButton onDelete={onDelete} />
-        </div>
+        {onMove && onDelete && (
+          <div className="btn-group" role="group" aria-label="Actions">
+            <button
+              className="ghost"
+              onClick={() => onMove("up")}
+              title="Move up"
+              aria-label="Move up"
+            >
+              <ArrowUp />
+            </button>
+            <button
+              className="ghost"
+              onClick={() => onMove("down")}
+              title="Move down"
+              aria-label="Move down"
+            >
+              <ArrowDown />
+            </button>
+            <DeleteButton onDelete={onDelete} />
+          </div>
+        )}
       </div>
       {(below || summary) && (
         <div className="node-header-meta">

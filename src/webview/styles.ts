@@ -398,6 +398,8 @@ export const css = `
     border-bottom: 1px dashed transparent;
   }
   .node-header-name h2:hover { border-bottom-color: var(--vscode-descriptionForeground); }
+  .node-header-name h2.readonly { cursor: default; }
+  .node-header-name h2.readonly:hover { border-bottom-color: transparent; }
   /* The name is a button for the keyboard, drawn as the heading's text. */
   .node-header-name h2 button.node-name {
     all: unset;
