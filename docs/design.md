@@ -254,9 +254,11 @@ right.
 
 **Host → webview** — the host sends state.
 
-- `init` and `update`, both carrying the same payload: `{ model, validation, externalTokens, settings, scope, selected?, columnWidths, modes? }`. `modes` is set only when the file is a mode of a resolver modifier: its contexts, the one it owns, the active one, and each context's values. `init` is the first push; `update` is every later one, including a change typed into the raw JSON in a split pane — so reconciling an external edit is the same message as any other, not a separate one.
+- `init` and `update`, both carrying the same payload: `{ uri, model, validation, externalTokens, settings, scope, selected?, columnWidths, modes? }`. `uri` is the document the right-click menu's commands act on. `modes` is set only when the file is a mode of a resolver modifier: its contexts, the one it owns, the active one, and each context's values. `init` is the first push; `update` is every later one, including a change typed into the raw JSON in a split pane — so reconciling an external edit is the same message as any other, not a separate one.
 - `error { message }`
 - `scope { path, select? }` — the Tokens panel picked a group (or a token, via `select`)
+- `renamed { path, newName }` — a rename landed (a `renameNode` intent, or the Rename Token Without Keeping Old Name command, from the text editor or a row's menu); a detail panel open on `path` (or inside it) follows the node to its new name
+- `deleted { path }` — a delete landed (a `deleteNode` intent, or the Remove Deprecated Token command, from either editor); a detail panel open on `path` (or inside it) closes
 
 There is no `capabilities` handshake and no separate `validation` message —
 `validation` rides `init` and `update`. There is no `$extensions` intent either:
