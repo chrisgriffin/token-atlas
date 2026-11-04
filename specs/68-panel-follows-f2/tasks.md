@@ -2,8 +2,8 @@
 
 ## Phase 1: Tests first
 
-- [x] T001 Grow `test/host/vscode-stub.ts`: keep each registered rename provider, and give a stub document `offsetAt`.
-- [x] T002 Write `test/host/panel-follows-f2.test.ts`: F2 on the token, on its group, with the alias kept, cancelled, and naming only the renamed node, each named `panel follows F2: …`; run it red.
+- [x] T001 Grow `test/host/vscode-stub.ts`: keep each registered rename provider, give a stub document `offsetAt`, and give `WorkspaceEdit` a `get`.
+- [x] T002 Write `test/host/panel-follows-f2.test.ts`: F2 on the token, on its group, with the alias kept, cancelled, renamed back onto a kept alias and discarded, discarded before a later F2 to the same name, renamed to the same name, and naming only the renamed node, each named `panel follows F2: …`; run it red.
 - [x] T003 Add the unrelated-node `renamed` case to `test/webview/contextMenu.test.tsx`.
 
 ## Phase 2: Fix

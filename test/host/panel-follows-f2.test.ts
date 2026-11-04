@@ -40,7 +40,7 @@ const context = {
 
 /** Opens the Token Editor on the file; returns what the host posts to it. */
 async function openEditor() {
-  const { doc } = stub.openDocument(PATH, TOKENS)
+  const { doc, edit } = stub.openDocument(PATH, TOKENS)
   const posted: HostToWebview[] = []
   const panel = {
     webview: {
@@ -59,7 +59,7 @@ async function openEditor() {
     panel as never,
   )
   const notices = () => posted.filter(m => m.type === "renamed")
-  return { doc, notices }
+  return { doc, notices, edit }
 }
 
 type RenameProvider = {
@@ -146,6 +146,44 @@ describe("the detail panel follows F2", () => {
       }),
     )
     expect(doc.getText()).toBe(typed)
+    expect(notices()).toEqual([])
+  })
+
+  it("panel follows F2: renaming back onto a kept alias, then discarding it, posts nothing", async () => {
+    stub.settings.global.deprecationWorkflow = true
+    const { doc, notices, edit } = await openEditor()
+    await stub.workspace.applyEdit(await f2(doc, "ink", "black"))
+    expect(notices()).toHaveLength(1)
+    // `ink` is now `black`'s alias, so F2 may rename `black` back onto it:
+    // the new key is in the document before this edit ever lands.
+    await f2(doc, "black", "ink")
+    expect(JSON.parse(doc.getText()).color).toHaveProperty("ink")
+    // Discarded; then the user types elsewhere, and saves the same text.
+    edit(doc.getText().replace("#111111", "#222222"))
+    edit(doc.getText())
+    expect(notices()).toHaveLength(1)
+    // Applied, it does land, and is told.
+    await stub.workspace.applyEdit(await f2(doc, "black", "ink"))
+    expect(notices()).toEqual([
+      { type: "renamed", path: ["color", "ink"], newName: "black" },
+      { type: "renamed", path: ["color", "black"], newName: "ink" },
+    ])
+  })
+
+  it("panel follows F2: a rename discarded in the preview cannot fire on a later F2 to the same name", async () => {
+    const { doc, notices } = await openEditor()
+    await f2(doc, "ink", "black") // discarded
+    await stub.workspace.applyEdit(await f2(doc, "old", "black"))
+    // Only `color.old` was renamed; a panel on `color.ink` must stay put.
+    expect(notices()).toEqual([
+      { type: "renamed", path: ["color", "old"], newName: "black" },
+    ])
+  })
+
+  it("panel follows F2: a rename to the same name waits for nothing", async () => {
+    const { doc, notices, edit } = await openEditor()
+    await stub.workspace.applyEdit(await f2(doc, "ink", "ink"))
+    edit(doc.getText().replace("#111111", "#222222"))
     expect(notices()).toEqual([])
   })
 

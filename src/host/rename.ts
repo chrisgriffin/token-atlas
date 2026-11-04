@@ -233,29 +233,54 @@ function offerWhenApplied(
   const timer = setTimeout(done, 10 * 60_000)
 }
 
+/** The F2 rename waiting to land in each document, by URI: a new F2 replaces it. */
+const pendingNotify = new Map<string, () => void>()
+
+/** `document`'s text once `edit`'s changes to it are applied. */
+function textAfter(
+  document: vscode.TextDocument,
+  edit: vscode.WorkspaceEdit,
+): string {
+  const text = document.getText()
+  return edit
+    .get(document.uri)
+    .map(e => ({
+      start: document.offsetAt(e.range.start),
+      end: document.offsetAt(e.range.end),
+      newText: e.newText,
+    }))
+    .sort((a, b) => b.start - a.start)
+    .reduce((t, e) => t.slice(0, e.start) + e.newText + t.slice(e.end), text)
+}
+
 /**
  * F2's edit lands now, after the refactor preview, or never, so the open
- * Token Editor is told of the rename once the node is in the document under
- * its new name, which it cannot be before (NameTakenError), alias kept or
- * not. Gives up after ten minutes, as offerWhenApplied does.
+ * Token Editor is told of the rename only when the document becomes exactly
+ * the text this edit makes. A key's presence is no such proof: renaming back
+ * onto a deprecated alias finds the new key already there. One F2 waits per
+ * document, a new one replacing it, so a rename discarded in the preview
+ * cannot fire on a later one; a rename that changes nothing waits for nothing.
+ * Gives up after ten minutes, as offerWhenApplied does.
  */
 function notifyWhenApplied(
   document: vscode.TextDocument,
+  edit: vscode.WorkspaceEdit,
   nodePath: string[],
   newName: string,
   scopePath: Array<string | number>,
 ): void {
-  const newKey = [...nodePath.slice(0, -1), newName].join(".")
+  const key = document.uri.toString()
+  pendingNotify.get(key)?.()
+  const expected = textAfter(document, edit)
+  if (expected === document.getText()) return
   const done = () => {
     clearTimeout(timer)
     listener.dispose()
+    if (pendingNotify.get(key) === done) pendingNotify.delete(key)
   }
   const listener = vscode.workspace.onDidChangeTextDocument(e => {
     if (e.document !== document) return
-    const fragment = fragmentAt(document, scopePath)
-    if (!fragment) return
-    const keys = [...indexTokens(parseTokens(fragment.text)).keys()]
-    if (!keys.some(k => k === newKey || k.startsWith(newKey + "."))) return
+    if (document.getText() !== expected) return
     done()
     TokenEditorProvider.notify(document.uri, {
       type: "renamed",
@@ -264,6 +289,7 @@ function notifyWhenApplied(
     })
   })
   const timer = setTimeout(done, 10 * 60_000)
+  pendingNotify.set(key, done)
 }
 
 const CODE_USAGE: vscode.WorkspaceEditEntryMetadata = {
@@ -406,7 +432,7 @@ class TokenRenameProvider implements vscode.RenameProvider {
     if (keepAlias)
       offerWhenApplied(document, target.path, newName, target.scope.path)
     // Outside the editor's intent queue, so its detail panel is told here.
-    notifyWhenApplied(document, target.path, newName, target.scope.path)
+    notifyWhenApplied(document, edit, target.path, newName, target.scope.path)
     return edit
   }
 }

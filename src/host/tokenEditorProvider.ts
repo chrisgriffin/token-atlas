@@ -141,7 +141,8 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
   }
 
   /** Tell every editor open on `uri` about an edit made outside its intent
-   *  queue — a menu command's — so the detail panel follows it. */
+   *  queue — a command's, or F2's rename provider's — so the detail panel
+   *  follows it. */
   public static notify(uri: vscode.Uri, message: HostToWebview): void {
     for (const panel of TokenEditorProvider.panels.get(uri.toString()) ?? [])
       void panel.webview.postMessage(message)

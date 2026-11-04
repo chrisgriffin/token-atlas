@@ -91,6 +91,12 @@ export class WorkspaceEdit {
   replace(uri: Uri, range: Range, content: string): void {
     this.replacements.push({ uri, range, content })
   }
+  /** The text edits for `uri`, as VS Code's `WorkspaceEdit.get` returns them. */
+  get(uri: Uri): Array<{ range: Range; newText: string }> {
+    return this.replacements
+      .filter(r => r.uri.toString() === uri.toString())
+      .map(r => ({ range: r.range, newText: r.content }))
+  }
 }
 
 export class Diagnostic {
