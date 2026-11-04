@@ -21,7 +21,7 @@ With the Token Editor's detail panel open on a token, renaming that token with F
 
 ## Success criteria
 
-- [ ] After an F2 rename of the token or group the detail panel is on, or of a group the token is inside, the panel stays open on the renamed node. The work adds `test/host/panel-follows-f2.test.ts` to cover it. **Runnable:** `npx vitest run test/host/panel-follows-f2.test.ts` exits 0 (it exits 1 on `develop`, where that file does not exist).
-- [ ] An F2 rename that is cancelled in the refactor preview posts nothing to the panel.
-- [ ] A panel on an unrelated token is unchanged by an F2 rename.
-- [ ] `npm test` passes.
+- [x] After an F2 rename of the token or group the detail panel is on, or of a group the token is inside, the panel stays open on the renamed node. The work adds `test/host/panel-follows-f2.test.ts` to cover it. **Runnable:** `npx vitest run test/host/panel-follows-f2.test.ts` exits 0 (it exits 1 on `develop`, where that file does not exist).
+- [x] An F2 rename that is cancelled in the refactor preview posts nothing to the panel.
+- [x] A panel on an unrelated token is unchanged by an F2 rename.
+- [x] `npm test` passes.

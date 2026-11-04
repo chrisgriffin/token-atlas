@@ -233,6 +233,39 @@ function offerWhenApplied(
   const timer = setTimeout(done, 10 * 60_000)
 }
 
+/**
+ * F2's edit lands now, after the refactor preview, or never, so the open
+ * Token Editor is told of the rename once the node is in the document under
+ * its new name, which it cannot be before (NameTakenError), alias kept or
+ * not. Gives up after ten minutes, as offerWhenApplied does.
+ */
+function notifyWhenApplied(
+  document: vscode.TextDocument,
+  nodePath: string[],
+  newName: string,
+  scopePath: Array<string | number>,
+): void {
+  const newKey = [...nodePath.slice(0, -1), newName].join(".")
+  const done = () => {
+    clearTimeout(timer)
+    listener.dispose()
+  }
+  const listener = vscode.workspace.onDidChangeTextDocument(e => {
+    if (e.document !== document) return
+    const fragment = fragmentAt(document, scopePath)
+    if (!fragment) return
+    const keys = [...indexTokens(parseTokens(fragment.text)).keys()]
+    if (!keys.some(k => k === newKey || k.startsWith(newKey + "."))) return
+    done()
+    TokenEditorProvider.notify(document.uri, {
+      type: "renamed",
+      path: [...scopePath.map(String), ...nodePath],
+      newName,
+    })
+  })
+  const timer = setTimeout(done, 10 * 60_000)
+}
+
 const CODE_USAGE: vscode.WorkspaceEditEntryMetadata = {
   label: "Code usages",
   needsConfirmation: false,
@@ -372,6 +405,8 @@ class TokenRenameProvider implements vscode.RenameProvider {
     )
     if (keepAlias)
       offerWhenApplied(document, target.path, newName, target.scope.path)
+    // Outside the editor's intent queue, so its detail panel is told here.
+    notifyWhenApplied(document, target.path, newName, target.scope.path)
     return edit
   }
 }
