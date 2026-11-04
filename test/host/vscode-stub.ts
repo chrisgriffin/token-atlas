@@ -194,7 +194,10 @@ export const languages = {
   registerRenameProvider: () => ({ dispose: () => {} }),
 }
 
-/** Every command registered, by id; `executeCommand` runs one. */
+/**
+ * Every command registered, by id; `executeCommand` runs one, and fails on an
+ * id nothing registered, as VS Code does, so a renamed id cannot pass silently.
+ */
 const registered = new Map<string, (...args: unknown[]) => unknown>()
 
 export const commands = {
@@ -203,7 +206,9 @@ export const commands = {
     return { dispose: () => registered.delete(id) }
   },
   async executeCommand(id: string, ...args: unknown[]) {
-    return registered.get(id)?.(...args)
+    const run = registered.get(id)
+    if (!run) throw new Error(`command '${id}' not found`)
+    return run(...args)
   },
 }
 

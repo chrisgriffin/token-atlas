@@ -76,6 +76,12 @@ beforeEach(() => {
 })
 
 describe("the detail panel follows menu edits", () => {
+  it("unregistered command id: running one fails and names it", async () => {
+    await expect(
+      stub.commands.executeCommand("tokenAtlas.noSuchCommand"),
+    ).rejects.toThrow("tokenAtlas.noSuchCommand")
+  })
+
   it("panel follows menu: Rename Token Without Keeping Old Name sends the new name", async () => {
     const { doc, notices } = await openEditor()
     const renamed = await stub.commands.executeCommand(
@@ -105,16 +111,18 @@ describe("the detail panel follows menu edits", () => {
   it("panel follows menu: a rename or remove VS Code refuses sends nothing", async () => {
     const { doc, notices } = await openEditor()
     stub.applyEditRefuses.value = true
-    await stub.commands.executeCommand(
+    const renamed = await stub.commands.executeCommand(
       "tokenAtlas.renameWithoutAlias",
       row(["color", "ink"]),
       undefined,
       "black",
     )
-    await stub.commands.executeCommand(
+    const removed = await stub.commands.executeCommand(
       "tokenAtlas.removeDeprecatedToken",
       row(["color", "old"]),
     )
+    expect(renamed).toBe(false)
+    expect(removed).toBe(false)
     expect(doc.getText()).toBe(TOKENS)
     expect(notices()).toEqual([])
   })
