@@ -6,7 +6,7 @@
  * how much work an event costs. `emit` fires the workspace events the index
  * subscribes to. `commands` and `applyEdit` are enough to run a command the
  * host registers and see the edit it makes, with `applyEditRefuses` standing
- * in for VS Code turning an edit down.
+ * in for VS Code turning an edit down; `renameProviders` holds what F2 calls.
  */
 export class EventEmitter<T> {
   private listeners: Array<(e: T) => void> = []
@@ -91,6 +91,12 @@ export class WorkspaceEdit {
   replace(uri: Uri, range: Range, content: string): void {
     this.replacements.push({ uri, range, content })
   }
+  /** The text edits for `uri`, as VS Code's `WorkspaceEdit.get` returns them. */
+  get(uri: Uri): Array<{ range: Range; newText: string }> {
+    return this.replacements
+      .filter(r => r.uri.toString() === uri.toString())
+      .map(r => ({ range: r.range, newText: r.content }))
+  }
 }
 
 export class Diagnostic {
@@ -139,6 +145,7 @@ export interface StubDocument {
   isClosed: boolean
   getText(): string
   positionAt(offset: number): Position
+  offsetAt(position: Position): number
 }
 
 /** An open document over `path`: `edit` replaces its text, `close` closes it. */
@@ -151,6 +158,7 @@ export function openDocument(path: string, text: string, languageId = "json") {
     isClosed: false,
     getText: () => current,
     positionAt: offset => new Position(0, offset),
+    offsetAt: position => position.character,
   }
   /** Replace the text and fire the change event, as typing does. */
   const edit = (next: string) => {
@@ -191,8 +199,14 @@ export const languages = {
     }
   },
   registerCodeActionsProvider: () => ({ dispose: () => {} }),
-  registerRenameProvider: () => ({ dispose: () => {} }),
+  registerRenameProvider(_selector: unknown, provider: unknown) {
+    renameProviders.push(provider)
+    return { dispose: () => {} }
+  },
 }
+
+/** Every rename provider registered, so a test can run F2 by hand. */
+export const renameProviders: unknown[] = []
 
 /**
  * Every command registered, by id; `executeCommand` runs one, and fails on an
@@ -264,6 +278,7 @@ export function reset(): void {
   listeners.clear()
   editors.clear()
   registered.clear()
+  renameProviders.length = 0
   shown.length = 0
   applyEditRefuses.value = false
   collections.clear()

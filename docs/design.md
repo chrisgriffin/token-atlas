@@ -99,7 +99,8 @@ nothing (`TokenEditorProvider.canReceive`, the state `receive` reads). Rename
 Token Without Keeping Old Name and Remove Deprecated Token, which do not go
 through the queue, tell the open editor through `TokenEditorProvider.notify`,
 so the detail panel follows the rename or closes only on a delete that changed
-the file),
+the file; F2 in the text editor tells it the same way, once its edit has
+landed in the document),
 `exportFeatures.ts` (hover, definition and completion on exported
 identifiers in CSS/Sass/Less/JS/TS, matching via `src/core/exportNames.ts`,
 and an inlay hint with the resolved value after each `var(--token)` in

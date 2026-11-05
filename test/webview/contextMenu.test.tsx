@@ -210,6 +210,15 @@ describe("the detail panel after a menu rename or delete", () => {
     ])
   })
 
+  it("stays on its token when another is renamed", () => {
+    open()
+    openPanel("color.ink")
+    vi.mocked(setSelectedPathState).mockClear()
+    send({ type: "renamed", path: ["color", "old"], newName: "older" })
+    expect(panel()).not.toBeNull()
+    expect(vi.mocked(setSelectedPathState)).not.toHaveBeenCalled()
+  })
+
   it("closes on the deleted token, and stays open on another", () => {
     open()
     openPanel("color.ink")
