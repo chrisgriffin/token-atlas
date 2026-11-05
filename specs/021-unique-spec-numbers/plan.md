@@ -84,9 +84,7 @@ path are updated in the same commit.
   ruleset edit.
 - `docs/adr/` — none: this is cleanup after a known incident, not a new
   decision. The incident's own records are kept with the operator.
-- a vault living doc whose `covers:` names a path in this repo — **cannot
-  appear in a repo diff.** No vault note is expected to name a spec folder
-  number here; the build confirms with `grep -rl "token-atlas:specs" AI/` in
-  the vault if it has vault access, and records the result as one line in the
-  PR body. A shift has no vault access, so an unverified result is said as
-  unverified.
+- a document outside this repo that names a path in it — **cannot appear in
+  a repo diff.** None is expected to name a spec folder number here; the build
+  records as one line in the PR body whether it could confirm that, and a
+  check it could not run is said as unverified.

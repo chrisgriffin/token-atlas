@@ -33,4 +33,4 @@ Spec: [`spec.md`](./spec.md) · Plan: [`plan.md`](./plan.md) · Branch: `021-uni
 - [x] [T015] `.vscodeignore` and `test/ci/package-contents.test.ts` — confirm the packaged-contents allow-list still passes with the renamed folders (covered by T010's `npm test`; name the result).
 - [x] [T016] A required check name — none: confirm no workflow job name changes, so no branch ruleset edit is owed.
 - [x] [T017] `docs/adr/` — none: confirm this is cleanup after a known incident rather than a new decision; the incident's records are kept with the operator.
-- [x] [T018] A vault living doc whose `covers:` names a path in this repo — cannot appear in a repo diff. With vault access, run `grep -rl "token-atlas:specs" AI/` and record the result as one line in the PR body; without it, say the check could not run rather than claiming it passed.
+- [x] [T018] A document outside this repo that names a path in it — cannot appear in a repo diff. Record as one line in the PR body whether any names a spec folder number; where the check cannot run, say so rather than claiming it passed.

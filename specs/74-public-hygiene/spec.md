@@ -14,5 +14,5 @@ Twenty-three committed spec files still carry a retired section that listed asks
 
 ## Out of scope
 
-- Generic words such as "vault note" or "the operator" that name no repository.
+- Generic words such as "the operator" that name no repository.
 - The `OPS_GH_TOKEN` secret and the reusable's `ops-token` input: names the public reusable workflow declares, not references to a repository.
