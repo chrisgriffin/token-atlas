@@ -25,7 +25,3 @@ Releases run through the shared Release PR workflow, which installs and configur
 ## Out of scope
 
 - `CHANGELOG.md` and its `.prettierignore` entry: the shared release workflow still generates it with conventional-changelog, so that comment stays true.
-
-## Needs from Chris
-
-none

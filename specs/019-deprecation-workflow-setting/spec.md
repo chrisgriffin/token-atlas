@@ -86,10 +86,6 @@ Delete anyway / Cancel**.
 - [ ] `specs/015-token-deprecation` is updated to describe the setting and the rename integration, so the spec folder matches what shipped.
 - [ ] **Runnable:** `grep -q '"tokenAtlas.deprecationWorkflow"' package.json` — exit `1` on `develop@8f16363` today, exit `0` when this lands — and the full gate green: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`.
 
-## Needs from Chris
-
-none
-
 ## Scope notes
 
 Not in scope: sweeping existing hand-written chains in a workspace (only the

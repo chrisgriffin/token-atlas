@@ -26,7 +26,3 @@ Renaming a token whose camelCase export name is also a DOM style property rename
 - [ ] Renaming still updates real token exports such as `tokens.border.width` and `borderWidth` imported from a tokens module.
 
 **Runnable:** `npx vitest run test/core/exportNames-js-style-props.test.ts` exits 0.
-
-## Needs from Chris
-
-none

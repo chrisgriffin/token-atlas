@@ -71,7 +71,3 @@ Someone renames `border.width` with `border-width: var(--border-width)` in a sty
 - A contrast pair whose foreground and background are both undefined has no token to report on and stays silent.
 - JS/TS matching is unchanged: a camelCase export and a DOM style property (`el.style.fontSize`) are the same word, and nothing in the syntax tells them apart.
 - The color picker writes a `hex` even where the value had none, as the visual editor does.
-
-## Needs from Chris
-
-none

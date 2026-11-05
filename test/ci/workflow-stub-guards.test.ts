@@ -107,7 +107,7 @@ describe("every stub calls the public workflows repo at v1, by named secrets", (
       expect(text).toMatch(
         /^ {4}uses: chrisgriffin\/workflows\/\.github\/workflows\/_reusable-[a-z-]+\.yml@v1$/m,
       )
-      expect(text).not.toMatch(/^ {4}uses: chrisgriffin\/ops\//m)
+      expect(text).not.toMatch(/^ {4}uses: (?!chrisgriffin\/workflows\/)/m)
       expect(text).not.toMatch(/@develop$/m)
     })
 

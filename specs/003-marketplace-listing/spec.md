@@ -55,7 +55,3 @@ Someone reads the listing or the GitHub README and installs Token Atlas the norm
 - Banner color `#1C1F3F` with the `dark` theme: the top stop of `media/icon.svg`'s background gradient.
 - Keywords added: `w3c`, `tokens studio` (its `$themes` feed the active-set picker), `style dictionary` (its DTCG input and its CSS/Sass/JS output both work), `css variables`, `color`. No `figma`: there is no Figma sync.
 - `CHANGELOG.md` is left alone; the release PR generates it.
-
-## Needs from Chris
-
-none

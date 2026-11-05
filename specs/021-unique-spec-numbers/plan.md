@@ -83,9 +83,7 @@ path are updated in the same commit.
 - a required check name — none: no workflow job name changes, so no branch
   ruleset edit.
 - `docs/adr/` — none: this is cleanup after a known incident, not a new
-  decision. The incident's own records are
-  [chrisgriffin/ops#1746](https://github.com/chrisgriffin/ops/issues/1746) and
-  [chrisgriffin/ops#1726](https://github.com/chrisgriffin/ops/issues/1726).
+  decision. The incident's own records are kept with the operator.
 - a vault living doc whose `covers:` names a path in this repo — **cannot
   appear in a repo diff.** No vault note is expected to name a spec folder
   number here; the build confirms with `grep -rl "token-atlas:specs" AI/` in

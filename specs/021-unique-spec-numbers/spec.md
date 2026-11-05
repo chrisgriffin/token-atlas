@@ -7,8 +7,7 @@
 numbers are currently shared by more than one folder, so a number no longer
 identifies a spec. One of those pairs is worse than a naming clash: two folders
 spec the same issue, left behind when a single build-queue issue fired two Build
-runs and both pull requests merged seconds apart
-([chrisgriffin/ops#1746](https://github.com/chrisgriffin/ops/issues/1746)).
+runs and both pull requests merged seconds apart.
 
 Measured on `develop@b44bc51`:
 
@@ -53,8 +52,7 @@ duplicated another.
 ## Non-goals
 
 - Preventing a future collision in whatever assigns the next number.
-  That is [chrisgriffin/ops#1726](https://github.com/chrisgriffin/ops/issues/1726)
-  and it changes the operator, not this repo.
+  That changes the operator, not this repo.
 - Reconciling the two duplicate pull requests, #42 and #43. Both merged and
   their code effect is settled; only the leftover spec folder is in scope.
 - Back-filling or correcting the content of any spec that is not renumbered.
@@ -66,7 +64,3 @@ duplicated another.
 - [ ] `ls -d specs/*-drop-changelog-tooling | wc -l` prints `1`.
 - [ ] `grep -rn "specs/002-\|specs/019-\|specs/020-" specs/ src/ docs/ .github/ README.md` names no path that does not exist on disk.
 - [ ] `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build` exits 0.
-
-## Needs from Chris
-
-none

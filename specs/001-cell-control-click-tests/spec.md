@@ -43,7 +43,3 @@ Someone editing tokens in the visual editor clicks a control in a row and gets t
 
 - "The control exclusion" covers both layers that keep a control's click: the control's own stop of the click, and the control check in `editCellAt`, which is the backup. Each control stops its click first, so disabling the `editCellAt` check alone leaves every test green; the red runs disable both for the control under test.
 - The edit button sits in its own column with no inline-editable text, so no exclusion guards it; its test was seen red by dropping the button's own action instead.
-
-## Needs from Chris
-
-none

@@ -26,7 +26,3 @@ When a token is renamed or deleted from the visual editor's right-click menu, th
 - [x] A delete that changes nothing in the file leaves the panel open on the node.
 - [x] **Runnable:** `npm test -- -t "panel follows menu" 2>&1 | grep -cE "Tests +[0-9]+ passed"` prints `1` (today `0`: vitest reports `Tests  948 skipped (948)`, so no test matches).
 - [x] The build gate is green: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`.
-
-## Needs from Chris
-
-none

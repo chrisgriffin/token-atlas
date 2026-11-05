@@ -116,10 +116,6 @@ With none, it just goes.
 - [ ] `npm run format:check && npm run typecheck && npm test && npm run build && npm run test:integration`
       is green.
 
-## Needs from Chris
-
-none
-
 ## Scope notes
 
 **Rename is spec 019's.** This spec shipped with rename untouched; keeping

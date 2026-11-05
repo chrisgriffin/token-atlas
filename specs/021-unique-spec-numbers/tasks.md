@@ -32,5 +32,5 @@ Spec: [`spec.md`](./spec.md) · Plan: [`plan.md`](./plan.md) · Branch: `021-uni
 - [x] [T014] A published surface (`bin`, export, command, config schema, report shape) — none: confirm no runtime surface moves, so no CHANGELOG entry is owed.
 - [x] [T015] `.vscodeignore` and `test/ci/package-contents.test.ts` — confirm the packaged-contents allow-list still passes with the renamed folders (covered by T010's `npm test`; name the result).
 - [x] [T016] A required check name — none: confirm no workflow job name changes, so no branch ruleset edit is owed.
-- [x] [T017] `docs/adr/` — none: confirm this is cleanup after a known incident rather than a new decision, and link [chrisgriffin/ops#1746](https://github.com/chrisgriffin/ops/issues/1746) and [chrisgriffin/ops#1726](https://github.com/chrisgriffin/ops/issues/1726) in the PR body.
+- [x] [T017] `docs/adr/` — none: confirm this is cleanup after a known incident rather than a new decision; the incident's records are kept with the operator.
 - [x] [T018] A vault living doc whose `covers:` names a path in this repo — cannot appear in a repo diff. With vault access, run `grep -rl "token-atlas:specs" AI/` and record the result as one line in the PR body; without it, say the check could not run rather than claiming it passed.
