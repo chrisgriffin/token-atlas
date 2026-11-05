@@ -97,7 +97,3 @@ Someone writes a value the spec does not allow and the Problems panel says what 
 - JSON syntax errors are reported by Token Atlas as well as by VS Code's JSON service, as the resolver and lint config already are.
 - Resolution of a deeply repeated composite (a reference used twice per level, many levels deep) is exponential, but only for a crafted file: 18 doubling levels take about 200 ms. The resolved value is itself that large, since the spec's no-flattening rule expands every reference, so reusing a resolution would only move the cost to validation, hover and the visual editor. Not changed.
 - A modifier listed twice in `resolutionOrder` is one choice in the active-set picker, not a product with itself ("theme: light · theme: dark" named a resolution that was really dark). The spec is silent on listing it twice; its files take their last position in the order, as any source listed twice does.
-
-## Needs from Chris
-
-none

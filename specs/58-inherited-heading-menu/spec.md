@@ -24,7 +24,3 @@ In the visual editor, a group heading that exists only because `$extends` (or a 
 - [x] A test whose name contains "inherited group heading" covers both cases.
 - [x] **Runnable:** `npm test -- -t "inherited group heading" 2>&1 | grep -cE "Tests +[0-9]+ passed"` prints `1` (prints `0` on `develop` today: no test matches, vitest reports every test skipped).
 - [x] `npm run lint`, `npm run typecheck` and `npm test` all exit 0.
-
-## Needs from Chris
-
-none

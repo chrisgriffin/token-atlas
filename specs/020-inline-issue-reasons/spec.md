@@ -32,10 +32,6 @@ written by release tooling and cites only this repo's issues.
 - [ ] **Runnable:** `grep -rnE '#(170|185|186|274|298|304|307|310|387|388|414|424|434|449)\b' src test docs .vscode-test.mjs | wc -l` prints `0` (today `20`).
 - [ ] `npm run verify` exits 0.
 
-## Needs from Chris
-
-none
-
 ## Scope notes
 
 This repo defines no `verify` script. Its gate is `CLAUDE.md`'s build gate,

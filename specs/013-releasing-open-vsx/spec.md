@@ -32,7 +32,3 @@ Reading `docs/releasing.md` alone tells them the release publishes to two regist
 - [ ] `docs/releasing.md` says a release publishes the same `.vsix` to Open VSX as well as the VS Code Marketplace, and names the secret each registry needs.
 - [ ] It says what a release does when one registry's token is missing (that registry is skipped with a notice; the other still publishes).
 - [ ] **Runnable:** `grep -c "Open VSX" docs/releasing.md` prints at least `1`. It prints `0` on `develop` today.
-
-## Needs from Chris
-
-none

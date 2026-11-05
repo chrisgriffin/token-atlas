@@ -28,7 +28,3 @@ Dependabot's security update for `serialize-javascript` and `@azure/msal-node` f
 ## Out of scope
 
 - The other open `npm audit` findings (`diff` under mocha, `qs`) — not in this issue's contract.
-
-## Needs from Chris
-
-none

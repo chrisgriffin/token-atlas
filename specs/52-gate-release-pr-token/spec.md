@@ -4,7 +4,9 @@
 
 ## Overview
 
-This repo's `evaluator-gate.yml` stub passes its secrets by name. The gate replies on each inline finding thread with Autofix's answer and resolves the thread when every finding was fixed (ops#1919); only a user token may resolve a thread (ops#1914), so the reusable passes `TARGET_TOKEN || RELEASE_PR_TOKEN` to the gate for it (chrisgriffin/workflows#39). One line in the stub.
+This repo's `evaluator-gate.yml` stub passes its secrets by name. The gate replies on each inline finding thread with Autofix's answer and resolves the thread when every finding was fixed; only a user token may resolve a thread, so the reusable passes `TARGET_TOKEN || RELEASE_PR_TOKEN` to the gate for it (chrisgriffin/workflows#39). One line in the stub.
+
+A precondition, already asked in [chrisgriffin/workflows#21](https://github.com/chrisgriffin/workflows/issues/21) (its second owner ask): reset this repo's `RELEASE_PR_TOKEN` from the `cgio-agent` automation token. It holds the `chrisgriffin` personal token today (release PR [#23](https://github.com/chrisgriffin/token-atlas/pull/23) opened as `chrisgriffin`), so once chrisgriffin/workflows#40 hands it to the gate, the gate's thread replies post as `chrisgriffin` and read as the owner's own replies rather than the automation's. The stub line lands either way; it does its job only after that reset.
 
 ## Success criteria
 
@@ -13,9 +15,5 @@ This repo's `evaluator-gate.yml` stub passes its secrets by name. The gate repli
 
 ## Corrections
 
-- Success criterion 1 now cites the callee contract that allows a target to pass `TARGET_TOKEN` (Evaluator round 0 on [#53](https://github.com/chrisgriffin/token-atlas/pull/53): v1's description reserved the name for ops, and nothing said the stub could keep it). The requirement is unchanged; its premise is now stated against the amended contract in chrisgriffin/workflows#40.
-- `## Needs from Chris` no longer says `none` (Evaluator round 1 on [#53](https://github.com/chrisgriffin/token-atlas/pull/53)): the secret this stub passes is the `chrisgriffin` personal token, not `cgio-agent`, so the existing ask in chrisgriffin/workflows#21 is a precondition for the line doing its job. No success criterion changed.
-
-## Needs from Chris
-
-- A precondition, already asked in [chrisgriffin/workflows#21](https://github.com/chrisgriffin/workflows/issues/21) (its `Needs from Chris` 2): reset this repo's `RELEASE_PR_TOKEN` from the `cgio-agent` automation token. It holds the `chrisgriffin` personal token today (release PR [#23](https://github.com/chrisgriffin/token-atlas/pull/23) opened as `chrisgriffin`), so once chrisgriffin/workflows#40 hands it to the gate, the gate's thread replies post as `chrisgriffin`: the inline-findings pass counts only trusted logins as `answered` and re-replies on every run, and the mention workflow reads each reply as an owner mention. The stub line lands either way; it does its job only after that reset.
+- Success criterion 1 now cites the callee contract that allows a target to pass `TARGET_TOKEN` (Evaluator round 0 on [#53](https://github.com/chrisgriffin/token-atlas/pull/53): v1's description reserved the name for the operator, and nothing said the stub could keep it). The requirement is unchanged; its premise is now stated against the amended contract in chrisgriffin/workflows#40.
+- The overview names the precondition below its first paragraph. Evaluator round 1 on [#53](https://github.com/chrisgriffin/token-atlas/pull/53) recorded it as a precondition, and [#74](https://github.com/chrisgriffin/token-atlas/issues/74) later folded it into the overview: the secret this stub passes is the `chrisgriffin` personal token, not `cgio-agent`, so the existing ask in chrisgriffin/workflows#21 is a precondition for the line doing its job. No success criterion changed.

@@ -27,7 +27,3 @@ This repo formats with its own Prettier style (semicolons, 100-character lines),
 - [ ] ESLint runs from an `eslint.config.mjs` that spreads `@chrisgriffin/config/eslint` first, reports no errors, and CI fails on a lint error.
 - [ ] `tsconfig.json` extends `@chrisgriffin/config/tsconfig.json`, and CI type-checks the repo with it.
 - [ ] **Runnable:** `npm ls @chrisgriffin/config` exits 0 and the repo's verify gate passes. On `develop`, `npm ls @chrisgriffin/config` exits 1.
-
-## Needs from Chris
-
-none

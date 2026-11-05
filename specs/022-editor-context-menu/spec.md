@@ -67,10 +67,6 @@ Reference only: there is no key to rename, delete, deprecate or show.
 - [ ] README describes the menu.
 - [ ] **Runnable:** `npx vitest run test/webview/contextMenu.test.tsx` passes (no such file on `develop@4ca92bf`, so it fails there), and the full gate is green: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`.
 
-## Needs from Chris
-
-none
-
 ## Scope notes
 
 Not in scope: a menu on the detail panels (they have their own buttons), on

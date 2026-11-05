@@ -25,7 +25,3 @@ ADR-002 skips a bare object key in JS/TS. That also skips a key destructured wit
 ## Out of scope
 
 - Changing `scanIdentifiers` to rename the destructured key.
-
-## Needs from Chris
-
-none

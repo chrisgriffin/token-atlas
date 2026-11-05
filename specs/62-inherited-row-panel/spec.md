@@ -29,7 +29,3 @@ In the visual editor, the detail panel of a group heading that exists only becau
 ## Out of scope
 
 - Whether Description, Type and Deprecated should be read-only on an inherited row (the issue's hint; not this ticket).
-
-## Needs from Chris
-
-none
