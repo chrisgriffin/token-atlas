@@ -20,10 +20,10 @@ The host tests run the extension against a stand-in for VS Code's command regist
 
 ## Success criteria
 
-- [ ] A host test that drives a path calling `editor.action.showReferences` does not fail because that command is unregistered in the stub.
-- [ ] Disposing an older registration of an id leaves a newer registration of the same id runnable.
-- [ ] An id that is neither registered nor a VS Code built-in still fails, as #67 requires.
-- [ ] **Runnable:** `npm test -- -t "built-in VS Code command" 2>&1 | grep -cE "Tests +[0-9]+ passed"` prints `1` (prints `0` on `develop`, where no test of that name runs). The work adds that test.
+- [x] A host test that drives a path calling `editor.action.showReferences` does not fail because that command is unregistered in the stub.
+- [x] Disposing an older registration of an id leaves a newer registration of the same id runnable.
+- [x] An id that is neither registered nor a VS Code built-in still fails, as #67 requires.
+- [x] **Runnable:** `npm test -- -t "built-in VS Code command" 2>&1 | grep -cE "Tests +[0-9]+ passed"` prints `1` (prints `0` on `develop`, where no test of that name runs). The work adds that test.
 
 ## Out of scope
 

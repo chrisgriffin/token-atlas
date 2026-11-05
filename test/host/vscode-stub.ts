@@ -214,15 +214,32 @@ export const renameProviders: unknown[] = []
  */
 const registered = new Map<string, (...args: unknown[]) => unknown>()
 
+/**
+ * The VS Code built-in commands `src/` runs, which VS Code always has: each
+ * resolves to `undefined` unless a test registered a handler for it. Add an
+ * id here when the host starts running another built-in.
+ */
+const BUILT_INS = new Set([
+  "editor.action.showReferences",
+  "setContext",
+  "vscode.executeReferenceProvider",
+  "vscode.openWith",
+  "workbench.action.focusActiveEditorGroup",
+])
+
 export const commands = {
   registerCommand(id: string, run: (...args: unknown[]) => unknown) {
     registered.set(id, run)
-    return { dispose: () => registered.delete(id) }
+    return {
+      // Only while this registration is still the live one for `id`.
+      dispose: () => registered.get(id) === run && registered.delete(id),
+    }
   },
   async executeCommand(id: string, ...args: unknown[]) {
     const run = registered.get(id)
-    if (!run) throw new Error(`command '${id}' not found`)
-    return run(...args)
+    if (run) return run(...args)
+    if (BUILT_INS.has(id)) return undefined
+    throw new Error(`command '${id}' not found`)
   },
 }
 
