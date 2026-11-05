@@ -209,20 +209,44 @@ export const languages = {
 export const renameProviders: unknown[] = []
 
 /**
- * Every command registered, by id; `executeCommand` runs one, and fails on an
- * id nothing registered, as VS Code does, so a renamed id cannot pass silently.
+ * Every command registered, by id, each as its own registration so a disposer
+ * can tell it from a later one holding the same handler. `executeCommand`
+ * runs one; an id nothing registered resolves when it is in `BUILT_INS` and
+ * otherwise fails, as VS Code does, so a renamed id cannot pass silently.
  */
-const registered = new Map<string, (...args: unknown[]) => unknown>()
+const registered = new Map<string, { run: (...args: unknown[]) => unknown }>()
+
+/**
+ * The VS Code built-in commands `src/` runs, which VS Code always has: each
+ * resolves to `undefined` unless a test registered a handler for it. That
+ * includes `<view id>.focus`, which VS Code generates for every contributed
+ * view. Add an id here when the host starts running another built-in.
+ */
+const BUILT_INS = new Set([
+  "editor.action.showReferences",
+  "setContext",
+  "tokenAtlas.tokens.focus",
+  "vscode.executeReferenceProvider",
+  "vscode.openWith",
+  "workbench.action.focusActiveEditorGroup",
+])
 
 export const commands = {
   registerCommand(id: string, run: (...args: unknown[]) => unknown) {
-    registered.set(id, run)
-    return { dispose: () => registered.delete(id) }
+    const registration = { run }
+    registered.set(id, registration)
+    return {
+      // Only while this registration is still the live one for `id`, even
+      // when a newer registration holds the very same handler.
+      dispose: () =>
+        registered.get(id) === registration && registered.delete(id),
+    }
   },
   async executeCommand(id: string, ...args: unknown[]) {
-    const run = registered.get(id)
-    if (!run) throw new Error(`command '${id}' not found`)
-    return run(...args)
+    const registration = registered.get(id)
+    if (registration) return registration.run(...args)
+    if (BUILT_INS.has(id)) return undefined
+    throw new Error(`command '${id}' not found`)
   },
 }
 
