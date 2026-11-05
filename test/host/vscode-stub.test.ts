@@ -74,4 +74,34 @@ describe("the stub's command registry", () => {
       "newer",
     )
   })
+
+  it("re-registered command: disposing the older registration keeps the newer when both hold the same handler", async () => {
+    const handler = () => "live"
+    const older = stub.commands.registerCommand("test.same", handler)
+    stub.commands.registerCommand("test.same", handler)
+    older.dispose()
+    await expect(stub.commands.executeCommand("test.same")).resolves.toBe(
+      "live",
+    )
+  })
+
+  it("re-registered command: Find Deprecated Uses still runs after its older registration is disposed", async () => {
+    const older = { subscriptions: [] as Array<{ dispose(): unknown }> }
+    registerDeprecation(older as never)
+    registerDeprecation({ subscriptions: [] } as never)
+    for (const s of older.subscriptions) s.dispose()
+    stub.openDocument(PATH, TOKENS)
+    await expect(
+      stub.commands.executeCommand("tokenAtlas.findDeprecatedUses", {
+        uri: stub.Uri.file(PATH).toString(),
+        path: ["color", "old"],
+      }),
+    ).resolves.toHaveLength(1)
+  })
+
+  it("built-in VS Code command: a contributed view's generated focus command resolves", async () => {
+    await expect(
+      stub.commands.executeCommand("tokenAtlas.tokens.focus"),
+    ).resolves.toBeUndefined()
+  })
 })
