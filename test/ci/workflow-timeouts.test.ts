@@ -3,11 +3,12 @@ import { describe, it, expect } from "vitest"
 import { readdirSync, readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
+import { isWorkflowFile } from "./workflows"
 
 const here = dirname(fileURLToPath(import.meta.url))
 const WORKFLOWS = join(here, "../../.github/workflows")
 
-const FILES = readdirSync(WORKFLOWS).filter(f => f.endsWith(".yml"))
+const FILES = readdirSync(WORKFLOWS).filter(isWorkflowFile)
 
 interface Job {
   name: string

@@ -3,12 +3,17 @@ import { describe, it, expect } from "vitest"
 import { readdirSync, readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
+import { isWorkflowFile } from "./workflows"
 
 const here = dirname(fileURLToPath(import.meta.url))
 const WORKFLOWS = join(here, "../../.github/workflows")
 
+const FILES = readdirSync(WORKFLOWS).filter(isWorkflowFile)
+
+/** A workflow by bare name (`build-check`, read as `.yml`) or by file name. */
 function wf(name: string): string {
-  return readFileSync(join(WORKFLOWS, `${name}.yml`), "utf8")
+  const file = isWorkflowFile(name) ? name : `${name}.yml`
+  return readFileSync(join(WORKFLOWS, file), "utf8")
 }
 
 /** The stub's single job block, comments stripped. */
@@ -101,7 +106,7 @@ describe("stub guards — the `if:` has to fire before the call, not inside it",
 })
 
 describe("every stub calls the public workflows repo at v1, by named secrets", () => {
-  for (const file of readdirSync(WORKFLOWS).filter(f => f.endsWith(".yml"))) {
+  for (const file of FILES) {
     it(`${file} uses chrisgriffin/workflows@v1, not a private repo or @develop`, () => {
       const text = readFileSync(join(WORKFLOWS, file), "utf8")
       expect(text).toMatch(
@@ -112,7 +117,7 @@ describe("every stub calls the public workflows repo at v1, by named secrets", (
     })
 
     it(`${file} passes secrets by name, never inherit`, () => {
-      const text = job(file.replace(/\.yml$/, ""))
+      const text = job(file)
       expect(text).not.toContain("secrets: inherit")
       expect(text).toMatch(
         /^ {4}secrets:\n {6}[A-Z_]+: \$\{\{ secrets\.[A-Z_]+ \}\}$/m,
@@ -154,9 +159,8 @@ describe("build-check is this repo's one CI gate", () => {
   })
 
   it("is the only workflow that runs the gate", () => {
-    const duplicates = readdirSync(WORKFLOWS).filter(
+    const duplicates = FILES.filter(
       file =>
-        file.endsWith(".yml") &&
         file !== "build-check.yml" &&
         readFileSync(join(WORKFLOWS, file), "utf8").includes(
           "npm run typecheck",
