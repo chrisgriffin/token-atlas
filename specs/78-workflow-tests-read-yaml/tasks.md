@@ -8,6 +8,7 @@
 
 - [x] T002 `test/ci/workflow-stub-guards.test.ts`: read `.yml` and `.yaml` in the per-file loop and the one-gate check; `wf` accepts a file name with either extension.
 - [x] T003 `test/ci/workflow-timeouts.test.ts`: `FILES` reads `.yml` and `.yaml`.
+- [x] T005 `test/ci/workflows.ts`: one exported `isWorkflowFile` both tests filter on; `test/ci/workflows.test.ts` asserts `probe.yaml` and `x.yml` match and `x.json` does not.
 
 ## Phase 3: Green
 

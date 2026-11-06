@@ -2,9 +2,10 @@
 
 ## Technical context
 
-- `test/ci/workflow-stub-guards.test.ts`: the per-file loop and the "is the only workflow that runs the gate" check filter `readdirSync` on `.yml`; `wf(name)` always appends `.yml`, and the loop strips `.yml` to call `job(name)`. A `/\.ya?ml$/` pattern replaces both filters, and `wf` takes either a bare name (the named checks, which stay `.yml`) or a file name already ending in either extension, so the loop passes the file through unchanged.
-- `test/ci/workflow-timeouts.test.ts`: `FILES` filters on the same pattern.
-- Test-only change; the existing suite is the test, and the runnable line plus a matching timeout probe show the red-to-green.
+- `test/ci/workflow-stub-guards.test.ts`: the per-file loop and the "is the only workflow that runs the gate" check filter `readdirSync` on `.yml`; `wf(name)` always appends `.yml`, and the loop strips `.yml` to call `job(name)`. An exported `isWorkflowFile` in `test/ci/workflows.ts` (`/\.ya?ml$/`) replaces both filters, and `wf` takes either a bare name (the named checks, which stay `.yml`) or a file name already ending in either extension, so the loop passes the file through unchanged.
+- `test/ci/workflow-timeouts.test.ts`: `FILES` filters on the same helper.
+- `test/ci/workflows.test.ts` pins the helper: `probe.yaml` and `x.yml` match, `x.json` does not. No `.yaml` workflow is committed, so this is what fails if the filter goes back to `.yml` only; the runnable line plus a matching timeout probe show the red-to-green end to end.
+- Test-only change otherwise; the existing suite covers the rest, and the runnable line plus a matching timeout probe show the red-to-green.
 
 ## Surfaces touched
 

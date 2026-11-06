@@ -3,12 +3,12 @@ import { describe, it, expect } from "vitest"
 import { readdirSync, readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
+import { isWorkflowFile } from "./workflows"
 
 const here = dirname(fileURLToPath(import.meta.url))
 const WORKFLOWS = join(here, "../../.github/workflows")
 
-/** GitHub runs both extensions from `.github/workflows/`, so both are checked. */
-const FILES = readdirSync(WORKFLOWS).filter(f => /\.ya?ml$/.test(f))
+const FILES = readdirSync(WORKFLOWS).filter(isWorkflowFile)
 
 interface Job {
   name: string

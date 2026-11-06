@@ -3,17 +3,16 @@ import { describe, it, expect } from "vitest"
 import { readdirSync, readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
+import { isWorkflowFile } from "./workflows"
 
 const here = dirname(fileURLToPath(import.meta.url))
 const WORKFLOWS = join(here, "../../.github/workflows")
 
-/** GitHub runs both extensions from `.github/workflows/`, so a listing reads both. */
-const WORKFLOW_FILE = /\.ya?ml$/
-const FILES = readdirSync(WORKFLOWS).filter(f => WORKFLOW_FILE.test(f))
+const FILES = readdirSync(WORKFLOWS).filter(isWorkflowFile)
 
 /** A workflow by bare name (`build-check`, read as `.yml`) or by file name. */
 function wf(name: string): string {
-  const file = WORKFLOW_FILE.test(name) ? name : `${name}.yml`
+  const file = isWorkflowFile(name) ? name : `${name}.yml`
   return readFileSync(join(WORKFLOWS, file), "utf8")
 }
 
