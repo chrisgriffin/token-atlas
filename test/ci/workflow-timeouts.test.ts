@@ -7,7 +7,8 @@ import { dirname, join } from "node:path"
 const here = dirname(fileURLToPath(import.meta.url))
 const WORKFLOWS = join(here, "../../.github/workflows")
 
-const FILES = readdirSync(WORKFLOWS).filter(f => f.endsWith(".yml"))
+/** GitHub runs both extensions from `.github/workflows/`, so both are checked. */
+const FILES = readdirSync(WORKFLOWS).filter(f => /\.ya?ml$/.test(f))
 
 interface Job {
   name: string
