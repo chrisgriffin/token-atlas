@@ -45,7 +45,6 @@ _Reopen Editor With… → Token Editor_ hands the file to `host/tokenEditorProv
 - `test/` — `core/` (unit tests for the pure layer), `webview/` (React components under jsdom), `host/` (host modules that load without `vscode`, or against a small stand-in for it), `ci/` (repo-shape guards that read files off disk), `integration/` (the extension inside a real downloaded VS Code, with the token workspace it opens), `integration-run.mjs` (runs that suite and names a VS Code startup hang apart from a test failure), and `fixtures/architectures/` (one token set per architecture, walked by the core tests). See [testing.md](./testing.md).
 - `examples/` — hands-on token setups, one folder per architecture seen in the wild, for trying the extension by hand; `fixtures/` is a smaller sample for the same purpose.
 - `docs/` — this file and the rest of the written record; `docs/adr/` holds the decision records.
-- `specs/` — the Spec Kit spec, plan and tasks behind past pieces of work.
 - `media/` — the activity-bar icon, the Marketplace icon (`icon.png`, rendered from `icon.svg`), and the screenshots the README embeds (left out of the `.vsix`; the listing loads them from GitHub).
 - `schemas/` — the JSON Schema VS Code uses for completion and checks in a `token-atlas.lint.json`, wired up by `contributes.jsonValidation`.
 - `.github/workflows/` — CI and release triggers; `.vscode/` — launch and task definitions for developing the extension; `.claude/` — permissions and hooks for agent sessions in this repo.
