@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { hoverMarkdown } from "../../src/core/hover"
 
-/** The card's height lever: blocks are joined by a blank line (spec 040). */
+/** The card's height lever: blocks are joined by a blank line. */
 const blocks = (md: string) => md.split("\n\n")
 const base = { rootPx: 16, isAlias: false as const }
 

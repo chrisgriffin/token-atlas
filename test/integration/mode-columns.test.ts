@@ -1,5 +1,5 @@
 /**
- * The visual editor's modes, inside a real VS Code (spec 063).
+ * The visual editor's modes, inside a real VS Code.
  *
  * `light.tokens.json` is the last file of `themes.resolver.json`'s `light`
  * context, so its editor shows the `theme` modifier's modes. An edit to the

@@ -1,5 +1,5 @@
 /**
- * Rename under the deprecation workflow (spec 019, #36): the old name stays
+ * Rename under the deprecation workflow (#36): the old name stays
  * as a deprecated alias of the new one. Each edge case the issue names has a
  * test here, and every case applies the edits with jsonc-parser's
  * `applyEdits`, which throws on overlapping edits.

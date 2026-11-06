@@ -1,5 +1,5 @@
 /**
- * Carrying a deprecation out (spec 015), the write side of what diagnostics.ts
+ * Carrying a deprecation out, the write side of what diagnostics.ts
  * reads: deprecate a token with a reason and a replacement, move one use at a
  * time onto that replacement with a quick fix, list every use that is left,
  * and say how many remain before removing the token.
@@ -12,7 +12,7 @@
  * replacement need not be value-identical, so nothing here sweeps a workspace.
  *
  * The write side is behind `tokenAtlas.deprecationWorkflow`, off by default
- * (spec 019): with it off the commands refuse and the quick fix is not
+ * (#36): with it off the commands refuse and the quick fix is not
  * offered. Reading `$deprecated` — the hover, the strike-through — is not,
  * and neither is the visual editor's removal guard on an already-deprecated
  * token: `mayDelete` runs `mayRemove` before it reads the setting.
@@ -177,7 +177,7 @@ export async function deprecatedUses(key: string): Promise<vscode.Location[]> {
 
 /**
  * Every use of the token `key` defined in `document`, deprecated or not: the
- * delete prompt's count (spec 019). The same readers as deprecatedUses, with
+ * delete prompt's count (#36). The same readers as deprecatedUses, with
  * every reference rather than only the deprecated ones; a file that defines
  * `key` itself resolves its references to its own token (invariant 4), so
  * they are not uses of this one.
@@ -394,7 +394,7 @@ export function setDeletePrompt(
  * Whether deleting the node at `path` from the visual editor may go ahead. A
  * deprecated token still in use asks as mayRemove does, setting or not. With
  * the deprecation workflow on, a token that is not deprecated and still has
- * uses offers Deprecate instead / Delete anyway / Cancel (spec 019); Cancel,
+ * uses offers Deprecate instead / Delete anyway / Cancel (#36); Cancel,
  * and Deprecate instead, leave it in place.
  */
 export async function mayDelete(

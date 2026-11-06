@@ -1,5 +1,5 @@
 /**
- * Uses of deprecated tokens, inside a real VS Code (spec 070).
+ * Uses of deprecated tokens, inside a real VS Code.
  *
  * The suite writes a token file and a CSS file into the workspace for its own
  * run and deletes both after, so the token-file list `panel.test.ts` asserts

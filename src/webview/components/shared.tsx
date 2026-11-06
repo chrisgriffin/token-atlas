@@ -222,7 +222,7 @@ export function Section({
 /** `$deprecated` editor: a checkbox, and an optional reason once checked.
  *  DTCG allows `true` or a string explaining what to use instead. Given
  *  `replacements`, a token can also name the one its uses should move to: the
- *  reason's first `{reference}` (spec 015), which the host writes. */
+ *  reason's first `{reference}` (docs/adr/ADR-003-deprecation-replacement.md), which the host writes. */
 export function DeprecatedField({
   value,
   onChange,

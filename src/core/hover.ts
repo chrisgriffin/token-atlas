@@ -215,7 +215,7 @@ export function hoverMarkdown(i: HoverInput): string {
   const pills = [i.type ? pill(i.type) : muted("untyped")]
   if (i.deprecated !== undefined && i.deprecated !== false)
     pills.push(warnPill("deprecated"))
-  // Compact (spec 040): a colour's swatch sits beside the name and the
+  // Compact: a colour's swatch sits beside the name and the
   // defining file on the path line, so the card rarely needs to scroll.
   const defined = i.definedIn
     ? `&nbsp;&nbsp;$(go-to-file) [${escapeHover(i.definedIn.label)}](${i.definedIn.href})`

@@ -1,5 +1,5 @@
 /**
- * The visual editor's right-click menu (spec 022): the commands its
+ * The visual editor's right-click menu: the commands its
  * `webview/context` entries run that nothing else offers. Each gets the
  * row's merged `data-vscode-context` (`rowTarget`); the deprecation commands
  * on the same menu read it in `deprecate.ts` and `rename.ts`.
@@ -7,7 +7,7 @@
  * Rename and Delete go through the editor's own intent queue, so they are
  * the edits the name cell and the panels make: the rename alias, the delete
  * prompt and the name errors are theirs, and the detail panel follows the
- * renamed node or closes on the deleted one. Delete asks first (spec 054):
+ * renamed node or closes on the deleted one. Delete asks first (#54):
  * the panel's button wants a second click, which a menu has no room for.
  */
 import * as vscode from "vscode"

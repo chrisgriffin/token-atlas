@@ -146,7 +146,7 @@ export const css = `
   /* A fixed header height, so each group's heading can stick right under it. */
   table.tokens thead th { height: 28px; box-sizing: border-box; }
   /* One heading per group, its path below the scope: parents dim, the group
-     itself in full (spec 061). Indented to line up with the names under it. */
+     itself in full. Indented to line up with the names under it. */
   table.tokens tr.section th {
     top: 28px;
     text-transform: none;

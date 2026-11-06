@@ -8,7 +8,7 @@
  * Less, JS and TS (codeUsages.ts), each re-spelled in its own convention;
  * a file that says it was generated is left to the export tool.
  *
- * With `tokenAtlas.deprecationWorkflow` on (spec 019) the old name stays, as
+ * With `tokenAtlas.deprecationWorkflow` on (#36) the old name stays, as
  * a deprecated alias of the new one, and every `$deprecated` replacement that
  * named it moves too; a notification offers to remove the alias, and
  * `Rename Token Without Keeping Old Name` renames as the setting being off does.

@@ -1,9 +1,9 @@
 /**
- * Carrying a deprecation out, inside a real VS Code (spec 015): deprecate a
+ * Carrying a deprecation out, inside a real VS Code: deprecate a
  * token with a replacement from the text editor and from the visual editor,
  * move a use onto the replacement by quick fix, list the uses that remain,
  * and say how many before removing the token. All of it is behind
- * `tokenAtlas.deprecationWorkflow` (spec 019), which the suite turns on.
+ * `tokenAtlas.deprecationWorkflow` (#36), which the suite turns on.
  *
  * The suite writes its own files and removes them after, as
  * `token-editor-writes.test.ts` does, so the token-file list `panel.test.ts`

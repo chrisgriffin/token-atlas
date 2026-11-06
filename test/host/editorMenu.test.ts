@@ -1,5 +1,5 @@
 /**
- * The right-click menu's Delete (spec 054) asks before it sends the delete,
+ * The right-click menu's Delete (#54) asks before it sends the delete,
  * as the panel's click-again Delete does. `vscode`, the editor's intent queue
  * and the row reader are stood in for: what is pinned is whether `deleteNode`
  * reaches the queue, and what the prompt says.

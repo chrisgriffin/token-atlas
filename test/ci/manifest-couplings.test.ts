@@ -86,7 +86,7 @@ describe("package.json ↔ src identifiers", () => {
     const editors = pkg.contributes.customEditors
 
     // One editor, or "Reopen Editor With…" lists Token Atlas twice on a
-    // *.tokens.json, and the entry reads "<editor> - <extension>" (spec 055).
+    // *.tokens.json, and the entry reads "<editor> - <extension>".
     expect(editors).toHaveLength(1)
     expect(constants).toEqual([editors[0].viewType])
     expect(`${editors[0].displayName} - ${pkg.displayName}`).toBe(
@@ -109,7 +109,7 @@ describe("package.json ↔ src identifiers", () => {
     expect(missing).toEqual([])
   })
 
-  // The visual editor's right-click menu (spec 022): its `when` clauses read
+  // The visual editor's right-click menu: its `when` clauses read
   // the `data-vscode-context` the webview sets, a string on each side.
   describe("the visual editor's right-click menu", () => {
     const entries: { command: string; when: string }[] =

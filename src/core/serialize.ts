@@ -381,7 +381,7 @@ type Lookup = (key: string) => TokenNode | undefined
 const RENAMED = "Renamed"
 
 /**
- * Rename under the deprecation workflow (spec 019): rename as
+ * Rename under the deprecation workflow (#36): rename as
  * computeRenameEdits does, and keep the old name as a deprecated alias of the
  * new one, so whatever still uses it keeps resolving. A group leaves a group
  * of aliases, one per token. The alias goes in right after the renamed
@@ -649,8 +649,8 @@ function renderAlias(
 
 /**
  * The `$deprecated` value for a reason and a replacement token. The
- * replacement is the reason's first `{reference}` (spec 015,
- * docs/adr/ADR-003-deprecation-replacement.md), so picking one swaps the
+ * replacement is the reason's first `{reference}`
+ * (docs/adr/ADR-003-deprecation-replacement.md), so picking one swaps the
  * reason's first reference for it, or adds `use {…} instead` when it has none;
  * `""` takes it out again. `undefined` keeps the reason as typed. No reason
  * and no replacement is plain `true`.

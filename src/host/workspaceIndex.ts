@@ -857,7 +857,7 @@ export function registerIndexInvalidation(
 }
 
 /**
- * The token or group a right-click in the visual editor acted on (spec 022).
+ * The token or group a right-click in the visual editor acted on.
  * VS Code passes a `webview/context` command the merged `data-vscode-context`
  * of the element clicked: the editor's root gives `uri`, the row or heading
  * `path`. Anything else — a command's own arguments, none — is undefined.

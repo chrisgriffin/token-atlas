@@ -88,7 +88,7 @@ export function activate(
   context.subscriptions.push(TokenEditorProvider.register(context))
   registerDefaultEditor(context)
   // Its right-click menu: copy, find, show, rename and delete on a row; the
-  // deprecation commands there read the same row (spec 022).
+  // deprecation commands there read the same row.
   registerEditorMenu(context)
 
   // Context key behind the editor-title "open in Token Atlas" button: true only

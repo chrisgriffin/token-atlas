@@ -227,7 +227,7 @@ export function App() {
         overflow: "hidden",
       }}
       // The right-click menu's commands act on this document; each row and
-      // group heading adds its own section and path (spec 022).
+      // group heading adds its own section and path.
       data-vscode-context={JSON.stringify({ uri })}
       onKeyDown={e => {
         if (e.key === "Escape" && panelOpen) setPanelOpen(false)

@@ -356,7 +356,7 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
           break
         case "deleteNode":
           // A deprecated token still in use says how many uses remain first;
-          // with the deprecation workflow on, so does any other (spec 019).
+          // with the deprecation workflow on, so does any other (#36).
           if (!(await mayDelete(document, msg.path))) break
           // The right-click menu deletes from here, not from the panel; a
           // delete that changed nothing leaves the panel on the node.

@@ -1,5 +1,5 @@
 /**
- * The visual editor's right-click menu (spec 022), inside a real VS Code.
+ * The visual editor's right-click menu, inside a real VS Code.
  *
  * VS Code has no API for right-clicking inside a webview, so each command is
  * run with the argument a `webview/context` entry passes: the row's merged

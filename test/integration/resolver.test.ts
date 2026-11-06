@@ -1,5 +1,5 @@
 /**
- * DTCG resolver documents, exercised inside a real VS Code (spec 049).
+ * DTCG resolver documents, exercised inside a real VS Code.
  *
  * `themes.resolver.json` composes the fixture's existing files: the
  * primitives as a set, then a `theme` modifier choosing between
@@ -8,7 +8,7 @@
  * and, in the two contexts that list both files, that the later one wins.
  * With no choice the index is URI order, where dark wins.
  *
- * Its `extras` set adds the sources spec 053 reads: `light.tokens.json#/theme`,
+ * Its `extras` set adds the source forms a resolver can name: `light.tokens.json#/theme`,
  * whose children become top-level paths (`surface`), and an inline `inline`
  * token, which lives in the resolver itself, beside `inlineAlias` (a
  * reference to it) and `edge` (a reference out to `color.base.slate-800`), so

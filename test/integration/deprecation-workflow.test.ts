@@ -1,5 +1,5 @@
 /**
- * The deprecation workflow setting, inside a real VS Code (spec 019, #36):
+ * The deprecation workflow setting, inside a real VS Code (#36):
  * off, rename and delete behave as they always have and the deprecation
  * commands refuse; on, rename keeps the old name as a deprecated alias and
  * says so, `Rename Token Without Keeping Old Name` and Remove alias undo

@@ -533,7 +533,7 @@ export function deprecationMessage(key: string, value: true | string): string {
 
 /**
  * The token a `$deprecated` reason names as its replacement: the path in the
- * first `{reference}` the string holds (spec 015 — DTCG defines no successor
+ * first `{reference}` the string holds (DTCG defines no successor
  * field, docs/adr/ADR-003-deprecation-replacement.md). `true`, `false` and a
  * reason with no reference name none.
  */
@@ -584,7 +584,7 @@ export interface TokenReference {
  * nested in a composite, spelled `{curly}` or as a `$ref` pointer (reported
  * at its `$ref` string), with its direct target looked up this document
  * first (within `localScope`), then `external`. The one walker the
- * deprecation readers and the delete prompt share (spec 019).
+ * deprecation readers and the delete prompt share (#36).
  */
 export function tokenReferences(
   model: TokenDocumentModel,

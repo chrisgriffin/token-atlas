@@ -204,12 +204,12 @@ Each composite type needs a **dedicated editor** in the UI (a shadow editor, a t
 
 - A `$value` of `"{group.subgroup.token}"` is a reference. The referencing token's `$type` is **inherited from the target** when omitted.
 - Core must: resolve references to final values, **detect cycles**, flag dangling references, and expose both the raw reference and the resolved value to the UI (so the picker can preview "→ #3B82F6").
-- A `$ref` JSON Pointer (`{ "$ref": "#/group/token/$value/components/0" }`) is the second reference syntax: the whole token, or part of its value. Only same-document pointers are read; like aliases, the token path resolves local first, then through the workspace index (spec 071).
-- A group's `$extends` (or group-level `$ref`) inherits the target group's tokens; a local token at the same path replaces the inherited one whole. Inherited tokens exist only in the resolved model (`core/extends.ts`), never in the text, so edits, swatches and the outline see the file's own keys; the visual editor turns an edit to an inherited token into an override written in the extending group (spec 071).
+- A `$ref` JSON Pointer (`{ "$ref": "#/group/token/$value/components/0" }`) is the second reference syntax: the whole token, or part of its value. Only same-document pointers are read; like aliases, the token path resolves local first, then through the workspace index.
+- A group's `$extends` (or group-level `$ref`) inherits the target group's tokens; a local token at the same path replaces the inherited one whole. Inherited tokens exist only in the resolved model (`core/extends.ts`), never in the text, so edits, swatches and the outline see the file's own keys; the visual editor turns an edit to an inherited token into an override written in the extending group.
 
 ### 4.4 Theming / modes
 
-**Update:** the DTCG has since published the [Resolver Module 2025.10](https://www.w3.org/community/reports/design-tokens/CG-FINAL-resolver-20251028/), a `.resolver.json` that composes token files into sets and modifiers (light/dark, sizes) with a defined order. Token Atlas reads it (spec 049): each resolution is a choice in the active-set picker, so the multi-file model below and the spec's own model are the same thing. Inline tokens and file fragments are read too (spec 053); remote URLs are skipped with a warning, because an editor extension fetching over the network is a trust decision the spec leaves optional. The original analysis follows.
+**Update:** the DTCG has since published the [Resolver Module 2025.10](https://www.w3.org/community/reports/design-tokens/CG-FINAL-resolver-20251028/), a `.resolver.json` that composes token files into sets and modifiers (light/dark, sizes) with a defined order. Token Atlas reads it: each resolution is a choice in the active-set picker, so the multi-file model below and the spec's own model are the same thing. Inline tokens and file fragments are read too; remote URLs are skipped with a warning, because an editor extension fetching over the network is a trust decision the spec leaves optional. The original analysis follows.
 
 When this was written, the **stable DTCG spec did not standardize modes/themes.** Tools solve it differently (separate files per theme; or a `$extensions` convention like Tokens Studio's). So "full DTCG support" technically means _the spec as written_ — theming is a decision **you** make on top:
 
@@ -307,7 +307,7 @@ These were open before coding; each is now settled in the code.
 3. **Validation strictness:** allow but warn. Problems go to the Problems panel; nothing blocks a save.
 4. **`@vscode/webview-ui-toolkit`:** deprecated, so not used; see §7.
 5. **Codegen:** still out of scope. Hovers, go-to-definition and completion work on exported identifiers instead ([ADR-001](./adr/ADR-001-exported-identifier-matching.md)).
-6. **Resolver sources:** a fragment `file.json#/path` is re-rooted, its children becoming top-level paths, as a JSON `$ref` replaces itself with its target; inline sources resolve the same way, pointing into the resolver. Remote URLs are not fetched (spec 053).
+6. **Resolver sources:** a fragment `file.json#/path` is re-rooted, its children becoming top-level paths, as a JSON `$ref` replaces itself with its target; inline sources resolve the same way, pointing into the resolver. Remote URLs are not fetched.
 
 ---
 

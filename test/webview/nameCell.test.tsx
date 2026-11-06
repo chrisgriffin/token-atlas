@@ -4,7 +4,7 @@ import { InlineCell } from "../../src/webview/components/InlineCell"
 import "../../src/webview/styles"
 
 /**
- * A long token name stays editable in a narrow Name column (spec 057): the
+ * A long token name stays editable in a narrow Name column: the
  * rename input grows to fit its text instead of scrolling inside the column.
  */
 afterEach(cleanup)

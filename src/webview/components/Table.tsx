@@ -455,7 +455,7 @@ export function Table({
                 <th
                   scope="rowgroup"
                   // The whole heading is the innermost group's; each parent
-                  // name's own context overrides it (spec 022).
+                  // name's own context overrides it.
                   data-vscode-context={headingContext(root, [
                     ...scopeRoot.path,
                     ...group,
@@ -711,8 +711,8 @@ function TokenRow({
 }
 
 /**
- * What a right-click on a group heading, or a name in one, tells the menu
- * (spec 022). A group `$extends` alone gives (`inheritedFrom`) has no key of
+ * What a right-click on a group heading, or a name in one, tells the menu.
+ * A group `$extends` alone gives (`inheritedFrom`) has no key of
  * its own to rename or delete, so it is the inherited section, as an
  * inherited token is.
  */
@@ -725,8 +725,8 @@ function headingContext(root: GroupNode, path: string[]): string {
 }
 
 /**
- * What a right-click on the row tells VS Code's `webview/context` menu
- * (spec 022): its section, its path, and whether it is deprecated. An
+ * What a right-click on the row tells VS Code's `webview/context` menu:
+ * its section, its path, and whether it is deprecated. An
  * inherited token has no key of its own, so it is a section of its own.
  */
 function rowContext(token: TokenNode): string {

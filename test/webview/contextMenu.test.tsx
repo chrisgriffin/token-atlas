@@ -15,7 +15,7 @@ import { App } from "../../src/webview/App"
 import { setSelectedPathState } from "../../src/webview/vscodeApi"
 
 /**
- * The right-click menu (spec 022) is VS Code's `webview/context`, filtered by
+ * The right-click menu is VS Code's `webview/context`, filtered by
  * the `data-vscode-context` of the element clicked and its ancestors, merged
  * root first. These are the contexts the table sets; `package.json`'s `when`
  * clauses read them (held together by `test/ci/manifest-couplings.test.ts`),

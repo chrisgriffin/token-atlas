@@ -1,5 +1,5 @@
 /**
- * The Token Editor on a file that holds no tokens (spec 055).
+ * The Token Editor on a file that holds no tokens.
  *
  * VS Code offers the editor on any *.json, because its menu matches filenames
  * only. On a file with no tokens the editor shows a "Reopen in Text Editor"

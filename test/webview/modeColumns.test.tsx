@@ -19,7 +19,7 @@ import { group, token } from "./fixtures"
 import type { TokenType } from "../../src/core/types"
 import "../../src/webview/styles"
 
-/** Spec 063: a mode file's value columns, one per shown mode, and the
+/** A mode file's value columns, one per shown mode, and the
  *  toolbar's mode dropdown and view toggle. */
 
 beforeAll(() => {

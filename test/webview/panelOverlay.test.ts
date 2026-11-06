@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest"
 import "../../src/webview/styles"
 
 /**
- * The detail panel floats over the table instead of taking width from it
- * (spec 056): a flex-item panel squeezed the table's columns unreadable.
+ * The detail panel floats over the table instead of taking width from it:
+ * a flex-item panel squeezed the table's columns unreadable.
  */
 describe("detail panel overlay", () => {
   const styled = (className: string) => {
