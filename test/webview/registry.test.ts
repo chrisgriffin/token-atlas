@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { ALL_TYPES, type TokenType } from "../../src/core/types";
-import { getEditor } from "../../src/webview/editors/registry";
+import { describe, it, expect } from "vitest"
+import { ALL_TYPES, type TokenType } from "../../src/core/types"
+import { getEditor } from "../../src/webview/editors/registry"
 
 /**
  * Token types the registry deliberately leaves without an editor. `REGISTRY` is
@@ -10,23 +10,23 @@ import { getEditor } from "../../src/webview/editors/registry";
  *
  * Empty today — every DTCG 2025.10 type has an editor.
  */
-const WITHOUT_EDITOR: TokenType[] = [];
+const WITHOUT_EDITOR: TokenType[] = []
 
 describe("getEditor", () => {
   it("has an editor for every token type", () => {
     for (const type of ALL_TYPES) {
-      if (WITHOUT_EDITOR.includes(type)) continue;
-      expect(getEditor(type), type).toBeTypeOf("function");
+      if (WITHOUT_EDITOR.includes(type)) continue
+      expect(getEditor(type), type).toBeTypeOf("function")
     }
-  });
+  })
 
   it("has none for the types deliberately left out", () => {
     for (const type of WITHOUT_EDITOR) {
-      expect(getEditor(type), type).toBeUndefined();
+      expect(getEditor(type), type).toBeUndefined()
     }
-  });
+  })
 
   it("returns undefined for a token with no type", () => {
-    expect(getEditor(undefined)).toBeUndefined();
-  });
-});
+    expect(getEditor(undefined)).toBeUndefined()
+  })
+})

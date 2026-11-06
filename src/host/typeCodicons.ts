@@ -3,7 +3,7 @@
  * reads at a glance. Keyed by `TokenType`, so a new type fails typecheck
  * until it has one. No `vscode` import: the unit tests load it directly.
  */
-import type { TokenType } from "../core/types";
+import type { TokenType } from "../core/types"
 
 export const TYPE_CODICONS: Record<TokenType, string> = {
   color: "symbol-color",
@@ -19,4 +19,4 @@ export const TYPE_CODICONS: Record<TokenType, string> = {
   shadow: "layers",
   gradient: "color-mode",
   typography: "text-size",
-};
+}

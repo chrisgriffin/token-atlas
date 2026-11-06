@@ -2,9 +2,19 @@
   "color": {
     "$type": "color",
     "base": {
-      "white": { "$value": { "colorSpace": "srgb", "components": [1, 1, 1], "hex": "#ffffff" } },
+      "white": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [1, 1, 1],
+          "hex": "#ffffff"
+        }
+      },
       "slate-900": {
-        "$value": { "colorSpace": "srgb", "components": [0.059, 0.09, 0.165], "hex": "#0f172a" }
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.059, 0.09, 0.165],
+          "hex": "#0f172a"
+        }
       }
     }
   }

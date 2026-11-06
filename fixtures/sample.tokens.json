@@ -3,10 +3,18 @@
     "$type": "color",
     "base": {
       "blue-500": {
-        "$value": { "colorSpace": "srgb", "components": [0.231, 0.51, 0.965], "hex": "#3b82f6" }
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.231, 0.51, 0.965],
+          "hex": "#3b82f6"
+        }
       },
       "slate-900": {
-        "$value": { "colorSpace": "srgb", "components": [0.059, 0.09, 0.165], "hex": "#0f172a" }
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.059, 0.09, 0.165],
+          "hex": "#0f172a"
+        }
       }
     },
     "brand": {

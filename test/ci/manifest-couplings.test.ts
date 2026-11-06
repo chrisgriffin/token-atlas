@@ -4,7 +4,7 @@
  * a view id, a custom-editor `viewType`, an activation event. A mismatch
  * means a command that never fires, a view that never appears, or a language
  * feature that never activates — all silent until someone re-reads both
- * sides by eye (#170). This file is that re-read, so those rows are out of
+ * sides by eye. This file is that re-read, so those rows are out of
  * the table per its own note that anything `npm test` already fails on is
  * left out.
  *
@@ -13,77 +13,134 @@
  * Development Host, so these stay in the plain `node` environment the rest
  * of the suite runs in.
  */
-import { describe, it, expect } from "vitest";
-import { readdirSync, readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { describe, it, expect } from "vitest"
+import { readdirSync, readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
+import { dirname, join } from "node:path"
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..")
 
 function read(path: string): string {
-  return readFileSync(join(ROOT, path), "utf8");
+  return readFileSync(join(ROOT, path), "utf8")
 }
 
-const pkg = JSON.parse(read("package.json"));
+const pkg = JSON.parse(read("package.json"))
 
 /** Every `.ts` under `src/`, concatenated — the couplings are id strings, not structure. */
-const srcText = readdirSync(join(ROOT, "src"), { recursive: true, encoding: "utf8" })
-  .filter((entry) => entry.endsWith(".ts") || entry.endsWith(".tsx"))
-  .map((entry) => read(join("src", entry)))
-  .join("\n");
+const srcText = readdirSync(join(ROOT, "src"), {
+  recursive: true,
+  encoding: "utf8",
+})
+  .filter(entry => entry.endsWith(".ts") || entry.endsWith(".tsx"))
+  .map(entry => read(join("src", entry)))
+  .join("\n")
 
 /** `"<id>"` as the first argument of `call(` — the id may sit on its own line. */
 function firstStringArgs(text: string, call: string): string[] {
-  const pattern = new RegExp(`${call}\\(\\s*"([^"]+)"`, "g");
-  return [...text.matchAll(pattern)].map((m) => m[1]);
+  const pattern = new RegExp(`${call}\\(\\s*"([^"]+)"`, "g")
+  return [...text.matchAll(pattern)].map(m => m[1])
 }
 
 describe("package.json ↔ src identifiers", () => {
   it("registers every contributed command", () => {
-    const contributed = pkg.contributes.commands.map((c: { command: string }) => c.command);
-    const registered = firstStringArgs(srcText, "registerCommand");
+    const contributed = pkg.contributes.commands.map(
+      (c: { command: string }) => c.command,
+    )
+    const registered = firstStringArgs(srcText, "registerCommand")
 
-    expect(contributed.length).toBeGreaterThan(0);
-    expect(contributed.filter((id: string) => !registered.includes(id))).toEqual([]);
-  });
+    expect(contributed.length).toBeGreaterThan(0)
+    expect(
+      contributed.filter((id: string) => !registered.includes(id)),
+    ).toEqual([])
+  })
 
   it("matches every view id to its tree view, welcome entry and container", () => {
-    const createdViews = firstStringArgs(srcText, "createTreeView");
-    const welcomeViews = pkg.contributes.viewsWelcome.map((w: { view: string }) => w.view);
+    const createdViews = firstStringArgs(srcText, "createTreeView")
+    const welcomeViews = pkg.contributes.viewsWelcome.map(
+      (w: { view: string }) => w.view,
+    )
     const containerIds = Object.values(pkg.contributes.viewsContainers)
       .flat()
-      .map((c) => (c as { id: string }).id);
+      .map(c => (c as { id: string }).id)
 
-    const entries = Object.entries(pkg.contributes.views) as [string, { id: string }[]][];
-    expect(entries.length).toBeGreaterThan(0);
+    const entries = Object.entries(pkg.contributes.views) as [
+      string,
+      { id: string }[],
+    ][]
+    expect(entries.length).toBeGreaterThan(0)
 
     for (const [containerId, views] of entries) {
-      expect(containerIds).toContain(containerId);
+      expect(containerIds).toContain(containerId)
       for (const view of views) {
-        expect(createdViews).toContain(view.id);
-        expect(welcomeViews).toContain(view.id);
+        expect(createdViews).toContain(view.id)
+        expect(welcomeViews).toContain(view.id)
       }
     }
-  });
+  })
 
   it("contributes one custom editor, matched to the provider's constant", () => {
-    const provider = read("src/host/tokenEditorProvider.ts");
-    const constants = [...provider.matchAll(/viewType\s*=\s*"([^"]+)"/g)].map((m) => m[1]);
-    const editors = pkg.contributes.customEditors;
+    const provider = read("src/host/tokenEditorProvider.ts")
+    const constants = [...provider.matchAll(/viewType\s*=\s*"([^"]+)"/g)].map(
+      m => m[1],
+    )
+    const editors = pkg.contributes.customEditors
 
     // One editor, or "Reopen Editor With…" lists Token Atlas twice on a
     // *.tokens.json, and the entry reads "<editor> - <extension>" (spec 055).
-    expect(editors).toHaveLength(1);
-    expect(constants).toEqual([editors[0].viewType]);
-    expect(`${editors[0].displayName} - ${pkg.displayName}`).toBe("Token Editor - Token Atlas");
-  });
+    expect(editors).toHaveLength(1)
+    expect(constants).toEqual([editors[0].viewType])
+    expect(`${editors[0].displayName} - ${pkg.displayName}`).toBe(
+      "Token Editor - Token Atlas",
+    )
+  })
 
   it("declares an activation event for every export-feature language", () => {
-    const block = read("src/host/exportFeatures.ts").match(/const LANGUAGES = \[([^\]]*)\]/);
-    const languages = [...(block?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+    const block = read("src/host/exportFeatures.ts").match(
+      /const LANGUAGES = \[([^\]]*)\]/,
+    )
+    const languages = [...(block?.[1] ?? "").matchAll(/"([^"]+)"/g)].map(
+      m => m[1],
+    )
 
-    expect(languages.length).toBeGreaterThan(0);
-    const missing = languages.filter((l) => !pkg.activationEvents.includes(`onLanguage:${l}`));
-    expect(missing).toEqual([]);
-  });
-});
+    expect(languages.length).toBeGreaterThan(0)
+    const missing = languages.filter(
+      l => !pkg.activationEvents.includes(`onLanguage:${l}`),
+    )
+    expect(missing).toEqual([])
+  })
+
+  // The visual editor's right-click menu (spec 022): its `when` clauses read
+  // the `data-vscode-context` the webview sets, a string on each side.
+  describe("the visual editor's right-click menu", () => {
+    const entries: { command: string; when: string }[] =
+      pkg.contributes.menus["webview/context"]
+    const viewType = pkg.contributes.customEditors[0].viewType
+
+    it("runs only contributed commands, only in the visual editor", () => {
+      const contributed = pkg.contributes.commands.map(
+        (c: { command: string }) => c.command,
+      )
+      expect(entries.length).toBeGreaterThan(0)
+      for (const e of entries) {
+        expect(contributed).toContain(e.command)
+        expect(e.when).toContain(`webviewId == '${viewType}'`)
+      }
+    })
+
+    it("names only sections and keys the webview sets", () => {
+      const set = new Set(
+        [...srcText.matchAll(/webviewSection: "([^"]+)"/g)].map(m => m[1]),
+      )
+      const named = entries.flatMap(e => [
+        ...[...e.when.matchAll(/webviewSection == '([^']+)'/g)].map(m => m[1]),
+        ...[
+          ...e.when.matchAll(/webviewSection =~ \/\^\(([^)]+)\)\$\//g),
+        ].flatMap(m => m[1].split("|")),
+      ])
+      expect(named.length).toBeGreaterThan(0)
+      expect(named.filter(s => !set.has(s))).toEqual([])
+      if (entries.some(e => e.when.includes("tokenDeprecated")))
+        expect(srcText).toContain("tokenDeprecated:")
+    })
+  })
+})

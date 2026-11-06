@@ -7,7 +7,7 @@
  * In CSS, Sass and Less, each `var(--token)` also gets an inlay hint with the
  * value the token resolves to, labelled as the JSON hint is.
  */
-import * as vscode from "vscode";
+import * as vscode from "vscode"
 import {
   canNameToken,
   cssVarUsages,
@@ -22,17 +22,17 @@ import {
   memberCompletions,
   tokenMatcher,
   type TokenNode,
-} from "../core";
-import { toHex } from "../core/color";
-import { buildTokenHover } from "./languageFeatures";
+} from "../core"
+import { toHex } from "../core/color"
+import { buildTokenHover } from "./languageFeatures"
 import {
   buildWorkspaceIndex,
   definitionLocation,
   onDidInvalidateWorkspaceIndex,
   type IndexedToken,
-} from "./workspaceIndex";
+} from "./workspaceIndex"
 
-export const STYLESHEET_LANGUAGES = ["css", "scss", "sass", "less"];
+export const STYLESHEET_LANGUAGES = ["css", "scss", "sass", "less"]
 
 export const LANGUAGES = [
   ...STYLESHEET_LANGUAGES,
@@ -40,31 +40,36 @@ export const LANGUAGES = [
   "javascriptreact",
   "typescript",
   "typescriptreact",
-];
+]
 
 // No scheme filter — see TOKEN_SELECTOR in workspaceIndex.ts.
-const SELECTOR: vscode.DocumentSelector = LANGUAGES.map((language) => ({ language }));
-const STYLESHEET_SELECTOR: vscode.DocumentSelector = STYLESHEET_LANGUAGES.map((language) => ({
+const SELECTOR: vscode.DocumentSelector = LANGUAGES.map(language => ({
   language,
-}));
+}))
+const STYLESHEET_SELECTOR: vscode.DocumentSelector = STYLESHEET_LANGUAGES.map(
+  language => ({
+    language,
+  }),
+)
 
-const NO_LOCAL = new Map<string, TokenNode>();
+const NO_LOCAL = new Map<string, TokenNode>()
 
 async function tokenAt(
   document: vscode.TextDocument,
   position: vscode.Position,
   cancel: vscode.CancellationToken,
 ): Promise<{ hit: IndexedToken; range: vscode.Range } | undefined> {
-  const range = document.getWordRangeAtPosition(position, EXPORT_IDENTIFIER);
-  if (!range) return;
-  const { line, character } = range.start;
-  const before = document.lineAt(line).text[character - 1];
-  if (!canNameToken(document.getText(range), document.languageId, before)) return;
-  const ws = await buildWorkspaceIndex();
-  if (cancel.isCancellationRequested || ws.size === 0) return;
-  const key = findTokenForIdentifier(document.getText(range), ws.keys());
-  const hit = key ? ws.get(key) : undefined;
-  return hit ? { hit, range } : undefined;
+  const range = document.getWordRangeAtPosition(position, EXPORT_IDENTIFIER)
+  if (!range) return
+  const { line, character } = range.start
+  const before = document.lineAt(line).text[character - 1]
+  if (!canNameToken(document.getText(range), document.languageId, before))
+    return
+  const ws = await buildWorkspaceIndex()
+  if (cancel.isCancellationRequested || ws.size === 0) return
+  const key = findTokenForIdentifier(document.getText(range), ws.keys())
+  const hit = key ? ws.get(key) : undefined
+  return hit ? { hit, range } : undefined
 }
 
 class ExportHoverProvider implements vscode.HoverProvider {
@@ -73,11 +78,18 @@ class ExportHoverProvider implements vscode.HoverProvider {
     position: vscode.Position,
     cancel: vscode.CancellationToken,
   ) {
-    const found = await tokenAt(document, position, cancel);
-    if (!found) return;
-    const ws = await buildWorkspaceIndex();
-    if (cancel.isCancellationRequested) return;
-    return buildTokenHover(found.hit.token, NO_LOCAL, ws, document.uri, found.range, found.hit.uri);
+    const found = await tokenAt(document, position, cancel)
+    if (!found) return
+    const ws = await buildWorkspaceIndex()
+    if (cancel.isCancellationRequested) return
+    return buildTokenHover(
+      found.hit.token,
+      NO_LOCAL,
+      ws,
+      document.uri,
+      found.range,
+      found.hit.uri,
+    )
   }
 }
 
@@ -87,8 +99,8 @@ class ExportDefinitionProvider implements vscode.DefinitionProvider {
     position: vscode.Position,
     cancel: vscode.CancellationToken,
   ) {
-    const found = await tokenAt(document, position, cancel);
-    return found ? definitionLocation(found.hit) : undefined;
+    const found = await tokenAt(document, position, cancel)
+    return found ? definitionLocation(found.hit) : undefined
   }
 }
 
@@ -103,37 +115,49 @@ class ExportCompletionProvider implements vscode.CompletionItemProvider {
     position: vscode.Position,
     cancel: vscode.CancellationToken,
   ) {
-    const line = document.lineAt(position.line).text.slice(0, position.character);
-    const ctx = exportCompletionContext(line, document.languageId);
-    if (!ctx) return;
-    const ws = await buildWorkspaceIndex();
-    if (cancel.isCancellationRequested || ws.size === 0) return;
+    const line = document
+      .lineAt(position.line)
+      .text.slice(0, position.character)
+    const ctx = exportCompletionContext(line, document.languageId)
+    if (!ctx) return
+    const ws = await buildWorkspaceIndex()
+    if (cancel.isCancellationRequested || ws.size === 0) return
 
-    let entries: { key: string; insert: string }[];
+    let entries: { key: string; insert: string }[]
     if (ctx.kind === "member") {
-      entries = memberCompletions(ctx.chain, ws.keys());
+      entries = memberCompletions(ctx.chain, ws.keys())
     } else {
-      const prefix = learnPrefix(document.getText(), ctx.sigil, ws.keys());
-      entries = [...ws.keys()].map((key) => ({ key, insert: exportName(key, ctx.sigil, prefix) }));
+      const prefix = learnPrefix(document.getText(), ctx.sigil, ws.keys())
+      entries = [...ws.keys()].map(key => ({
+        key,
+        insert: exportName(key, ctx.sigil, prefix),
+      }))
     }
-    const range = new vscode.Range(position.line, ctx.start, position.line, position.character);
+    const range = new vscode.Range(
+      position.line,
+      ctx.start,
+      position.line,
+      position.character,
+    )
     return entries.map(({ key, insert }) => {
-      const token = ws.get(key)!.token;
-      const type = token.resolvedType ?? token.type;
-      const shown = token.resolvedValue ?? token.value;
-      const hex = type === "color" ? toHex(shown) : null;
+      const token = ws.get(key)!.token
+      const type = token.resolvedType ?? token.type
+      const shown = token.resolvedValue ?? token.value
+      const hex = type === "color" ? toHex(shown) : null
       const item = new vscode.CompletionItem(
         { label: insert, description: [type, key].filter(Boolean).join(" · ") },
-        hex ? vscode.CompletionItemKind.Color : vscode.CompletionItemKind.Variable,
-      );
-      item.detail = describeValue(shown);
+        hex
+          ? vscode.CompletionItemKind.Color
+          : vscode.CompletionItemKind.Variable,
+      )
+      item.detail = describeValue(shown)
       // The suggest widget draws a swatch for Color items whose documentation is #rrggbb.
-      if (hex) item.documentation = hex.slice(0, 7);
-      item.insertText = insert;
-      item.filterText = insert;
-      item.range = range;
-      return item;
-    });
+      if (hex) item.documentation = hex.slice(0, 7)
+      item.insertText = insert
+      item.filterText = insert
+      item.range = range
+      return item
+    })
   }
 }
 
@@ -144,16 +168,19 @@ class ExportCompletionProvider implements vscode.CompletionItemProvider {
  * The tooltip is the hover card, built only for the hint you point at.
  */
 class CodeInlayHintsProvider implements vscode.InlayHintsProvider {
-  private readonly changed = new vscode.EventEmitter<void>();
-  readonly onDidChangeInlayHints = this.changed.event;
-  private readonly tooltips = new WeakMap<vscode.InlayHint, () => vscode.MarkdownString>();
+  private readonly changed = new vscode.EventEmitter<void>()
+  readonly onDidChangeInlayHints = this.changed.event
+  private readonly tooltips = new WeakMap<
+    vscode.InlayHint,
+    () => vscode.MarkdownString
+  >()
 
   refresh(): void {
-    this.changed.fire();
+    this.changed.fire()
   }
 
   dispose(): void {
-    this.changed.dispose();
+    this.changed.dispose()
   }
 
   async provideInlayHints(
@@ -161,51 +188,66 @@ class CodeInlayHintsProvider implements vscode.InlayHintsProvider {
     range: vscode.Range,
     cancel: vscode.CancellationToken,
   ): Promise<vscode.InlayHint[]> {
-    if (!(vscode.workspace.getConfiguration("tokenAtlas").get<boolean>("inlayHints") ?? true)) {
-      return [];
+    if (
+      !(
+        vscode.workspace
+          .getConfiguration("tokenAtlas")
+          .get<boolean>("inlayHints") ?? true
+      )
+    ) {
+      return []
     }
-    const usages = cssVarUsages(document.getText(), document.languageId);
-    if (!usages.length) return [];
-    const ws = await buildWorkspaceIndex();
-    if (cancel.isCancellationRequested || ws.size === 0) return [];
-    const match = tokenMatcher(ws.keys());
-    const hints: vscode.InlayHint[] = [];
+    const usages = cssVarUsages(document.getText(), document.languageId)
+    if (!usages.length) return []
+    const ws = await buildWorkspaceIndex()
+    if (cancel.isCancellationRequested || ws.size === 0) return []
+    const match = tokenMatcher(ws.keys())
+    const hints: vscode.InlayHint[] = []
     for (const { name, end } of usages) {
-      const position = document.positionAt(end);
-      if (!range.contains(position)) continue;
-      const key = match(name);
-      const hit = key ? ws.get(key) : undefined;
-      if (!hit) continue;
-      const value = hit.token.resolvedValue ?? hit.token.value;
-      if (isReference(value)) continue; // dangling or a cycle
+      const position = document.positionAt(end)
+      if (!range.contains(position)) continue
+      const key = match(name)
+      const hit = key ? ws.get(key) : undefined
+      if (!hit) continue
+      const value = hit.token.resolvedValue ?? hit.token.value
+      if (isReference(value)) continue // dangling or a cycle
       const hint = new vscode.InlayHint(
         position,
         `= ${inlayValue(value, hit.token.resolvedType ?? hit.token.type)}`,
-      );
-      hint.paddingLeft = true;
+      )
+      hint.paddingLeft = true
       this.tooltips.set(
         hint,
         () =>
-          buildTokenHover(hit.token, NO_LOCAL, ws, document.uri, undefined, hit.uri)
-            .contents[0] as vscode.MarkdownString,
-      );
-      hints.push(hint);
+          buildTokenHover(
+            hit.token,
+            NO_LOCAL,
+            ws,
+            document.uri,
+            undefined,
+            hit.uri,
+          ).contents[0] as vscode.MarkdownString,
+      )
+      hints.push(hint)
     }
-    return hints;
+    return hints
   }
 
   resolveInlayHint(hint: vscode.InlayHint): vscode.InlayHint {
-    const tooltip = this.tooltips.get(hint);
-    if (tooltip) hint.tooltip = tooltip();
-    return hint;
+    const tooltip = this.tooltips.get(hint)
+    if (tooltip) hint.tooltip = tooltip()
+    return hint
   }
 }
 
 export function registerExportFeatures(context: vscode.ExtensionContext): void {
-  const inlayHints = new CodeInlayHintsProvider();
+  const inlayHints = new CodeInlayHintsProvider()
   context.subscriptions.push(
     vscode.languages.registerHoverProvider(SELECTOR, new ExportHoverProvider()),
-    vscode.languages.registerDefinitionProvider(SELECTOR, new ExportDefinitionProvider()),
+    vscode.languages.registerDefinitionProvider(
+      SELECTOR,
+      new ExportDefinitionProvider(),
+    ),
     vscode.languages.registerCompletionItemProvider(
       SELECTOR,
       new ExportCompletionProvider(),
@@ -214,12 +256,15 @@ export function registerExportFeatures(context: vscode.ExtensionContext): void {
       "@",
       ".",
     ),
-    vscode.languages.registerInlayHintsProvider(STYLESHEET_SELECTOR, inlayHints),
+    vscode.languages.registerInlayHintsProvider(
+      STYLESHEET_SELECTOR,
+      inlayHints,
+    ),
     inlayHints,
     // Token edits, writes on disk and active-set changes all invalidate the index.
     onDidInvalidateWorkspaceIndex(() => inlayHints.refresh()),
-    vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("tokenAtlas")) inlayHints.refresh();
+    vscode.workspace.onDidChangeConfiguration(e => {
+      if (e.affectsConfiguration("tokenAtlas")) inlayHints.refresh()
     }),
-  );
+  )
 }

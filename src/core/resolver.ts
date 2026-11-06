@@ -21,21 +21,21 @@ import {
   parseTree,
   printParseErrorCode,
   type ParseError,
-} from "jsonc-parser";
+} from "jsonc-parser"
 
 /**
  * The version §4.1.2 requires, first; the date forms earlier drafts used are
  * still read, without a message, so existing files keep working.
  */
-const VERSIONS = ["2025.10", "2025-11-01", "2025-10-01"];
+const VERSIONS = ["2025.10", "2025-11-01", "2025-10-01"]
 
 export interface ResolverIssue {
-  message: string;
-  severity: "error" | "warning";
+  message: string
+  severity: "error" | "warning"
   /** JSON path of the offending value; `[]` is the whole document. */
-  path: Array<string | number>;
+  path: Array<string | number>
   /** Set for a JSON syntax error, which has a position but no path. */
-  offset?: number;
+  offset?: number
 }
 
 /**
@@ -44,54 +44,58 @@ export interface ResolverIssue {
  * pointer such as `/color`, when only part of it is the source.
  */
 export interface Source {
-  file: string;
-  pointer?: string;
+  file: string
+  pointer?: string
   /** Where the source sits in the resolver, for a "not found" squiggle. */
-  path: Array<string | number>;
+  path: Array<string | number>
 }
 
 export interface ResolverModifier {
-  name: string;
+  name: string
   /** Context name → its files, in order. */
-  contexts: Map<string, Source[]>;
-  default?: string;
+  contexts: Map<string, Source[]>
+  default?: string
 }
 
 /** One `resolutionOrder` entry: a set's sources, or a modifier's choice. */
-type Step = { files: Source[] } | { modifier: ResolverModifier };
+type Step = { files: Source[] } | { modifier: ResolverModifier }
 
 export interface Resolver {
-  name?: string;
-  steps: Step[];
+  name?: string
+  steps: Step[]
   /** Every modifier the order uses, once each, in order. */
-  modifiers: ResolverModifier[];
+  modifiers: ResolverModifier[]
 }
 
 export interface Resolution {
   /** Modifier name → chosen context. Empty when the resolver has no modifiers. */
-  input: Record<string, string>;
+  input: Record<string, string>
   /** `theme: dark · size: small`, or empty when there are no modifiers. */
-  label: string;
+  label: string
 }
 
 /** Cheap fingerprint: a resolver document is the JSON with a `resolutionOrder`. */
 export function looksLikeResolver(text: string): boolean {
-  return /"resolutionOrder"\s*:/.test(text);
+  return /"resolutionOrder"\s*:/.test(text)
 }
 
-type Json = Record<string, unknown>;
-const isObject = (v: unknown): v is Json => !!v && typeof v === "object" && !Array.isArray(v);
+type Json = Record<string, unknown>
+const isObject = (v: unknown): v is Json =>
+  !!v && typeof v === "object" && !Array.isArray(v)
 
 /** `["sets", "a/b", 0]` → `/sets/a~1b/0` (RFC 6901). */
 export const toPointer = (path: Array<string | number>) =>
-  path.map((p) => `/${String(p).replace(/~/g, "~0").replace(/\//g, "~1")}`).join("");
+  path
+    .map(p => `/${String(p).replace(/~/g, "~0").replace(/\//g, "~1")}`)
+    .join("")
 
 /** `a~1b` → `a/b` (RFC 6901 unescaping of one segment). */
-const unescape = (segment: string) => segment.replace(/~1/g, "/").replace(/~0/g, "~");
+const unescape = (segment: string) =>
+  segment.replace(/~1/g, "/").replace(/~0/g, "~")
 
 /** `/a~1b/0` → `["a/b", "0"]`. */
 export const pointerSegments = (pointer: string): string[] =>
-  pointer.split("/").slice(1).map(unescape);
+  pointer.split("/").slice(1).map(unescape)
 
 /**
  * The JSON a pointer names in `text`: its own text, to parse as a token
@@ -99,25 +103,32 @@ export const pointerSegments = (pointer: string): string[] =>
  * offset, to map an edit on that text back into the whole. Undefined when
  * nothing is there or it is not an object.
  */
-export function pointerTarget(text: string, pointer: string): Fragment | undefined {
-  const root = parseTree(text);
-  if (!root) return undefined;
-  const path: Array<string | number> = [];
-  let node = root;
+export function pointerTarget(
+  text: string,
+  pointer: string,
+): Fragment | undefined {
+  const root = parseTree(text)
+  if (!root) return undefined
+  const path: Array<string | number> = []
+  let node = root
   for (const segment of pointerSegments(pointer)) {
-    path.push(node.type === "array" ? Number(segment) : segment);
-    const next = findNodeAtLocation(node, [path[path.length - 1]]);
-    if (!next) return undefined;
-    node = next;
+    path.push(node.type === "array" ? Number(segment) : segment)
+    const next = findNodeAtLocation(node, [path[path.length - 1]])
+    if (!next) return undefined
+    node = next
   }
-  if (node.type !== "object") return undefined;
-  return { text: text.slice(node.offset, node.offset + node.length), path, offset: node.offset };
+  if (node.type !== "object") return undefined
+  return {
+    text: text.slice(node.offset, node.offset + node.length),
+    path,
+    offset: node.offset,
+  }
 }
 
 export interface Fragment {
-  text: string;
-  path: Array<string | number>;
-  offset: number;
+  text: string
+  path: Array<string | number>
+  offset: number
 }
 
 /**
@@ -126,16 +137,17 @@ export interface Fragment {
  * resolver is never a token file of its own.
  */
 export function inlineSources(text: string): Fragment[] {
-  const { resolver } = parseResolver(text);
-  if (!resolver) return [];
-  const pointers = new Set<string>();
+  const { resolver } = parseResolver(text)
+  if (!resolver) return []
+  const pointers = new Set<string>()
   for (const step of resolver.steps)
     if ("files" in step)
-      for (const s of step.files) if (!s.file && s.pointer) pointers.add(s.pointer);
+      for (const s of step.files)
+        if (!s.file && s.pointer) pointers.add(s.pointer)
   for (const m of resolver.modifiers)
     for (const sources of m.contexts.values())
-      for (const s of sources) if (!s.file && s.pointer) pointers.add(s.pointer);
-  return [...pointers].flatMap((p) => pointerTarget(text, p) ?? []);
+      for (const s of sources) if (!s.file && s.pointer) pointers.add(s.pointer)
+  return [...pointers].flatMap(p => pointerTarget(text, p) ?? [])
 }
 
 /**
@@ -143,8 +155,11 @@ export function inlineSources(text: string): Fragment[] {
  * document is too broken to resolve; otherwise any issues are local and the
  * rest of it still works.
  */
-export function parseResolver(text: string): { resolver?: Resolver; issues: ResolverIssue[] } {
-  const issues: ResolverIssue[] = [];
+export function parseResolver(text: string): {
+  resolver?: Resolver
+  issues: ResolverIssue[]
+} {
+  const issues: ResolverIssue[] = []
   // A set is checked where it is defined and again wherever it is used, so
   // the same finding can come up more than once; report it once.
   const report = (
@@ -152,15 +167,19 @@ export function parseResolver(text: string): { resolver?: Resolver; issues: Reso
     message: string,
     path: Array<string | number>,
   ) => {
-    const key = JSON.stringify(path);
-    if (!issues.some((x) => x.message === message && JSON.stringify(x.path) === key))
-      issues.push({ message, severity, path });
-  };
-  const error = (message: string, path: Array<string | number>) => report("error", message, path);
-  const warn = (message: string, path: Array<string | number>) => report("warning", message, path);
+    const key = JSON.stringify(path)
+    if (
+      !issues.some(x => x.message === message && JSON.stringify(x.path) === key)
+    )
+      issues.push({ message, severity, path })
+  }
+  const error = (message: string, path: Array<string | number>) =>
+    report("error", message, path)
+  const warn = (message: string, path: Array<string | number>) =>
+    report("warning", message, path)
 
-  const errors: ParseError[] = [];
-  const doc: unknown = parse(text, errors, { allowTrailingComma: true });
+  const errors: ParseError[] = []
+  const doc: unknown = parse(text, errors, { allowTrailingComma: true })
   if (errors.length) {
     for (const e of errors) {
       issues.push({
@@ -168,95 +187,109 @@ export function parseResolver(text: string): { resolver?: Resolver; issues: Reso
         severity: "error",
         path: [],
         offset: e.offset,
-      });
+      })
     }
-    return { issues };
+    return { issues }
   }
   if (!isObject(doc)) {
-    error("A resolver document must be a JSON object.", []);
-    return { issues };
+    error("A resolver document must be a JSON object.", [])
+    return { issues }
   }
 
-  if (doc.version === undefined) error(`"version" is required: "${VERSIONS[0]}".`, []);
+  if (doc.version === undefined)
+    error(`"version" is required: "${VERSIONS[0]}".`, [])
   else if (typeof doc.version !== "string" || !VERSIONS.includes(doc.version))
-    error(`"version" must be "${VERSIONS[0]}".`, ["version"]);
+    error(`"version" must be "${VERSIONS[0]}".`, ["version"])
 
-  const sets = isObject(doc.sets) ? doc.sets : {};
-  if (doc.sets !== undefined && !isObject(doc.sets)) error(`"sets" must be an object.`, ["sets"]);
-  const modifiers = isObject(doc.modifiers) ? doc.modifiers : {};
+  const sets = isObject(doc.sets) ? doc.sets : {}
+  if (doc.sets !== undefined && !isObject(doc.sets))
+    error(`"sets" must be an object.`, ["sets"])
+  const modifiers = isObject(doc.modifiers) ? doc.modifiers : {}
   if (doc.modifiers !== undefined && !isObject(doc.modifiers))
-    error(`"modifiers" must be an object.`, ["modifiers"]);
+    error(`"modifiers" must be an object.`, ["modifiers"])
 
   /**
    * The files one source stands for, with `#/sets/…` expanded in place.
    * `stack` holds the sets being expanded, so a set that reaches itself is a
    * cycle rather than an endless loop.
    */
-  const expandOne = (source: unknown, path: Array<string | number>, stack: string[]): Source[] => {
+  const expandOne = (
+    source: unknown,
+    path: Array<string | number>,
+    stack: string[],
+  ): Source[] => {
     if (!isObject(source)) {
-      error("A source must be a reference object or inline tokens.", path);
-      return [];
+      error("A source must be a reference object or inline tokens.", path)
+      return []
     }
-    const ref = source.$ref;
+    const ref = source.$ref
     // Inline tokens: the source is this object, in this document.
-    if (ref === undefined) return [{ file: "", pointer: toPointer(path), path }];
-    const refPath = [...path, "$ref"];
+    if (ref === undefined) return [{ file: "", pointer: toPointer(path), path }]
+    const refPath = [...path, "$ref"]
     if (typeof ref !== "string") {
-      error(`"$ref" must be a string.`, refPath);
-      return [];
+      error(`"$ref" must be a string.`, refPath)
+      return []
     }
     if (ref.startsWith("#")) {
-      const raw = /^#\/sets\/([^/]+)$/.exec(ref)?.[1];
-      const set = raw === undefined ? undefined : unescape(raw);
+      const raw = /^#\/sets\/([^/]+)$/.exec(ref)?.[1]
+      const set = raw === undefined ? undefined : unescape(raw)
       if (ref.startsWith("#/modifiers/")) {
-        error("A set or modifier must not reference a modifier.", refPath);
+        error("A set or modifier must not reference a modifier.", refPath)
       } else if (ref.startsWith("#/resolutionOrder")) {
-        error("Nothing may reference an item in resolutionOrder.", refPath);
+        error("Nothing may reference an item in resolutionOrder.", refPath)
       } else if (set === undefined) {
         // Anywhere else in this document (§4.2.1), such as one inline source.
-        return [{ file: "", pointer: ref.slice(1), path: refPath }];
+        return [{ file: "", pointer: ref.slice(1), path: refPath }]
       } else if (!isObject(sets[set])) {
-        error(`No set named "${set}".`, refPath);
+        error(`No set named "${set}".`, refPath)
       } else if (stack.includes(set)) {
-        error(`Circular reference: set "${set}" includes itself.`, refPath);
+        error(`Circular reference: set "${set}" includes itself.`, refPath)
       } else {
-        return expand(sets[set].sources, ["sets", set, "sources"], [...stack, set]);
+        return expand(
+          sets[set].sources,
+          ["sets", set, "sources"],
+          [...stack, set],
+        )
       }
-      return [];
+      return []
     }
     if (/^[a-z][a-z0-9+.-]*:/i.test(ref)) {
       warn(
         "Remote references are not supported: Token Atlas only reads files in the workspace. This source is skipped.",
         refPath,
-      );
-      return [];
+      )
+      return []
     }
-    const hash = ref.indexOf("#");
-    if (hash === -1) return [{ file: ref, path: refPath }];
+    const hash = ref.indexOf("#")
+    if (hash === -1) return [{ file: ref, path: refPath }]
     // `file.json#/color`; the spec's own example writes `#sets/MySet`.
-    const fragment = ref.slice(hash + 1);
+    const fragment = ref.slice(hash + 1)
     return [
       {
         file: ref.slice(0, hash),
         pointer: fragment.startsWith("/") ? fragment : `/${fragment}`,
         path: refPath,
       },
-    ];
-  };
+    ]
+  }
 
-  const expand = (sources: unknown, at: Array<string | number>, stack: string[]): Source[] => {
+  const expand = (
+    sources: unknown,
+    at: Array<string | number>,
+    stack: string[],
+  ): Source[] => {
     if (!Array.isArray(sources)) {
-      error("Sources must be an array.", at);
-      return [];
+      error("Sources must be an array.", at)
+      return []
     }
-    return sources.flatMap((source, i) => expandOne(source, [...at, i], stack));
-  };
+    return sources.flatMap((source, i) => expandOne(source, [...at, i], stack))
+  }
 
   for (const [name, set] of Object.entries(sets)) {
     if (!isObject(set) || set.sources === undefined)
-      error(`Set "${name}" must have a "sources" array.`, ["sets", name]);
+      error(`Set "${name}" must have a "sources" array.`, ["sets", name])
     // Each referenced set is expanded where it is used; this checks the rest.
-    else expand(set.sources, ["sets", name, "sources"], [name]);
+    else expand(set.sources, ["sets", name, "sources"], [name])
   }
 
   const readModifier = (
@@ -265,113 +298,140 @@ export function parseResolver(text: string): { resolver?: Resolver; issues: Reso
     at: Array<string | number>,
   ): ResolverModifier | undefined => {
     if (!isObject(raw.contexts)) {
-      error(`Modifier "${name}" must have a "contexts" object.`, at);
-      return undefined;
+      error(`Modifier "${name}" must have a "contexts" object.`, at)
+      return undefined
     }
-    const contexts = new Map<string, Source[]>();
+    const contexts = new Map<string, Source[]>()
     for (const [context, sources] of Object.entries(raw.contexts))
-      contexts.set(context, expand(sources, [...at, "contexts", context], []));
+      contexts.set(context, expand(sources, [...at, "contexts", context], []))
     if (contexts.size === 0) {
-      error(`Modifier "${name}" has no contexts.`, [...at, "contexts"]);
-      return undefined;
+      error(`Modifier "${name}" has no contexts.`, [...at, "contexts"])
+      return undefined
     }
     if (contexts.size === 1)
-      warn(`Modifier "${name}" has one context; a set says the same thing.`, [...at, "contexts"]);
-    let fallback: string | undefined;
+      warn(`Modifier "${name}" has one context; a set says the same thing.`, [
+        ...at,
+        "contexts",
+      ])
+    let fallback: string | undefined
     if (raw.default !== undefined) {
-      if (typeof raw.default === "string" && contexts.has(raw.default)) fallback = raw.default;
-      else error(`"default" must name one of the contexts of "${name}".`, [...at, "default"]);
+      if (typeof raw.default === "string" && contexts.has(raw.default))
+        fallback = raw.default
+      else
+        error(`"default" must name one of the contexts of "${name}".`, [
+          ...at,
+          "default",
+        ])
     }
-    return { name, contexts, default: fallback };
-  };
+    return { name, contexts, default: fallback }
+  }
 
-  const named = new Map<string, ResolverModifier | undefined>();
+  const named = new Map<string, ResolverModifier | undefined>()
   for (const [name, raw] of Object.entries(modifiers)) {
-    named.set(name, isObject(raw) ? readModifier(name, raw, ["modifiers", name]) : undefined);
-    if (!isObject(raw)) error(`Modifier "${name}" must be an object.`, ["modifiers", name]);
+    named.set(
+      name,
+      isObject(raw) ? readModifier(name, raw, ["modifiers", name]) : undefined,
+    )
+    if (!isObject(raw))
+      error(`Modifier "${name}" must be an object.`, ["modifiers", name])
   }
 
   if (!Array.isArray(doc.resolutionOrder)) {
-    error(`"resolutionOrder" is required and must be an array.`, []);
-    return { issues };
+    error(`"resolutionOrder" is required and must be an array.`, [])
+    return { issues }
   }
 
-  const steps: Step[] = [];
-  const used: ResolverModifier[] = [];
-  const inlineNames = new Set<string>();
+  const steps: Step[] = []
+  const used: ResolverModifier[] = []
+  const inlineNames = new Set<string>()
   doc.resolutionOrder.forEach((item, i) => {
-    const at = ["resolutionOrder", i];
+    const at = ["resolutionOrder", i]
     if (!isObject(item)) {
-      error("Each item must be a reference object or an inline set or modifier.", at);
-      return;
+      error(
+        "Each item must be a reference object or an inline set or modifier.",
+        at,
+      )
+      return
     }
     if (typeof item.$ref === "string") {
-      const ref = item.$ref;
-      const raw = /^#\/modifiers\/(.+)$/.exec(ref)?.[1];
-      const modifier = raw === undefined ? undefined : unescape(raw);
+      const ref = item.$ref
+      const raw = /^#\/modifiers\/(.+)$/.exec(ref)?.[1]
+      const modifier = raw === undefined ? undefined : unescape(raw)
       if (modifier !== undefined) {
-        if (!named.has(modifier)) error(`No modifier named "${modifier}".`, [...at, "$ref"]);
-        const found = named.get(modifier);
+        if (!named.has(modifier))
+          error(`No modifier named "${modifier}".`, [...at, "$ref"])
+        const found = named.get(modifier)
         if (found) {
-          steps.push({ modifier: found });
-          if (!used.includes(found)) used.push(found);
+          steps.push({ modifier: found })
+          if (!used.includes(found)) used.push(found)
         }
       } else if (ref.startsWith("#")) {
-        steps.push({ files: expandOne(item, at, []) });
+        steps.push({ files: expandOne(item, at, []) })
       } else {
         // The spec leaves a reference out of the document undefined here.
-        warn("A resolutionOrder reference must point into this document; it is skipped.", [
-          ...at,
-          "$ref",
-        ]);
+        warn(
+          "A resolutionOrder reference must point into this document; it is skipped.",
+          [...at, "$ref"],
+        )
       }
-      return;
+      return
     }
-    const { name, type } = item;
+    const { name, type } = item
     if (typeof name !== "string" || (type !== "set" && type !== "modifier")) {
-      error(`An inline item needs a "name" and a "type" of "set" or "modifier".`, at);
-      return;
+      error(
+        `An inline item needs a "name" and a "type" of "set" or "modifier".`,
+        at,
+      )
+      return
     }
     if (inlineNames.has(name))
-      error(`Duplicate name "${name}" in resolutionOrder.`, [...at, "name"]);
-    inlineNames.add(name);
+      error(`Duplicate name "${name}" in resolutionOrder.`, [...at, "name"])
+    inlineNames.add(name)
     if (type === "set") {
-      steps.push({ files: expand(item.sources, [...at, "sources"], []) });
+      steps.push({ files: expand(item.sources, [...at, "sources"], []) })
     } else {
-      const found = readModifier(name, item, at);
+      const found = readModifier(name, item, at)
       if (found) {
-        steps.push({ modifier: found });
-        used.push(found);
+        steps.push({ modifier: found })
+        used.push(found)
       }
     }
-  });
+  })
 
   return {
-    resolver: { name: typeof doc.name === "string" ? doc.name : undefined, steps, modifiers: used },
+    resolver: {
+      name: typeof doc.name === "string" ? doc.name : undefined,
+      steps,
+      modifiers: used,
+    },
     issues,
-  };
+  }
 }
 
 /** How many resolutions `resolutions()` would list, without listing them. */
 export function resolutionCount(resolver: Resolver): number {
-  return resolver.modifiers.reduce((n, m) => n * m.contexts.size, 1);
+  return resolver.modifiers.reduce((n, m) => n * m.contexts.size, 1)
 }
 
 /** Every resolution: one per combination of contexts, defaults first. */
 export function resolutions(resolver: Resolver): Resolution[] {
-  let out: Resolution[] = [{ input: {}, label: "" }];
+  let out: Resolution[] = [{ input: {}, label: "" }]
   for (const modifier of resolver.modifiers) {
-    const contexts = [...modifier.contexts.keys()];
+    const contexts = [...modifier.contexts.keys()]
     if (modifier.default)
-      contexts.sort((a, b) => +(b === modifier.default) - +(a === modifier.default));
-    out = out.flatMap((r) =>
-      contexts.map((context) => ({
+      contexts.sort(
+        (a, b) => +(b === modifier.default) - +(a === modifier.default),
+      )
+    out = out.flatMap(r =>
+      contexts.map(context => ({
         input: { ...r.input, [modifier.name]: context },
-        label: [r.label, `${modifier.name}: ${context}`].filter(Boolean).join(" · "),
+        label: [r.label, `${modifier.name}: ${context}`]
+          .filter(Boolean)
+          .join(" · "),
       })),
-    );
+    )
   }
-  return out;
+  return out
 }
 
 /**
@@ -380,19 +440,24 @@ export function resolutions(resolver: Resolver): Resolution[] {
  * or a modifier left out that has no default. The picker only offers valid
  * inputs; this guards the ones a caller writes by hand.
  */
-export function inputIssues(resolver: Resolver, input: Record<string, string>): string[] {
-  const issues: string[] = [];
-  const byName = new Map(resolver.modifiers.map((m) => [m.name, m]));
+export function inputIssues(
+  resolver: Resolver,
+  input: Record<string, string>,
+): string[] {
+  const issues: string[] = []
+  const byName = new Map(resolver.modifiers.map(m => [m.name, m]))
   for (const [name, context] of Object.entries(input)) {
-    const modifier = byName.get(name);
-    if (!modifier) issues.push(`No modifier named "${name}".`);
+    const modifier = byName.get(name)
+    if (!modifier) issues.push(`No modifier named "${name}".`)
     else if (!modifier.contexts.has(context))
-      issues.push(`Modifier "${name}" has no context "${context}".`);
+      issues.push(`Modifier "${name}" has no context "${context}".`)
   }
   for (const modifier of resolver.modifiers)
     if (!Object.hasOwn(input, modifier.name) && modifier.default === undefined)
-      issues.push(`Modifier "${modifier.name}" needs a context: it has no default.`);
-  return issues;
+      issues.push(
+        `Modifier "${modifier.name}" needs a context: it has no default.`,
+      )
+  return issues
 }
 
 /**
@@ -400,13 +465,19 @@ export function inputIssues(resolver: Resolver, input: Record<string, string>): 
  * `file#/pointer`, or `#/pointer` for this document. One listed twice keeps
  * only its last position, where it wins.
  */
-export function resolutionSources(resolver: Resolver, input: Record<string, string>): string[] {
-  const sources = resolver.steps.flatMap((step) =>
+export function resolutionSources(
+  resolver: Resolver,
+  input: Record<string, string>,
+): string[] {
+  const sources = resolver.steps.flatMap(step =>
     "files" in step
       ? step.files
-      : (step.modifier.contexts.get(input[step.modifier.name] ?? step.modifier.default ?? "") ??
-        []),
-  );
-  const order = sources.map((s) => (s.pointer === undefined ? s.file : `${s.file}#${s.pointer}`));
-  return order.filter((ref, i) => order.lastIndexOf(ref) === i);
+      : (step.modifier.contexts.get(
+          input[step.modifier.name] ?? step.modifier.default ?? "",
+        ) ?? []),
+  )
+  const order = sources.map(s =>
+    s.pointer === undefined ? s.file : `${s.file}#${s.pointer}`,
+  )
+  return order.filter((ref, i) => order.lastIndexOf(ref) === i)
 }

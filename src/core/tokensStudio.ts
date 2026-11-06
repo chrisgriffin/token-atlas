@@ -6,20 +6,20 @@
  * metadata) but the host reads it here, so choosing a theme can decide which
  * sets a `{reference}` resolves against.
  */
-import { parse } from "jsonc-parser";
+import { parse } from "jsonc-parser"
 
 export interface TokenTheme {
   /** Tokens Studio's own id, unique within the file. */
-  id: string;
-  name: string;
+  id: string
+  name: string
   /** Top-level groups this theme resolves against, in declaration order. */
-  sets: string[];
+  sets: string[]
 }
 
 interface RawTheme {
-  id?: unknown;
-  name?: unknown;
-  selectedTokenSets?: unknown;
+  id?: unknown
+  name?: unknown
+  selectedTokenSets?: unknown
 }
 
 /**
@@ -30,26 +30,26 @@ interface RawTheme {
  * resolution is concerned. `disabled` sets do not.
  */
 export function readThemes(text: string): TokenTheme[] {
-  let doc: unknown;
+  let doc: unknown
   try {
-    doc = parse(text);
+    doc = parse(text)
   } catch {
-    return [];
+    return []
   }
-  const raw = (doc as { $themes?: unknown } | undefined)?.$themes;
-  if (!Array.isArray(raw)) return [];
+  const raw = (doc as { $themes?: unknown } | undefined)?.$themes
+  if (!Array.isArray(raw)) return []
 
-  const themes: TokenTheme[] = [];
+  const themes: TokenTheme[] = []
   for (const entry of raw as RawTheme[]) {
-    if (!entry || typeof entry !== "object") continue;
-    const name = typeof entry.name === "string" ? entry.name : undefined;
-    const id = typeof entry.id === "string" ? entry.id : name;
-    const selected = entry.selectedTokenSets;
-    if (!id || !name || !selected || typeof selected !== "object") continue;
+    if (!entry || typeof entry !== "object") continue
+    const name = typeof entry.name === "string" ? entry.name : undefined
+    const id = typeof entry.id === "string" ? entry.id : name
+    const selected = entry.selectedTokenSets
+    if (!id || !name || !selected || typeof selected !== "object") continue
     const sets = Object.entries(selected as Record<string, unknown>)
       .filter(([, state]) => state === "enabled" || state === "source")
-      .map(([set]) => set);
-    if (sets.length) themes.push({ id, name, sets });
+      .map(([set]) => set)
+    if (sets.length) themes.push({ id, name, sets })
   }
-  return themes;
+  return themes
 }

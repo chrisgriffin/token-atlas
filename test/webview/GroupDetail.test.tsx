@@ -1,11 +1,19 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { GroupDetail } from "../../src/webview/components/GroupDetail";
-import { COMMIT_DELAY_MS } from "../../src/webview/editors/fields";
-import type { GroupNode } from "../../src/core/types";
-import { group, token } from "./fixtures";
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { GroupDetail } from "../../src/webview/components/GroupDetail"
+import { COMMIT_DELAY_MS } from "../../src/webview/editors/fields"
+import type { GroupNode } from "../../src/core/types"
+import { group, token } from "./fixtures"
 
-afterEach(cleanup);
+/** The panel's three edits on a row: rename (click the name), move, delete. */
+const panelEdits = () => ({
+  rename: screen.queryByTitle("Click to rename"),
+  moveUp: screen.queryByLabelText("Move up"),
+  moveDown: screen.queryByLabelText("Move down"),
+  remove: screen.queryByTitle("Delete"),
+})
+
+afterEach(cleanup)
 
 const handlers = () => ({
   onChangeDescription: vi.fn(),
@@ -15,12 +23,12 @@ const handlers = () => ({
   onClose: vi.fn(),
   onChangeDeprecated: vi.fn(),
   onChangeType: vi.fn(),
-});
+})
 
 function renderGroup(node: GroupNode) {
-  const props = handlers();
-  render(<GroupDetail group={node} {...props} />);
-  return props;
+  const props = handlers()
+  render(<GroupDetail group={node} {...props} />)
+  return props
 }
 
 /** brand holds one token directly and two more in a nested group. */
@@ -37,52 +45,71 @@ const nested = () =>
         ],
       ),
     ],
-  );
+  )
 
 describe("GroupDetail", () => {
   it("counts every token in the subtree, not just direct children", () => {
-    renderGroup(nested());
-    expect(screen.getByText("3 tokens")).toBeTruthy();
-  });
+    renderGroup(nested())
+    expect(screen.getByText("3 tokens")).toBeTruthy()
+  })
 
   it("says token, singular, for one", () => {
-    renderGroup(group(["space"], [token(["space", "md"], 16)]));
-    expect(screen.getByText("1 token")).toBeTruthy();
-  });
+    renderGroup(group(["space"], [token(["space", "md"], 16)]))
+    expect(screen.getByText("1 token")).toBeTruthy()
+  })
 
   it("counts an empty group as no tokens", () => {
-    renderGroup(group(["empty"], []));
-    expect(screen.getByText("0 tokens")).toBeTruthy();
-  });
+    renderGroup(group(["empty"], []))
+    expect(screen.getByText("0 tokens")).toBeTruthy()
+  })
 
   it("saves the description on blur, once", () => {
-    const props = renderGroup(nested());
-    const input = screen.getByPlaceholderText("Optional $description");
-    fireEvent.change(input, { target: { value: "Brand colours" } });
-    fireEvent.blur(input);
-    expect(props.onChangeDescription.mock.calls).toEqual([["Brand colours"]]);
-  });
+    const props = renderGroup(nested())
+    const input = screen.getByPlaceholderText("Optional $description")
+    fireEvent.change(input, { target: { value: "Brand colours" } })
+    fireEvent.blur(input)
+    expect(props.onChangeDescription.mock.calls).toEqual([["Brand colours"]])
+  })
 
   it("commits while typing, like a token's description", () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers()
     try {
-      const props = renderGroup(nested());
-      const input = screen.getByPlaceholderText("Optional $description");
-      fireEvent.focus(input);
-      fireEvent.change(input, { target: { value: "Brand colours" } });
-      act(() => vi.advanceTimersByTime(COMMIT_DELAY_MS));
-      expect(props.onChangeDescription.mock.calls).toEqual([["Brand colours"]]);
+      const props = renderGroup(nested())
+      const input = screen.getByPlaceholderText("Optional $description")
+      fireEvent.focus(input)
+      fireEvent.change(input, { target: { value: "Brand colours" } })
+      act(() => vi.advanceTimersByTime(COMMIT_DELAY_MS))
+      expect(props.onChangeDescription.mock.calls).toEqual([["Brand colours"]])
     } finally {
-      vi.useRealTimers();
+      vi.useRealTimers()
     }
-  });
+  })
 
   it("renames the group on blur with the name trimmed", () => {
-    const props = renderGroup(nested());
-    fireEvent.click(screen.getByRole("heading", { level: 2 }));
-    const input = screen.getByDisplayValue("brand");
-    fireEvent.change(input, { target: { value: " marque " } });
-    fireEvent.blur(input);
-    expect(props.onRename.mock.calls).toEqual([["marque"]]);
-  });
-});
+    const props = renderGroup(nested())
+    fireEvent.click(screen.getByRole("heading", { level: 2 }))
+    const input = screen.getByDisplayValue("brand")
+    fireEvent.change(input, { target: { value: " marque " } })
+    fireEvent.blur(input)
+    expect(props.onRename.mock.calls).toEqual([["marque"]])
+  })
+
+  it("inherited row panel: a heading $extends alone gives offers no rename, move or delete; an owned one keeps all three", () => {
+    const inherited: GroupNode = {
+      ...group(["dark", "bg"], [token(["dark", "bg", "base"], "#000")]),
+      inheritedFrom: "light.bg",
+    }
+    const props = renderGroup(inherited)
+    expect(Object.values(panelEdits())).toEqual([null, null, null, null])
+    // The name is still shown, as plain text.
+    expect(screen.getByRole("heading", { name: "bg" })).toBeTruthy()
+    fireEvent.click(screen.getByRole("heading", { name: "bg" }))
+    expect(screen.queryByDisplayValue("bg")).toBeNull()
+    expect(props.onRename).not.toHaveBeenCalled()
+    cleanup()
+
+    renderGroup(nested())
+    const edits = panelEdits()
+    for (const edit of Object.values(edits)) expect(edit).toBeTruthy()
+  })
+})

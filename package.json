@@ -2,7 +2,7 @@
   "name": "token-atlas",
   "displayName": "Token Atlas",
   "description": "Language features for W3C/DTCG design tokens in VS Code: hovers, completion, go-to-definition, rename and validation on token JSON and on exported CSS/Sass/JS, plus an opt-in visual editor.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "chrisgriffinio",
   "author": {
     "name": "Chris Griffin",
@@ -247,6 +247,12 @@
           "scope": "window",
           "default": true,
           "markdownDescription": "Show an inlay hint after each `{reference}` in token JSON, in tokens written inline in a resolver, and after each `var(--token)` in CSS, Sass and Less, with the value it resolves to in the active set (`= #0055ff`, `= 16px`). Hover the hint for the token's card. VS Code's own `editor.inlayHints.enabled` also applies."
+        },
+        "tokenAtlas.deprecationWorkflow": {
+          "type": "boolean",
+          "scope": "window",
+          "default": false,
+          "markdownDescription": "Turn on the deprecation workflow: the `Deprecate Token…`, `Find Remaining Uses of Deprecated Token` and `Remove Deprecated Token` commands and the quick fix that moves a use to its replacement. While it is on, renaming a token keeps the old name as a deprecated alias of the new one (`Rename Token Without Keeping Old Name` skips that once), and deleting a token that is still used offers to deprecate it instead. Reading `$deprecated` (the hover and the strike-through) works either way."
         }
       }
     },
@@ -290,6 +296,51 @@
         "command": "tokenAtlas.chooseActiveSet",
         "title": "Choose Active Token Files",
         "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.deprecateToken",
+        "title": "Deprecate Token…",
+        "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.findDeprecatedUses",
+        "title": "Find Remaining Uses of Deprecated Token",
+        "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.removeDeprecatedToken",
+        "title": "Remove Deprecated Token",
+        "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.renameWithoutAlias",
+        "title": "Rename Token Without Keeping Old Name",
+        "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.copyReference",
+        "title": "Copy Reference",
+        "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.findReferences",
+        "title": "Find All References",
+        "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.showInJson",
+        "title": "Show in JSON",
+        "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.renameNode",
+        "title": "Rename…",
+        "category": "Token Atlas"
+      },
+      {
+        "command": "tokenAtlas.deleteNode",
+        "title": "Delete",
+        "category": "Token Atlas"
       }
     ],
     "menus": {
@@ -308,6 +359,42 @@
         {
           "command": "tokenAtlas.scopeToGroup",
           "when": "false"
+        },
+        {
+          "command": "tokenAtlas.deprecateToken",
+          "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow"
+        },
+        {
+          "command": "tokenAtlas.findDeprecatedUses",
+          "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow"
+        },
+        {
+          "command": "tokenAtlas.removeDeprecatedToken",
+          "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow"
+        },
+        {
+          "command": "tokenAtlas.renameWithoutAlias",
+          "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow"
+        },
+        {
+          "command": "tokenAtlas.copyReference",
+          "when": "false"
+        },
+        {
+          "command": "tokenAtlas.findReferences",
+          "when": "false"
+        },
+        {
+          "command": "tokenAtlas.showInJson",
+          "when": "false"
+        },
+        {
+          "command": "tokenAtlas.renameNode",
+          "when": "false"
+        },
+        {
+          "command": "tokenAtlas.deleteNode",
+          "when": "false"
         }
       ],
       "view/title": [
@@ -315,6 +402,75 @@
           "command": "tokenAtlas.newTokenFile",
           "when": "view == tokenAtlas.tokens",
           "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "tokenAtlas.deprecateToken",
+          "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow",
+          "group": "1_tokenAtlas@1"
+        },
+        {
+          "command": "tokenAtlas.findDeprecatedUses",
+          "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow",
+          "group": "1_tokenAtlas@2"
+        },
+        {
+          "command": "tokenAtlas.removeDeprecatedToken",
+          "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow",
+          "group": "1_tokenAtlas@3"
+        },
+        {
+          "command": "tokenAtlas.renameWithoutAlias",
+          "when": "tokenAtlas.isTokenDocument && config.tokenAtlas.deprecationWorkflow",
+          "group": "1_tokenAtlas@4"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "tokenAtlas.copyReference",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection =~ /^(token|inherited)$/",
+          "group": "1_reference@1"
+        },
+        {
+          "command": "tokenAtlas.findReferences",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection == 'token'",
+          "group": "1_reference@2"
+        },
+        {
+          "command": "tokenAtlas.showInJson",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection =~ /^(token|group)$/",
+          "group": "1_reference@3"
+        },
+        {
+          "command": "tokenAtlas.renameNode",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection =~ /^(token|group)$/",
+          "group": "2_modify@1"
+        },
+        {
+          "command": "tokenAtlas.renameWithoutAlias",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection =~ /^(token|group)$/ && config.tokenAtlas.deprecationWorkflow",
+          "group": "2_modify@2"
+        },
+        {
+          "command": "tokenAtlas.deprecateToken",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection == 'token' && !tokenDeprecated && config.tokenAtlas.deprecationWorkflow",
+          "group": "3_deprecate@1"
+        },
+        {
+          "command": "tokenAtlas.findDeprecatedUses",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection == 'token' && tokenDeprecated && config.tokenAtlas.deprecationWorkflow",
+          "group": "3_deprecate@2"
+        },
+        {
+          "command": "tokenAtlas.removeDeprecatedToken",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection == 'token' && tokenDeprecated && config.tokenAtlas.deprecationWorkflow",
+          "group": "3_deprecate@3"
+        },
+        {
+          "command": "tokenAtlas.deleteNode",
+          "when": "webviewId == 'tokenAtlas.tokenEditor.any' && webviewSection =~ /^(token|group)$/",
+          "group": "9_delete@1"
         }
       ]
     },
@@ -360,15 +516,17 @@
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
     "test": "vitest run",
-    "test:integration": "node -e \"require('node:fs').rmSync('out',{recursive:true,force:true})\" && node esbuild.mjs --integration && vscode-test",
+    "test:integration": "node -e \"require('node:fs').rmSync('out',{recursive:true,force:true})\" && node esbuild.mjs --integration && node test/integration-run.mjs",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "lint": "eslint .",
     "package": "vsce package --no-dependencies --githubBranch main",
-    "vscode:prepublish": "node esbuild.mjs --production",
-    "version:recommend": "conventional-recommended-bump -p conventionalcommits"
+    "vscode:prepublish": "node esbuild.mjs --production"
   },
+  "prettier": "@chrisgriffin/config/prettier",
   "devDependencies": {
+    "@chrisgriffin/config": "github:chrisgriffin/config#v1",
     "@testing-library/react": "^16.3.3",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.0.0",
@@ -378,14 +536,17 @@
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.9.1",
-    "conventional-changelog-cli": "^5.0.0",
-    "conventional-changelog-conventionalcommits": "^8.0.0",
-    "conventional-recommended-bump": "^10.0.0",
     "esbuild": "^0.28.2",
+    "eslint": "^9.39.5",
+    "globals": "^17.13.0",
     "jsdom": "^25.0.1",
     "prettier": "^3.8.1",
     "typescript": "^5.5.0",
     "vitest": "^5.0.5"
+  },
+  "overrides": {
+    "@azure/msal-node": "^7.1.1",
+    "serialize-javascript": "^7.1.4"
   },
   "dependencies": {
     "colorjs.io": "^0.5.2",

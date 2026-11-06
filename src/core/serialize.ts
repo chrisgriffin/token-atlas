@@ -18,13 +18,19 @@ import {
   type Edit,
   type FormattingOptions,
   type Node,
-} from "jsonc-parser";
-import { parsePointer, parseTokens, referenceTarget } from "./parse";
-import { indexTokens } from "./resolve";
-import { toPointer } from "./resolver";
-import { ILLEGAL_NAME } from "./validate";
+} from "jsonc-parser"
+import { parsePointer, parseTokens, referenceTarget } from "./parse"
+import { indexTokens } from "./resolve"
+import { toPointer } from "./resolver"
+import type { TokenNode } from "./types"
+import {
+  ILLEGAL_NAME,
+  deprecation,
+  deprecationReplacement,
+  replacementKey,
+} from "./validate"
 
-export type { Edit } from "jsonc-parser";
+export type { Edit } from "jsonc-parser"
 
 /**
  * The file's own indentation and line ending: the first indented line says
@@ -32,11 +38,16 @@ export type { Edit } from "jsonc-parser";
  * CRLF. A file with no indented line gets two spaces.
  */
 function inferFormat(text: string): FormattingOptions {
-  const indents = text.match(/^[ \t]+(?=\S)/gm) ?? [];
-  const eol = text.includes("\r\n") ? "\r\n" : "\n";
-  if (indents[0]?.startsWith("\t")) return { tabSize: 4, insertSpaces: false, eol };
-  const widths = indents.filter((i) => !i.includes("\t")).map((i) => i.length);
-  return { tabSize: widths.length ? Math.min(...widths) : 2, insertSpaces: true, eol };
+  const indents = text.match(/^[ \t]+(?=\S)/gm) ?? []
+  const eol = text.includes("\r\n") ? "\r\n" : "\n"
+  if (indents[0]?.startsWith("\t"))
+    return { tabSize: 4, insertSpaces: false, eol }
+  const widths = indents.filter(i => !i.includes("\t")).map(i => i.length)
+  return {
+    tabSize: widths.length ? Math.min(...widths) : 2,
+    insertSpaces: true,
+    eol,
+  }
 }
 
 /**
@@ -51,14 +62,16 @@ export function computeSetEdits(
   value: unknown,
   format: FormattingOptions = inferFormat(text),
 ): Edit[] {
-  const path = [...nodePath, property];
-  const root = parseTree(text);
-  const exists = root !== undefined && findNodeAtLocation(root, path) !== undefined;
-  if (value === undefined) return exists ? computeDeleteEdits(text, path, format) : [];
+  const path = [...nodePath, property]
+  const root = parseTree(text)
+  const exists =
+    root !== undefined && findNodeAtLocation(root, path) !== undefined
+  if (value === undefined)
+    return exists ? computeDeleteEdits(text, path, format) : []
   if (!exists && objectAt(text, nodePath)) {
-    return computeAddEdits(text, nodePath, property, value, format);
+    return computeAddEdits(text, nodePath, property, value, format)
   }
-  return modify(text, path, value, { formattingOptions: format });
+  return modify(text, path, value, { formattingOptions: format })
 }
 
 export function setTokenProperty(
@@ -68,7 +81,10 @@ export function setTokenProperty(
   value: unknown,
   format: FormattingOptions = inferFormat(text),
 ): string {
-  return applyEdits(text, computeSetEdits(text, nodePath, property, value, format));
+  return applyEdits(
+    text,
+    computeSetEdits(text, nodePath, property, value, format),
+  )
 }
 
 /**
@@ -78,9 +94,9 @@ export function setTokenProperty(
  */
 export class NameTakenError extends Error {
   constructor(parentPath: string[], name: string) {
-    const group = parentPath.length ? `"${parentPath.join(".")}"` : "The file";
-    super(`${group} already has a token or group named "${name}".`);
-    this.name = "NameTakenError";
+    const group = parentPath.length ? `"${parentPath.join(".")}"` : "The file"
+    super(`${group} already has a token or group named "${name}".`)
+    this.name = "NameTakenError"
   }
 }
 
@@ -94,15 +110,19 @@ export class InvalidNameError extends Error {
   constructor(name: string) {
     super(
       `"${name}" is not a valid name: token names may not be empty, start with "$", or contain "{", "}", or ".".`,
-    );
-    this.name = "InvalidNameError";
+    )
+    this.name = "InvalidNameError"
   }
 }
 
-function assertNameFree(text: string, parentPath: string[], name: string): void {
-  const root = parseTree(text);
+function assertNameFree(
+  text: string,
+  parentPath: string[],
+  name: string,
+): void {
+  const root = parseTree(text)
   if (root && findNodeAtLocation(root, [...parentPath, name])) {
-    throw new NameTakenError(parentPath, name);
+    throw new NameTakenError(parentPath, name)
   }
 }
 
@@ -111,7 +131,7 @@ function assertNameFree(text: string, parentPath: string[], name: string): void 
  *
  * jsonc-parser's `modify` reformats every line its edit touches, and an
  * append starts on the last sibling's line — so a one-line sibling like
- * `"lg": { "$value": 2 }` came back spread over three lines (#304). When the
+ * `"lg": { "$value": 2 }` came back spread over three lines. When the
  * parent already has a sibling, we write the new property on its own line at
  * that sibling's indent and touch nothing before its closing bytes but a comma.
  */
@@ -122,31 +142,51 @@ export function computeAddEdits(
   value: unknown,
   format: FormattingOptions = inferFormat(text),
 ): Edit[] {
-  assertNameFree(text, parentPath, name);
-  const parent = objectAt(text, parentPath);
-  const last = parent?.children?.[parent.children.length - 1];
+  assertNameFree(text, parentPath, name)
+  const parent = objectAt(text, parentPath)
+  const last = parent?.children?.[parent.children.length - 1]
   // A parent written on one line stays on it.
-  if (parent && last && !/[\r\n]/.test(text.slice(parent.offset, end(parent)))) {
+  if (
+    parent &&
+    last &&
+    !/[\r\n]/.test(text.slice(parent.offset, end(parent)))
+  ) {
     return [
-      { offset: end(last), length: 0, content: `, ${JSON.stringify(name)}: ${inline(value)}` },
-    ];
+      {
+        offset: end(last),
+        length: 0,
+        content: `, ${JSON.stringify(name)}: ${inline(value)}`,
+      },
+    ]
   }
-  const indent = last && indentOf(text, last);
-  if (!parent || !last || indent === undefined || !isBlank(text, end(last), end(parent) - 1)) {
-    return modify(text, [...parentPath, name], value, { formattingOptions: format });
+  const indent = last && indentOf(text, last)
+  if (
+    !parent ||
+    !last ||
+    indent === undefined ||
+    !isBlank(text, end(last), end(parent) - 1)
+  ) {
+    return modify(text, [...parentPath, name], value, {
+      formattingOptions: format,
+    })
   }
-  const eol = format.eol ?? "\n";
-  const unit = format.insertSpaces === false ? "\t" : " ".repeat(format.tabSize ?? 2);
-  const body = JSON.stringify(value, null, unit).replace(/\n/g, eol + indent);
+  const eol = format.eol ?? "\n"
+  const unit =
+    format.insertSpaces === false ? "\t" : " ".repeat(format.tabSize ?? 2)
+  const body = JSON.stringify(value, null, unit).replace(/\n/g, eol + indent)
   return [
-    { offset: end(last), length: 0, content: `,${eol}${indent}${JSON.stringify(name)}: ${body}` },
-  ];
+    {
+      offset: end(last),
+      length: 0,
+      content: `,${eol}${indent}${JSON.stringify(name)}: ${body}`,
+    },
+  ]
 }
 
 /**
  * Delete a token or group at `nodePath`.
  *
- * Same cause as computeAddEdits (#304): `modify` reformats the surviving
+ * Same cause as computeAddEdits: `modify` reformats the surviving
  * neighbour. When the property has a sibling and only a comma and whitespace
  * separate them, we cut the property and one separator and leave the
  * survivor's bytes alone.
@@ -156,53 +196,59 @@ export function computeDeleteEdits(
   nodePath: string[],
   format: FormattingOptions = inferFormat(text),
 ): Edit[] {
-  const parent = objectAt(text, nodePath.slice(0, -1));
-  const props = parent?.children ?? [];
-  const i = props.findIndex((p) => p.children?.[0]?.value === nodePath[nodePath.length - 1]);
-  const prop = props[i];
-  const next = props[i + 1];
-  const prev = props[i - 1];
+  const parent = objectAt(text, nodePath.slice(0, -1))
+  const props = parent?.children ?? []
+  const i = props.findIndex(
+    p => p.children?.[0]?.value === nodePath[nodePath.length - 1],
+  )
+  const prop = props[i]
+  const next = props[i + 1]
+  const prev = props[i - 1]
   // Not the last: cut from the property to the next one, which takes the
   // property's own indent with it and leaves the next one's in place.
   if (prop && next && isSeparator(text, end(prop), next.offset)) {
-    return [{ offset: prop.offset, length: next.offset - prop.offset, content: "" }];
+    return [
+      { offset: prop.offset, length: next.offset - prop.offset, content: "" },
+    ]
   }
   // The last: cut from the end of the previous one, its comma included.
   if (prop && prev && isSeparator(text, end(prev), prop.offset)) {
-    return [{ offset: end(prev), length: end(prop) - end(prev), content: "" }];
+    return [{ offset: end(prev), length: end(prop) - end(prev), content: "" }]
   }
-  return modify(text, nodePath, undefined, { formattingOptions: format });
+  return modify(text, nodePath, undefined, { formattingOptions: format })
 }
 
 function objectAt(text: string, path: string[]): Node | undefined {
-  const root = parseTree(text);
-  const node = root && (path.length ? findNodeAtLocation(root, path) : root);
-  return node?.type === "object" ? node : undefined;
+  const root = parseTree(text)
+  const node = root && (path.length ? findNodeAtLocation(root, path) : root)
+  return node?.type === "object" ? node : undefined
 }
 
-const end = (node: Node): number => node.offset + node.length;
+const end = (node: Node): number => node.offset + node.length
 
 const isBlank = (text: string, from: number, to: number): boolean =>
-  /^\s*$/.test(text.slice(from, to));
+  /^\s*$/.test(text.slice(from, to))
 
 const isSeparator = (text: string, from: number, to: number): boolean =>
-  /^\s*,\s*$/.test(text.slice(from, to));
+  /^\s*,\s*$/.test(text.slice(from, to))
 
 /** JSON on one line, spaced the way a person writes an inline object. */
 export function inline(v: unknown): string {
-  if (Array.isArray(v)) return `[${v.map(inline).join(", ")}]`;
+  if (Array.isArray(v)) return `[${v.map(inline).join(", ")}]`
   if (v && typeof v === "object") {
-    const members = Object.entries(v).map(([k, x]) => `${JSON.stringify(k)}: ${inline(x)}`);
-    return members.length ? `{ ${members.join(", ")} }` : "{}";
+    const members = Object.entries(v).map(
+      ([k, x]) => `${JSON.stringify(k)}: ${inline(x)}`,
+    )
+    return members.length ? `{ ${members.join(", ")} }` : "{}"
   }
-  return JSON.stringify(v);
+  return JSON.stringify(v)
 }
 
 /** The whitespace before `node` on its line, or undefined if anything else is there. */
 function indentOf(text: string, node: Node): string | undefined {
-  const lineStart = text.lastIndexOf("\n", node.offset - 1) + 1;
-  const lead = text.slice(lineStart, node.offset);
-  return /^[ \t]*$/.test(lead) ? lead : undefined;
+  const lineStart = text.lastIndexOf("\n", node.offset - 1) + 1
+  const lead = text.slice(lineStart, node.offset)
+  return /^[ \t]*$/.test(lead) ? lead : undefined
 }
 
 /**
@@ -214,23 +260,31 @@ function indentOf(text: string, node: Node): string | undefined {
  * found via the parse tree — leaving the value and sibling order untouched.
  * References in other files are the host's job: see computeReferenceRenameEdits.
  */
-export function computeRenameEdits(text: string, nodePath: string[], newName: string): Edit[] {
+export function computeRenameEdits(
+  text: string,
+  nodePath: string[],
+  newName: string,
+): Edit[] {
   if (!newName || ILLEGAL_NAME.test(newName) || newName.startsWith("$")) {
-    throw new InvalidNameError(newName);
+    throw new InvalidNameError(newName)
   }
-  const oldName = nodePath[nodePath.length - 1];
-  if (oldName === newName) return [];
-  const root = parseTree(text);
-  if (!root) return [];
-  const valueNode = findNodeAtLocation(root, nodePath);
-  const keyNode = valueNode?.parent?.children?.[0];
-  if (!keyNode) return [];
-  assertNameFree(text, nodePath.slice(0, -1), newName);
-  const newPath = [...nodePath.slice(0, -1), newName].join(".");
+  const oldName = nodePath[nodePath.length - 1]
+  if (oldName === newName) return []
+  const root = parseTree(text)
+  if (!root) return []
+  const valueNode = findNodeAtLocation(root, nodePath)
+  const keyNode = valueNode?.parent?.children?.[0]
+  if (!keyNode) return []
+  assertNameFree(text, nodePath.slice(0, -1), newName)
+  const newPath = [...nodePath.slice(0, -1), newName].join(".")
   return [
-    { offset: keyNode.offset, length: keyNode.length, content: JSON.stringify(newName) },
+    {
+      offset: keyNode.offset,
+      length: keyNode.length,
+      content: JSON.stringify(newName),
+    },
     ...referenceEdits(root, nodePath.join("."), newPath),
-  ];
+  ]
 }
 
 /**
@@ -249,47 +303,59 @@ export function computeReferenceRenameEdits(
   oldPath: string,
   newPath: string,
 ): Edit[] {
-  const root = parseTree(text);
-  if (!root) return [];
-  const local = indexTokens(parseTokens(text));
-  if (local.has(oldPath) || [...local.keys()].some((k) => k.startsWith(oldPath + "."))) return [];
-  return referenceEdits(root, oldPath, newPath);
+  const root = parseTree(text)
+  if (!root) return []
+  const local = indexTokens(parseTokens(text))
+  if (
+    local.has(oldPath) ||
+    [...local.keys()].some(k => k.startsWith(oldPath + "."))
+  )
+    return []
+  return referenceEdits(root, oldPath, newPath)
 }
 
 function referenceEdits(root: Node, oldPath: string, newPath: string): Edit[] {
-  const edits: Edit[] = [];
+  const edits: Edit[] = []
   const moved = (target: string | undefined) =>
-    target !== undefined && (target === oldPath || target.startsWith(oldPath + "."))
+    target !== undefined &&
+    (target === oldPath || target.startsWith(oldPath + "."))
       ? newPath + target.slice(oldPath.length)
-      : undefined;
+      : undefined
   const walk = (node: Node, inValue: boolean): void => {
     if (node.type === "property") {
-      const [key, value] = node.children ?? [];
-      if ((key?.value === "$ref" || key?.value === "$extends") && value?.type === "string") {
-        const next = renamedReference(String(value.value), moved);
+      const [key, value] = node.children ?? []
+      if (
+        (key?.value === "$ref" || key?.value === "$extends") &&
+        value?.type === "string"
+      ) {
+        const next = renamedReference(String(value.value), moved)
         if (next !== undefined) {
-          edits.push({ offset: value.offset, length: value.length, content: JSON.stringify(next) });
+          edits.push({
+            offset: value.offset,
+            length: value.length,
+            content: JSON.stringify(next),
+          })
         }
-        return;
+        return
       }
-      if (value) walk(value, inValue || key?.value === "$value");
-      return;
+      if (value) walk(value, inValue || key?.value === "$value")
+      return
     }
     if (node.type === "string" && inValue && typeof node.value === "string") {
-      const next = moved(referenceTarget(node.value));
+      const next = moved(referenceTarget(node.value))
       if (next !== undefined) {
         edits.push({
           offset: node.offset,
           length: node.length,
           content: JSON.stringify(`{${next}}`),
-        });
+        })
       }
-      return;
+      return
     }
-    for (const child of node.children ?? []) walk(child, inValue);
-  };
-  walk(root, false);
-  return edits;
+    for (const child of node.children ?? []) walk(child, inValue)
+  }
+  walk(root, false)
+  return edits
 }
 
 /**
@@ -301,12 +367,382 @@ function renamedReference(
   value: string,
   moved: (target: string | undefined) => string | undefined,
 ): string | undefined {
-  const curly = moved(referenceTarget(value));
-  if (curly !== undefined) return `{${curly}}`;
-  const pointer = parsePointer(value);
-  const next = moved(pointer?.key);
-  if (!pointer || next === undefined) return undefined;
-  return "#" + toPointer([...next.split("."), ...pointer.sub]);
+  const curly = moved(referenceTarget(value))
+  if (curly !== undefined) return `{${curly}}`
+  const pointer = parsePointer(value)
+  const next = moved(pointer?.key)
+  if (!pointer || next === undefined) return undefined
+  return "#" + toPointer([...next.split("."), ...pointer.sub])
+}
+
+type Lookup = (key: string) => TokenNode | undefined
+
+/** The reason an alias left by a rename carries, before its replacement. */
+const RENAMED = "Renamed"
+
+/**
+ * Rename under the deprecation workflow (spec 019): rename as
+ * computeRenameEdits does, and keep the old name as a deprecated alias of the
+ * new one, so whatever still uses it keeps resolving. A group leaves a group
+ * of aliases, one per token. The alias goes in right after the renamed
+ * property, on a line of its own where the parent spans lines, so the diff is
+ * the key and the added lines.
+ *
+ * Every `$deprecated` replacement naming the old path moves too, and names
+ * the end of the renamed token's own replacement chain, never a token that is
+ * itself deprecated: `a → b → c` leaves `a` pointing straight at `c`.
+ * Renaming back onto that alias is not a name clash: the two keys trade
+ * names and the alias's value is rewritten, so nothing is deleted and
+ * re-added at one offset. `external` finds a replacement in another file.
+ * Every edit is against `text`, and none overlaps another.
+ */
+export function computeAliasRenameEdits(
+  text: string,
+  nodePath: string[],
+  newName: string,
+  external?: Lookup,
+  format: FormattingOptions = inferFormat(text),
+): Edit[] {
+  if (!newName || ILLEGAL_NAME.test(newName) || newName.startsWith("$")) {
+    throw new InvalidNameError(newName)
+  }
+  const oldName = nodePath[nodePath.length - 1]
+  if (oldName === newName) return []
+  const root = parseTree(text)
+  const valueNode = root && findNodeAtLocation(root, nodePath)
+  const prop = valueNode?.parent
+  const keyNode = prop?.children?.[0]
+  if (!root || !valueNode || !prop || !keyNode) return []
+  const parentPath = nodePath.slice(0, -1)
+  const oldKey = nodePath.join(".")
+  const newKey = [...parentPath, newName].join(".")
+  const local = indexTokens(parseTokens(text))
+  const lookup: Lookup = k => local.get(k) ?? external?.(k)
+  const under = (key: string) =>
+    [...local.values()].filter(t => {
+      const k = t.path.join(".")
+      return !t.inheritedFrom && (k === key || k.startsWith(key + "."))
+    })
+  const final = finalReplacement(oldKey, newKey, lookup)
+  const renamed = under(oldKey)
+
+  const takenNode = findNodeAtLocation(root, [...parentPath, newName])
+  const taken = takenNode?.parent
+  const back =
+    renamed.length > 0 &&
+    taken !== undefined &&
+    isAliasOf(under(newKey), newKey, oldKey)
+  if (takenNode && !back) throw new NameTakenError(parentPath, newName)
+
+  // The old alias is rewritten whole when renaming back, so no edit inside it.
+  const outside = (e: Edit) =>
+    !back || e.offset < takenNode!.offset || e.offset >= end(takenNode!)
+  const edits: Edit[] = [
+    {
+      offset: keyNode.offset,
+      length: keyNode.length,
+      content: JSON.stringify(newName),
+    },
+    ...[
+      ...referenceEdits(root, oldKey, newKey),
+      ...replacementEdits(root, oldKey, final),
+    ].filter(outside),
+  ]
+  if (!renamed.length) return edits // an empty group: nothing to keep
+
+  const alias: Record<string, unknown> = {}
+  for (const t of renamed) {
+    const rest = t.path.slice(nodePath.length)
+    const leaf = {
+      $value: `{${[newKey, ...rest].join(".")}}`,
+      $deprecated: deprecatedValue(RENAMED, final([oldKey, ...rest].join("."))),
+    }
+    if (!rest.length) Object.assign(alias, leaf)
+    else setIn(alias, rest, leaf)
+  }
+  const unit =
+    format.insertSpaces === false ? "\t" : " ".repeat(format.tabSize ?? 2)
+  const eol = format.eol ?? "\n"
+  const at = back ? taken! : prop
+  const parent = at.parent!
+  const indent = indentOf(text, at)
+  const oneLine =
+    indent === undefined ||
+    !/[\r\n]/.test(text.slice(parent.offset, end(parent)))
+  const body = oneLine ? inline(alias) : renderAlias(alias, indent!, unit, eol)
+  if (back) {
+    return [
+      ...edits,
+      {
+        offset: taken!.children![0].offset,
+        length: taken!.children![0].length,
+        content: JSON.stringify(oldName),
+      },
+      { offset: takenNode!.offset, length: takenNode!.length, content: body },
+    ]
+  }
+  return [
+    ...edits,
+    {
+      offset: end(prop),
+      length: 0,
+      content: oneLine
+        ? `, ${JSON.stringify(oldName)}: ${body}`
+        : `,${eol}${indent}${JSON.stringify(oldName)}: ${body}`,
+    },
+  ]
+}
+
+/**
+ * Remove the alias a deprecation-workflow rename left at `aliasPath` for
+ * `newKey`: the rename notification's Remove alias. No edit once the node
+ * there is anything else — edited, renamed again, or gone — so a late click
+ * never deletes a token someone has since made real.
+ */
+export function computeRemoveAliasEdits(
+  text: string,
+  aliasPath: string[],
+  newKey: string,
+): Edit[] {
+  const key = aliasPath.join(".")
+  const tokens = [...indexTokens(parseTokens(text)).values()].filter(t => {
+    const k = t.path.join(".")
+    return !t.inheritedFrom && (k === key || k.startsWith(key + "."))
+  })
+  return isAliasOf(tokens, key, newKey)
+    ? computeDeleteEdits(text, aliasPath)
+    : []
+}
+
+/**
+ * The `$deprecated` half of computeReferenceRenameEdits, for a file that only
+ * uses a path the deprecation workflow renamed: every replacement naming
+ * `oldPath`, or a token under it, moves to `newPath`, at the end of its
+ * replacement chain. Local-first: a file defining `oldPath` itself gets none.
+ */
+export function computeReplacementRenameEdits(
+  text: string,
+  oldPath: string,
+  newPath: string,
+  external?: Lookup,
+): Edit[] {
+  const root = parseTree(text)
+  if (!root) return []
+  const local = indexTokens(parseTokens(text))
+  if (
+    local.has(oldPath) ||
+    [...local.keys()].some(k => k.startsWith(oldPath + "."))
+  )
+    return []
+  const lookup: Lookup = k => local.get(k) ?? external?.(k)
+  return replacementEdits(
+    root,
+    oldPath,
+    finalReplacement(oldPath, newPath, lookup),
+  )
+}
+
+/**
+ * Where a replacement that named `key` (a path being renamed from `oldPath`
+ * to `newPath`) should now point: along `key`'s own replacement chain to its
+ * end, then renamed. A cycle has no end, so it is the renamed `key` itself.
+ */
+function finalReplacement(
+  oldPath: string,
+  newPath: string,
+  lookup: Lookup,
+): (key: string) => string {
+  const map = (k: string) =>
+    k === oldPath || k.startsWith(oldPath + ".")
+      ? newPath + k.slice(oldPath.length)
+      : k
+  return start => {
+    const seen = new Set([start])
+    let key = start
+    for (;;) {
+      const token = lookup(key)
+      const next = token && deprecationReplacement(token, lookup)
+      if (!next?.token) return map(key)
+      if (seen.has(next.key)) return map(start)
+      seen.add(next.key)
+      key = next.key
+    }
+  }
+}
+
+/** Every `$deprecated` whose replacement is `oldPath` or under it, retargeted by `to`. */
+function replacementEdits(
+  root: Node,
+  oldPath: string,
+  to: (key: string) => string,
+): Edit[] {
+  const edits: Edit[] = []
+  const walk = (node: Node): void => {
+    if (node.type === "property") {
+      const [key, value] = node.children ?? []
+      if (key?.value === "$deprecated" && value?.type === "string") {
+        const reason = String(value.value)
+        const target = replacementKey(reason)
+        if (
+          target !== undefined &&
+          (target === oldPath || target.startsWith(oldPath + "."))
+        ) {
+          const next = reason.replace(/\{[^{}]+\}/, `{${to(target)}}`)
+          if (next !== reason)
+            edits.push({
+              offset: value.offset,
+              length: value.length,
+              content: JSON.stringify(next),
+            })
+        }
+        return
+      }
+    }
+    for (const child of node.children ?? []) walk(child)
+  }
+  walk(root)
+  return edits
+}
+
+/**
+ * Whether the tokens under `key` are all deprecated aliases of the matching
+ * path under `of` — the alias a rename of `of` to `key` left behind.
+ */
+function isAliasOf(tokens: TokenNode[], key: string, of: string): boolean {
+  return (
+    tokens.length > 0 &&
+    tokens.every(
+      t =>
+        deprecation(t) !== undefined &&
+        typeof t.value === "string" &&
+        referenceTarget(t.value) === of + t.path.join(".").slice(key.length),
+    )
+  )
+}
+
+function setIn(
+  into: Record<string, unknown>,
+  path: string[],
+  leaf: unknown,
+): void {
+  let at = into
+  for (const seg of path.slice(0, -1))
+    at = (at[seg] ??= {}) as Record<string, unknown>
+  at[path[path.length - 1]] = leaf
+}
+
+/** A group of aliases over lines at `indent`, each alias inline on its own. */
+function renderAlias(
+  value: Record<string, unknown>,
+  indent: string,
+  unit: string,
+  eol: string,
+): string {
+  if ("$value" in value) return inline(value)
+  const inner = indent + unit
+  const members = Object.entries(value).map(
+    ([k, v]) =>
+      `${inner}${JSON.stringify(k)}: ${renderAlias(v as Record<string, unknown>, inner, unit, eol)}`,
+  )
+  return `{${eol}${members.join("," + eol)}${eol}${indent}}`
+}
+
+/**
+ * The `$deprecated` value for a reason and a replacement token. The
+ * replacement is the reason's first `{reference}` (spec 015,
+ * docs/adr/ADR-003-deprecation-replacement.md), so picking one swaps the
+ * reason's first reference for it, or adds `use {…} instead` when it has none;
+ * `""` takes it out again. `undefined` keeps the reason as typed. No reason
+ * and no replacement is plain `true`.
+ */
+export function deprecatedValue(
+  reason: string,
+  replacement?: string,
+): true | string {
+  let text = reason.trim()
+  const current = replacementKey(text)
+  if (replacement === "" && current !== undefined) {
+    const phrase = /(^|;\s*)use \{[^{}]+\} instead(;\s*|$)/
+    text = phrase.test(text)
+      ? text
+          .replace(phrase, (_, a: string, b: string) => (a && b ? "; " : ""))
+          .trim()
+      : text.replace(/\{([^{}]+)\}/, "$1")
+  } else if (replacement && current !== undefined && current !== replacement) {
+    text = text.replace(/\{[^{}]+\}/, `{${replacement}}`)
+  } else if (replacement && current === undefined) {
+    const use = `use {${replacement}} instead`
+    text = text ? `${text.replace(/[\s.;]+$/, "")}; ${use}` : use
+  }
+  return text || true
+}
+
+/**
+ * Deprecate the token or group at `nodePath`. A new `$deprecated` goes in as
+ * the node's first member, on a line of its own at that member's indent, so
+ * the diff is that one added line: appended last, it would also rewrite the
+ * line before it for the comma. An existing one has only its value replaced,
+ * and a node written on one line stays on it (computeSetEdits).
+ */
+export function computeDeprecateEdits(
+  text: string,
+  nodePath: string[],
+  reason: string,
+  replacement?: string,
+  format: FormattingOptions = inferFormat(text),
+): Edit[] {
+  const value = deprecatedValue(reason, replacement)
+  const node = objectAt(text, nodePath)
+  const first = node?.children?.[0]
+  const has = node?.children?.some(
+    p => p.children?.[0]?.value === "$deprecated",
+  )
+  const indent = first && indentOf(text, first)
+  if (
+    node &&
+    first &&
+    !has &&
+    indent !== undefined &&
+    /[\r\n]/.test(text.slice(node.offset, first.offset))
+  ) {
+    return [
+      {
+        offset: first.offset - indent.length,
+        length: 0,
+        content: `${indent}"$deprecated": ${JSON.stringify(value)},${format.eol ?? "\n"}`,
+      },
+    ]
+  }
+  return computeSetEdits(text, nodePath, "$deprecated", value, format)
+}
+
+/**
+ * Point the reference string at `path` (a `{curly}` reference, or a `$ref`
+ * pointer's string, as `deprecatedReferences` reports it) from `oldKey` to
+ * `newKey`. A pointer keeps what follows the token path. No edit when the
+ * string there does not name `oldKey` itself.
+ */
+export function computeRetargetEdits(
+  text: string,
+  path: Array<string | number>,
+  oldKey: string,
+  newKey: string,
+): Edit[] {
+  const root = parseTree(text)
+  const node = root && findNodeAtLocation(root, path)
+  if (node?.type !== "string") return []
+  const next = renamedReference(String(node.value), target =>
+    target === oldKey ? newKey : undefined,
+  )
+  return next === undefined
+    ? []
+    : [
+        {
+          offset: node.offset,
+          length: node.length,
+          content: JSON.stringify(next),
+        },
+      ]
 }
 
 /**
@@ -320,24 +756,26 @@ export function computeSwapEdits(
   keyA: string,
   keyB: string,
 ): Edit[] {
-  const root = parseTree(text);
-  if (!root) return [];
-  const parent = parentPath.length ? findNodeAtLocation(root, parentPath) : root;
-  if (!parent || parent.type !== "object" || !parent.children) return [];
+  const root = parseTree(text)
+  if (!root) return []
+  const parent = parentPath.length ? findNodeAtLocation(root, parentPath) : root
+  if (!parent || parent.type !== "object" || !parent.children) return []
 
   const findProp = (key: string) =>
-    parent.children!.find((c) => c.type === "property" && c.children?.[0]?.value === key);
+    parent.children!.find(
+      c => c.type === "property" && c.children?.[0]?.value === key,
+    )
 
-  const a = findProp(keyA);
-  const b = findProp(keyB);
-  if (!a || !b) return [];
+  const a = findProp(keyA)
+  const b = findProp(keyB)
+  if (!a || !b) return []
 
-  const aText = text.substring(a.offset, a.offset + a.length);
-  const bText = text.substring(b.offset, b.offset + b.length);
+  const aText = text.substring(a.offset, a.offset + a.length)
+  const bText = text.substring(b.offset, b.offset + b.length)
   return [
     { offset: a.offset, length: a.length, content: bText },
     { offset: b.offset, length: b.length, content: aText },
-  ];
+  ]
 }
 
 /**
@@ -348,30 +786,37 @@ export function computeSwapEdits(
  * commas and whitespace between properties are untouched — the same trick
  * as computeSwapEdits, generalised to a permutation.
  */
-export function computeReorderEdits(text: string, parentPath: string[], order: string[]): Edit[] {
-  const root = parseTree(text);
-  if (!root) return [];
-  const parent = parentPath.length ? findNodeAtLocation(root, parentPath) : root;
-  if (!parent || parent.type !== "object" || !parent.children) return [];
+export function computeReorderEdits(
+  text: string,
+  parentPath: string[],
+  order: string[],
+): Edit[] {
+  const root = parseTree(text)
+  if (!root) return []
+  const parent = parentPath.length ? findNodeAtLocation(root, parentPath) : root
+  if (!parent || parent.type !== "object" || !parent.children) return []
 
   const props = parent.children.filter(
-    (c) =>
+    c =>
       c.type === "property" &&
       typeof c.children?.[0]?.value === "string" &&
       !(c.children[0].value as string).startsWith("$"),
-  );
-  const byKey = new Map(props.map((p) => [p.children![0].value as string, p]));
-  if (order.length !== props.length || order.some((k) => !byKey.has(k))) return [];
+  )
+  const byKey = new Map(props.map(p => [p.children![0].value as string, p]))
+  if (order.length !== props.length || order.some(k => !byKey.has(k))) return []
 
-  const edits: Edit[] = [];
+  const edits: Edit[] = []
   props.forEach((slot, i) => {
-    const incoming = byKey.get(order[i])!;
-    if (incoming === slot) return;
+    const incoming = byKey.get(order[i])!
+    if (incoming === slot) return
     edits.push({
       offset: slot.offset,
       length: slot.length,
-      content: text.substring(incoming.offset, incoming.offset + incoming.length),
-    });
-  });
-  return edits;
+      content: text.substring(
+        incoming.offset,
+        incoming.offset + incoming.length,
+      ),
+    })
+  })
+  return edits
 }

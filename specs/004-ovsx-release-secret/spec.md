@@ -19,6 +19,7 @@ A merged release PR publishes the `.vsix` to Open VSX as well as the Marketplace
 ### Edge Cases
 
 - A stub passing a secret the called workflow does not declare fails the run, so this merges only after the workflows release that moves `v1` past chrisgriffin/workflows#18.
+- Until this repo has an `OVSX_PAT` repository secret, the release skips Open VSX. The secret is an Open VSX access token: sign in at open-vsx.org with an Eclipse account, accept the publisher agreement, create a token under Settings > Access Tokens, run `npx ovsx create-namespace <publisher>` once with `OVSX_PAT` set to the token, then add it under Settings > Secrets and variables > Actions here, after merge.
 
 ## Requirements
 
@@ -30,8 +31,3 @@ A merged release PR publishes the `.vsix` to Open VSX as well as the Marketplace
 - [ ] The release stub passes `OVSX_PAT` by name beside `VSCE_PAT`, never `secrets: inherit`.
 - [ ] The stub merges only after the workflows release that moves `v1` to a version declaring `OVSX_PAT`; before that, a stub passing it would fail the release run.
 - [ ] **Runnable:** `npx vitest run test/ci/workflow-stubs.test.ts -t 'create-github-release'` passes on the PR head; on `develop` it fails.
-
-## Needs from Chris
-
-1. Merge this only after the chrisgriffin/workflows release that moves `v1` past chrisgriffin/workflows#18. Where: this PR. When: after that release merges.
-2. Add the Open VSX access token as this repo's `OVSX_PAT` repository secret. Where: sign in at open-vsx.org with an Eclipse account, accept the publisher agreement, create a token under Settings > Access Tokens, run `npx ovsx create-namespace <publisher>` once with `OVSX_PAT` set to the token, then Settings > Secrets and variables > Actions here. When: after merge.

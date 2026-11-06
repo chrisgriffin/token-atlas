@@ -21,7 +21,7 @@ export type TokenType =
   | "transition"
   | "shadow"
   | "gradient"
-  | "typography";
+  | "typography"
 
 export const PRIMITIVE_TYPES: TokenType[] = [
   "color",
@@ -31,7 +31,7 @@ export const PRIMITIVE_TYPES: TokenType[] = [
   "duration",
   "cubicBezier",
   "number",
-];
+]
 
 export const COMPOSITE_TYPES: TokenType[] = [
   "strokeStyle",
@@ -40,9 +40,9 @@ export const COMPOSITE_TYPES: TokenType[] = [
   "shadow",
   "gradient",
   "typography",
-];
+]
 
-export const ALL_TYPES: TokenType[] = [...PRIMITIVE_TYPES, ...COMPOSITE_TYPES];
+export const ALL_TYPES: TokenType[] = [...PRIMITIVE_TYPES, ...COMPOSITE_TYPES]
 
 /** Named `fontWeight` values the DTCG 2025.10 spec accepts alongside numbers 1–1000. */
 export const FONT_WEIGHT_KEYWORDS = [
@@ -64,95 +64,97 @@ export const FONT_WEIGHT_KEYWORDS = [
   "heavy",
   "extra-black",
   "ultra-black",
-] as const;
+] as const
 
 /** The units a `dimension` (§8.2) and a `duration` (§8.5) may use. */
 export const UNITS: Partial<Record<TokenType, readonly string[]>> = {
   dimension: ["px", "rem"],
   duration: ["ms", "s"],
-};
+}
 
 /** A leaf token (any object carrying `$value`). */
 export interface TokenNode {
-  kind: "token";
-  name: string;
+  kind: "token"
+  name: string
   /** Full path from the document root, e.g. ["color", "brand", "primary"]. */
-  path: string[];
+  path: string[]
   /** Declared `$type`, or the type inherited from an ancestor group. */
-  type?: TokenType;
+  type?: TokenType
   /** Whether `type` was declared on this token vs. inherited. */
-  typeIsInherited: boolean;
+  typeIsInherited: boolean
   /** Raw `$value` exactly as written (may be an alias string). */
-  value: unknown;
-  description?: string;
-  deprecated?: boolean | string;
+  value: unknown
+  description?: string
+  deprecated?: boolean | string
   /** The nearest ancestor group's `$deprecated`, which applies when the token sets none. */
-  inheritedDeprecated?: boolean | string;
-  extensions?: Record<string, unknown>;
+  inheritedDeprecated?: boolean | string
+  extensions?: Record<string, unknown>
   /** Set on tokens loaded from another file (multi-file theming). */
-  sourceFile?: string;
+  sourceFile?: string
   /**
    * Set on a token a group has only through `$extends` (`extends.ts`): the
    * dotted path of the token it was copied from. It has no key in the text.
    */
-  inheritedFrom?: string;
+  inheritedFrom?: string
+  /** With `inheritedFrom`: the key on the extending group that placed the copy. */
+  inheritedVia?: "$extends" | "$ref"
   /**
    * Set on a token written with `$ref` and no `$value` (§6.6.2): `value` is
    * that `{ $ref }` object, which sits at the token's own key in the text.
    */
-  valueFromRef?: true;
+  valueFromRef?: true
 
   // --- alias resolution (populated by resolveAliases) ---
-  isAlias: boolean;
+  isAlias: boolean
   /** The reference path inside the braces, e.g. "color.brand.primary". */
-  reference?: string;
+  reference?: string
   /** Final resolved value after following the alias chain. */
-  resolvedValue?: unknown;
+  resolvedValue?: unknown
   /** Final resolved type after following the alias chain. */
-  resolvedType?: TokenType;
+  resolvedType?: TokenType
 }
 
 /** A group (any object without `$value`). Groups nest arbitrarily. */
 export interface GroupNode {
-  kind: "group";
-  name: string;
-  path: string[];
+  kind: "group"
+  name: string
+  path: string[]
   /** `$type` declared on the group, applied to descendants. */
-  type?: TokenType;
+  type?: TokenType
   /** Type descendants get from an ancestor when this group declares none. */
-  inheritedType?: TokenType;
-  description?: string;
-  deprecated?: boolean | string;
-  extensions?: Record<string, unknown>;
+  inheritedType?: TokenType
+  description?: string
+  deprecated?: boolean | string
+  extensions?: Record<string, unknown>
   /**
    * `$extends` (or a group-level `$ref`, its JSON Schema spelling): `target`
    * is the dotted path of the group it names, unset when the reference is
    * malformed; `error` is set by `expandExtends` when it cannot be followed.
    */
-  extends?: { via: "$extends" | "$ref"; target?: string; error?: string };
+  extends?: { via: "$extends" | "$ref"; target?: string; error?: string }
   /** Set on a group that exists only to hold inherited tokens: the origin group's path. */
-  inheritedFrom?: string;
-  children: Array<GroupNode | TokenNode>;
+  inheritedFrom?: string
+  children: Array<GroupNode | TokenNode>
 }
 
 export interface TokenDocumentModel {
-  root: GroupNode;
+  root: GroupNode
   /** What parsing found wrong with the text itself: syntax errors, unknown `$` keys. */
-  issues?: ValidationIssue[];
+  issues?: ValidationIssue[]
 }
 
-export type Severity = "error" | "warning";
+export type Severity = "error" | "warning"
 
 export interface ValidationIssue {
-  severity: Severity;
-  path: string[];
-  message: string;
+  severity: Severity
+  path: string[]
+  message: string
   /** Rule id, for lint findings (`token-atlas/name-case`); unset for validation. */
-  code?: string;
+  code?: string
   /** Set for a JSON syntax error, which has a position but no path. */
-  offset?: number;
+  offset?: number
 }
 
 export interface ValidationResult {
-  issues: ValidationIssue[];
+  issues: ValidationIssue[]
 }
