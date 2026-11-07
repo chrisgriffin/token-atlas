@@ -82,7 +82,7 @@ describe("the detail panel follows menu edits", () => {
     ).rejects.toThrow("tokenAtlas.noSuchCommand")
   })
 
-  it("panel follows menu: Rename Token Without Keeping Old Name sends the new name", async () => {
+  it("panel follows menu: Rename Without Alias sends the new name", async () => {
     const { doc, notices } = await openEditor()
     const renamed = await stub.commands.executeCommand(
       "tokenAtlas.renameWithoutAlias",

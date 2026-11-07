@@ -252,7 +252,7 @@
           "type": "boolean",
           "scope": "window",
           "default": false,
-          "markdownDescription": "Turn on the deprecation workflow: the `Deprecate Token…`, `Find Remaining Uses of Deprecated Token` and `Remove Deprecated Token` commands and the quick fix that moves a use to its replacement. While it is on, renaming a token keeps the old name as a deprecated alias of the new one (`Rename Token Without Keeping Old Name` skips that once), and deleting a token that is still used offers to deprecate it instead. Reading `$deprecated` (the hover and the strike-through) works either way."
+          "markdownDescription": "Turn on the deprecation workflow: the `Deprecate Token…`, `Find Remaining Uses of Deprecated Token` and `Remove Deprecated Token` commands and the quick fix that moves a use to its replacement. While it is on, renaming a token keeps the old name as a deprecated alias of the new one (`Rename Without Alias` skips that once), and deleting a token that is still used offers to deprecate it instead. Reading `$deprecated` (the hover and the strike-through) works either way."
         }
       }
     },
@@ -314,7 +314,7 @@
       },
       {
         "command": "tokenAtlas.renameWithoutAlias",
-        "title": "Rename Token Without Keeping Old Name",
+        "title": "Rename Without Alias",
         "category": "Token Atlas"
       },
       {
