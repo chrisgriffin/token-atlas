@@ -257,11 +257,26 @@ const show = async (message: string) => {
   return undefined
 }
 
+/** Every input box and quick pick shown, newest last, and what each answers. */
+export const prompts = {
+  inputBoxes: [] as unknown[],
+  quickPicks: [] as Array<{ items: unknown; options: unknown }>,
+  inputAnswer: undefined as string | undefined,
+  pickAnswer: undefined as unknown,
+}
+
 export const window = {
   showInformationMessage: show,
   showWarningMessage: show,
   showErrorMessage: show,
-  showInputBox: async () => undefined,
+  showInputBox: async (options?: unknown) => {
+    prompts.inputBoxes.push(options)
+    return prompts.inputAnswer
+  },
+  showQuickPick: async (items: unknown, options?: unknown) => {
+    prompts.quickPicks.push({ items: await items, options })
+    return prompts.pickAnswer
+  },
   activeTextEditor: undefined,
   onDidChangeActiveTextEditor: (listener: (e: unknown) => void) =>
     on("onDidChangeActiveTextEditor")(listener),
@@ -304,6 +319,10 @@ export function reset(): void {
   registered.clear()
   renameProviders.length = 0
   shown.length = 0
+  prompts.inputBoxes.length = 0
+  prompts.quickPicks.length = 0
+  prompts.inputAnswer = undefined
+  prompts.pickAnswer = undefined
   applyEditRefuses.value = false
   collections.clear()
   workspace.textDocuments.length = 0

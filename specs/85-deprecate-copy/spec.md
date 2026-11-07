@@ -13,9 +13,9 @@ Deprecate Token…'s reason box read "Why is it deprecated? (optional)", and VS 
 
 ## Success criteria
 
-- [ ] The reason box (`src/host/deprecate.ts`) keeps the title `Deprecate <token>`, has the placeholder `Deprecation reason (optional)…` and the prompt `Optional. Shown wherever the token is used.` (before: no placeholder, prompt `Why is it deprecated? (optional)`).
-- [ ] The replacement picker has the title `Replace <token> with` (before: `Deprecate <token>: replace it with`) and the placeholder `Replacement token` (before: `The token its uses should move to`).
-- [ ] **Runnable:** `npx vitest run test/host/deprecate-copy.test.ts` passes (no such file on `develop`, so it fails there), and the full gate is green: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`.
+- [x] The reason box (`src/host/deprecate.ts`) keeps the title `Deprecate <token>`, has the placeholder `Deprecation reason (optional)…` and the prompt `Optional. Shown wherever the token is used.` (before: no placeholder, prompt `Why is it deprecated? (optional)`).
+- [x] The replacement picker has the title `Replace <token> with` (before: `Deprecate <token>: replace it with`) and the placeholder `Replacement token` (before: `The token its uses should move to`).
+- [x] **Runnable:** `npx vitest run test/host/deprecate-copy.test.ts` passes (no such file on `develop`, so it fails there), and the full gate is green: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`.
 
 ## Out of scope
 
