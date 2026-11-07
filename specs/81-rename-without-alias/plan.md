@@ -8,6 +8,6 @@
 ## Surfaces touched
 
 - `package.json` `contributes.commands` title and `contributes.configuration` `tokenAtlas.deprecationWorkflow` description — a published surface; README § Commands, the deprecation bullet and the visual-editor menu paragraph; `docs/design.md`; CHANGELOG from release tooling
-- `src/host/rename.ts` — comments only
+- `src/host/rename.ts` — comments, and the input box title ("Rename <token> without an alias")
 - `test/host/panel-follows-menu.test.ts`, `test/integration/editor-menu.test.ts`, `test/integration/deprecation-workflow.test.ts` — test names only
 - none — command id unchanged, so no `when` clause, `registerCommand` or `setContext` changes; no `.vscodeignore` entry, workflow job, `dependencies`/`mainFields` or setting added

@@ -18,9 +18,9 @@ With `tokenAtlas.deprecationWorkflow` on, a rename keeps the old name as a depre
 
 ## Success criteria
 
-- [ ] `package.json` contributes `tokenAtlas.renameWithoutAlias` with the title `Rename Without Alias` (category Token Atlas), and no contributed title or setting description says "Rename Token Without Keeping Old Name".
-- [ ] README, `docs/design.md`, `src/host/rename.ts` comments and the test names call the command `Rename Without Alias`.
-- [ ] **Runnable:** `npx vitest run test/ci/manifest-couplings.test.ts` passes with a test that the command's title is `Rename Without Alias` (it fails on `develop@66deff7`, where the title is the old one), and the full gate is green: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`.
+- [x] `package.json` contributes `tokenAtlas.renameWithoutAlias` with the title `Rename Without Alias` (category Token Atlas), and no contributed title or setting description says "Rename Token Without Keeping Old Name".
+- [x] README, `docs/design.md`, `src/host/rename.ts` comments and the test names call the command `Rename Without Alias`.
+- [x] **Runnable:** `npx vitest run test/ci/manifest-couplings.test.ts` passes with a test that the command's title is `Rename Without Alias` (it fails on `develop@66deff7`, where the title is the old one), and the full gate is green: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`.
 
 ## Out of scope
 

@@ -96,7 +96,7 @@ sent); rename and delete go through
 `tokenEditorProvider.ts`'s intent queue. When no editor on the file is left
 to take the intent by the time either is confirmed, it says so and sends
 nothing (`TokenEditorProvider.canReceive`, the state `receive` reads). Rename
-Token Without Keeping Old Name and Remove Deprecated Token, which do not go
+Without Alias and Remove Deprecated Token, which do not go
 through the queue, tell the open editor through `TokenEditorProvider.notify`,
 so the detail panel follows the rename or closes only on a delete that changed
 the file; F2 in the text editor tells it the same way, once its edit has
@@ -121,7 +121,7 @@ rewrite, which also re-spells the token's CSS/Sass/Less/JS/TS usages via
 generated files; with `tokenAtlas.deprecationWorkflow` on it keeps the old
 name as a deprecated alias via `core/serialize.ts`
 `computeAliasRenameEdits`, offers Remove alias in the notification after,
-and backs the Rename Token Without Keeping Old Name command),
+and backs the Rename Without Alias command),
 `tokenEditorProvider.ts` (the Custom Text Editor provider and message bridge),
 `tokenTree.ts` (the Design Tokens panel — every token file in the workspace as
 a root, expanding into its groups and tokens),
@@ -258,7 +258,7 @@ right.
 - `init` and `update`, both carrying the same payload: `{ uri, model, validation, externalTokens, settings, scope, selected?, columnWidths, modes? }`. `uri` is the document the right-click menu's commands act on. `modes` is set only when the file is a mode of a resolver modifier: its contexts, the one it owns, the active one, and each context's values. `init` is the first push; `update` is every later one, including a change typed into the raw JSON in a split pane — so reconciling an external edit is the same message as any other, not a separate one.
 - `error { message }`
 - `scope { path, select? }` — the Tokens panel picked a group (or a token, via `select`)
-- `renamed { path, newName }` — a rename landed (a `renameNode` intent, or the Rename Token Without Keeping Old Name command, from the text editor or a row's menu); a detail panel open on `path` (or inside it) follows the node to its new name
+- `renamed { path, newName }` — a rename landed (a `renameNode` intent, or the Rename Without Alias command, from the text editor or a row's menu); a detail panel open on `path` (or inside it) follows the node to its new name
 - `deleted { path }` — a delete landed (a `deleteNode` intent, or the Remove Deprecated Token command, from either editor); a detail panel open on `path` (or inside it) closes
 
 There is no `capabilities` handshake and no separate `validation` message —
