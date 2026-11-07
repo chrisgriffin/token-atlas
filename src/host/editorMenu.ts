@@ -11,18 +11,27 @@
  * the panel's button wants a second click, which a menu has no room for.
  */
 import * as vscode from "vscode"
-import { applyEdits } from "jsonc-parser"
+import { applyEdits, getLocation } from "jsonc-parser"
 import {
   computeDeleteEdits,
   countTokens,
   expandExtends,
   indexTokens,
   parseTokens,
+  resolveAliases,
   type TokenNode,
 } from "../core"
+import type { TokenReference } from "../shared/protocol"
 import { TokenEditorProvider } from "./tokenEditorProvider"
 import { findGroup } from "./tokenTree"
-import { externalIndexFor, keyRange, rowTarget } from "./workspaceIndex"
+import {
+  externalIndexFor,
+  findTokenFiles,
+  isTokenDocument,
+  keyRange,
+  localScopeFor,
+  rowTarget,
+} from "./workspaceIndex"
 
 /** The row a menu command acts on; run from anywhere else, it says it needs one. */
 function noRow(arg: unknown): { uri: vscode.Uri; path: string[] } | undefined {
@@ -66,7 +75,11 @@ async function keyPosition(uri: vscode.Uri, path: string[]) {
   return range && { document, range, at: range.start.translate(0, 1) }
 }
 
-/** The references Shift+F12 on the key finds, in the references view. Returns them. */
+/**
+ * The references Shift+F12 on the key finds, listed in the row's own detail
+ * panel (spec 83): the peek only works in a text editor, so it would swap the
+ * file out of the visual editor. Returns them.
+ */
 async function findReferences(arg?: unknown) {
   const row = noRow(arg)
   const key = row && (await keyPosition(row.uri, row.path))
@@ -77,21 +90,89 @@ async function findReferences(arg?: unknown) {
       row.uri,
       key.at,
     )) ?? []
-  if (!found.length) {
-    void vscode.window.showInformationMessage(
-      `Nothing references {${row.path.join(".")}}.`,
-    )
-    return found
-  }
-  // The peek opens the file as text: marked first, as Show in JSON is.
-  TokenEditorProvider.preferText(row.uri)
-  void vscode.commands.executeCommand(
-    "editor.action.showReferences",
-    row.uri,
-    key.at,
-    found,
-  )
+  const references = await asReferences(found, key.document)
+  if (editorOpen(row, "looked up"))
+    TokenEditorProvider.notify(row.uri, {
+      type: "references",
+      path: row.path,
+      references,
+    })
   return found
+}
+
+/**
+ * The found locations as the panel lists them. One in a token file is the key
+ * of the token whose value uses the reference (`provideReferences` returns
+ * `memberRange(...).selection`), so the path one character in names it, and
+ * that token's value is resolved here, from its own file: a path alone cannot
+ * pick it out in the webview, since two files may hold the same path
+ * (invariant 4). Token files are told apart by the workspace scan's text,
+ * never by opening each location: code uses can run to hundreds of files,
+ * and `codeUsages` reads them without opening them for the same reason.
+ */
+async function asReferences(
+  found: vscode.Location[],
+  current: vscode.TextDocument,
+): Promise<TokenReference[]> {
+  const tokenFiles = new Map(
+    (await findTokenFiles()).map(f => [f.uri.toString(), f.text]),
+  )
+  if (isTokenDocument(current))
+    tokenFiles.set(current.uri.toString(), current.getText())
+  const resolved = new Map<string, Map<string, TokenNode>>()
+  const tokensOf = async (uri: vscode.Uri, text: string) => {
+    const key = uri.toString()
+    let tokens = resolved.get(key)
+    if (!tokens) {
+      tokens = resolveAliases(
+        parseTokens(text),
+        await externalIndexFor(uri),
+        localScopeFor(uri),
+      )
+      resolved.set(key, tokens)
+    }
+    return tokens
+  }
+  const out: TokenReference[] = []
+  for (const location of found) {
+    const { start } = location.range
+    const reference: TokenReference = {
+      uri: location.uri.toString(),
+      file: vscode.workspace.asRelativePath(location.uri),
+      line: start.line + 1,
+      character: start.character,
+    }
+    const text = tokenFiles.get(reference.uri)
+    const path =
+      text === undefined
+        ? []
+        : getLocation(text, offsetOf(text, start) + 1).path.map(String)
+    if (!path.length) {
+      out.push(reference)
+      continue
+    }
+    const token = (await tokensOf(location.uri, text!)).get(path.join("."))
+    out.push({
+      ...reference,
+      path,
+      ...(token && {
+        value: token.resolvedValue,
+        type: token.resolvedType ?? token.type,
+      }),
+    })
+  }
+  return out
+}
+
+/** The offset of a line and column in `text`, as `TextDocument.offsetAt` gives it. */
+function offsetOf(text: string, at: vscode.Position): number {
+  let offset = 0
+  for (let line = 0; line < at.line; line++) {
+    const next = text.indexOf("\n", offset)
+    if (next === -1) return text.length
+    offset = next + 1
+  }
+  return offset + at.character
 }
 
 /**

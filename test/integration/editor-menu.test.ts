@@ -171,39 +171,34 @@ describe("The visual editor's right-click menu", () => {
     )
   })
 
-  it("Find All References keeps its text tab under defaultEditor: visual", async () => {
-    await config().update(
-      "defaultEditor",
-      "visual",
-      vscode.ConfigurationTarget.Global,
-    )
-    try {
-      await openEditor()
-      await waitFor(async () => {
-        const locations = await vscode.commands.executeCommand<
-          vscode.Location[]
-        >("tokenAtlas.findReferences", row(["menu", "ink"]))
-        return locations?.length ? locations : undefined
-      }, "a reference to menu.ink")
-      const textTab = () =>
-        vscode.window.tabGroups.all
-          .flatMap(g => g.tabs)
-          .some(
-            t =>
-              t.input instanceof vscode.TabInputText &&
-              t.input.uri.toString() === tokens.toString(),
-          )
-      await waitFor(textTab, "the references peek's text tab")
-      // Long enough for the defaultEditor swap to have closed it.
-      await new Promise(r => setTimeout(r, 1500))
-      assert.ok(textTab(), "the text tab was swapped back to the visual editor")
-    } finally {
-      await config().update(
-        "defaultEditor",
-        undefined,
-        vscode.ConfigurationTarget.Global,
+  it("Find All References stays in the visual editor", async () => {
+    await openEditor()
+    await waitFor(async () => {
+      const locations = await vscode.commands.executeCommand<vscode.Location[]>(
+        "tokenAtlas.findReferences",
+        row(["menu", "ink"]),
       )
-    }
+      return locations?.length ? locations : undefined
+    }, "a reference to menu.ink")
+    // Long enough for a peek, which needs a text editor, to have opened one.
+    await new Promise(r => setTimeout(r, 1500))
+    const tabs = vscode.window.tabGroups.all.flatMap(g => g.tabs)
+    assert.ok(
+      !tabs.some(
+        t =>
+          t.input instanceof vscode.TabInputText &&
+          t.input.uri.toString() === tokens.toString(),
+      ),
+      "a text tab opened on the token file",
+    )
+    assert.ok(
+      tabs.some(
+        t =>
+          t.input instanceof vscode.TabInputCustom &&
+          t.input.uri.toString() === tokens.toString(),
+      ),
+      "the visual editor closed",
+    )
   })
 
   it("Show in JSON opens the text with the key selected", async () => {

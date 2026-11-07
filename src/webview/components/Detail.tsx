@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
 import type { TokenNode, TokenType, ValidationIssue } from "../../core/types"
+import type { TokenReference } from "../../shared/protocol"
 import { getEditor } from "../editors/registry"
 import { summarize } from "../lib/css"
 import { AliasPicker } from "./AliasPicker"
@@ -36,6 +37,9 @@ interface DetailProps {
     replacement?: string,
   ) => void
   onChangeType: (type: TokenType | undefined, starterValue?: unknown) => void
+  /** Find All References' answer for this token, when it was asked (spec 83). */
+  references?: TokenReference[]
+  onOpenReference?: (reference: TokenReference) => void
 }
 
 export function Detail({
@@ -52,6 +56,8 @@ export function Detail({
   onOpenPath,
   onChangeDeprecated,
   onChangeType,
+  references,
+  onOpenReference,
 }: DetailProps) {
   // The token is a value or a reference, never both — so there is one Value
   // section showing whichever it is, and a link button that swaps between them.
@@ -229,6 +235,14 @@ export function Detail({
         )}
       </Section>
 
+      {references && (
+        <ReferencedBy
+          token={token}
+          references={references}
+          onOpen={reference => onOpenReference?.(reference)}
+        />
+      )}
+
       <Section label="Description">
         <TextInput
           key={token.path.join(".")}
@@ -355,5 +369,64 @@ function AdvancedJson({
         <RawJsonEditor value={value} onChange={onChange} />
       </div>
     </details>
+  )
+}
+
+/**
+ * Find All References in the panel (spec 83): the tokens whose values use
+ * this one, each with its value, then its uses in code by file and line.
+ */
+function ReferencedBy({
+  token,
+  references,
+  onOpen,
+}: {
+  token: TokenNode
+  references: TokenReference[]
+  onOpen: (reference: TokenReference) => void
+}) {
+  const inTokens = references.filter(r => r.path)
+  const inCode = references.filter(r => !r.path)
+  return (
+    <Section label="Referenced by">
+      <div className="references">
+        {references.length === 0 && (
+          <p className="none">
+            Nothing references {`{${token.path.join(".")}}`}.
+          </p>
+        )}
+        {inTokens.length > 0 && <div className="eyebrow">Tokens</div>}
+        {inTokens.map(r => {
+          const name = r.path!.join(".")
+          return (
+            <button
+              type="button"
+              key={`${r.uri} ${name}`}
+              className="row reference token"
+              title={`Open ${name}`}
+              onClick={() => onOpen(r)}
+            >
+              {/* The host resolved it in the token's own file: a path
+                  alone could name a same-path token in another one. */}
+              {r.value !== undefined && <Glyph value={r.value} type={r.type} />}
+              <code>{name}</code>
+              <span className="file">{r.file}</span>
+            </button>
+          )
+        })}
+        {inCode.length > 0 && <div className="eyebrow">Code</div>}
+        {inCode.map(r => (
+          <button
+            type="button"
+            key={`${r.uri}:${r.line}:${r.character}`}
+            className="row reference code"
+            title={`Open ${r.file}:${r.line}`}
+            onClick={() => onOpen(r)}
+          >
+            <code>{`${r.file}:${r.line}`}</code>
+          </button>
+        ))}
+      </div>
+    </Section>
   )
 }

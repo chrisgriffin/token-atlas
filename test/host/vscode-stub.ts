@@ -68,6 +68,9 @@ export class Position {
     readonly line: number,
     readonly character: number,
   ) {}
+  translate(lines = 0, characters = 0) {
+    return new Position(this.line + lines, this.character + characters)
+  }
 }
 
 export class Range {
@@ -257,6 +260,24 @@ const show = async (message: string) => {
   return undefined
 }
 
+/** Every `showTextDocument`, newest last: the document and its options. */
+export const textEditorsShown: Array<{ uri: Uri; options: unknown }> = []
+
+/** A text tab, as `window.tabGroups` lists it. */
+export class TabInputText {
+  constructor(readonly uri: Uri) {}
+}
+export class TabInputCustom {
+  constructor(
+    readonly uri: Uri,
+    readonly viewType: string,
+  ) {}
+}
+type Tab = { input: unknown; isDirty: boolean }
+/** The active group's tabs, and every tab `tabGroups.close` closed. */
+export const tabs: Tab[] = []
+export const closedTabs: Tab[] = []
+
 /** Every input box and quick pick shown, newest last, and what each answers. */
 export const prompts = {
   inputBoxes: [] as unknown[],
@@ -266,7 +287,22 @@ export const prompts = {
 }
 
 export const window = {
+  tabGroups: {
+    activeTabGroup: { tabs },
+    async close(closing: Tab | Tab[]) {
+      for (const tab of [closing].flat()) {
+        closedTabs.push(tab)
+        const i = tabs.indexOf(tab)
+        if (i !== -1) tabs.splice(i, 1)
+      }
+      return true
+    },
+  },
   showInformationMessage: show,
+  async showTextDocument(doc: { uri: Uri }, options?: unknown) {
+    textEditorsShown.push({ uri: doc.uri, options })
+    return { document: doc }
+  },
   showWarningMessage: show,
   showErrorMessage: show,
   showInputBox: async (options?: unknown) => {
@@ -283,6 +319,8 @@ export const window = {
 }
 
 export const disk = new Map<string, string>()
+/** Every `workspace.openTextDocument`, by path, newest last. */
+export const opened: string[] = []
 export const stats = {
   findFiles: 0,
   readFile: 0,
@@ -319,6 +357,10 @@ export function reset(): void {
   registered.clear()
   renameProviders.length = 0
   shown.length = 0
+  textEditorsShown.length = 0
+  tabs.length = 0
+  closedTabs.length = 0
+  opened.length = 0
   prompts.inputBoxes.length = 0
   prompts.quickPicks.length = 0
   prompts.inputAnswer = undefined
@@ -388,6 +430,7 @@ export const workspace = {
     },
   },
   async openTextDocument(uri: Uri) {
+    opened.push(uri.path)
     const open = workspace.textDocuments.find(
       d => d.uri.toString() === uri.toString(),
     )

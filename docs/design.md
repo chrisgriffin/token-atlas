@@ -92,7 +92,9 @@ inherit named apart,
 and refuses a row with no key in the file, saying it is inherited
 through `$extends` or `$ref`, no longer in the file, or not found in a file that
 does not parse (there, a key the tolerant delete still finds is asked about and
-sent); rename and delete go through
+sent); Find All References sends what the reference provider finds at the
+key to the open editor as one `references` message, with no peek, so the file
+stays in the visual editor; rename and delete go through
 `tokenEditorProvider.ts`'s intent queue. When no editor on the file is left
 to take the intent by the time either is confirmed, it says so and sends
 nothing (`TokenEditorProvider.canReceive`, the state `receive` reads). Rename
@@ -247,6 +249,7 @@ right.
 - `deleteNode { path }` · `renameNode { path, newName }`
 - `moveNode { path, direction }` — the detail panel's move up/down · `reorderNodes { parentPath, order[] }` — the full new order under `parentPath`, from a drag-and-drop
 - `openAsText` — hand the file back to the text editor
+- `openReference { reference }` — open a Referenced by entry in another file: a token file in the Token Editor on that token, a code file as text at the use
 - `setScope { path }` — the table's group scope changed in the webview
 - `setColumnWidths { widths }` — a table column was resized; the host saves the widths for every token file
 - `setMode { context }` — make this context of the file's resolver modifier the active resolution
@@ -260,6 +263,7 @@ right.
 - `scope { path, select? }` — the Tokens panel picked a group (or a token, via `select`)
 - `renamed { path, newName }` — a rename landed (a `renameNode` intent, or the Rename Without Alias command, from the text editor or a row's menu); a detail panel open on `path` (or inside it) follows the node to its new name
 - `deleted { path }` — a delete landed (a `deleteNode` intent, or the Remove Deprecated Token command, from either editor); a detail panel open on `path` (or inside it) closes
+- `references { path, references }` — Find All References from a row's menu: the detail panel opens on `path` with a Referenced by section, each entry a `TokenReference` (`uri`, `file`, `line`, `character`, and in a token file the referencing token's `path` and its resolved `value` and `type`)
 
 There is no `capabilities` handshake and no separate `validation` message —
 `validation` rides `init` and `update`. There is no `$extensions` intent either:
