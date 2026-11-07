@@ -452,6 +452,36 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
           // once per editor.
           webviewPanel.dispose()
           break
+        case "openReference": {
+          // A Referenced by entry (spec 83): a token in another token file
+          // opens there in the Token Editor on it, as the Tokens panel's
+          // reveal does; a use in code opens as text at the use.
+          const { reference } = msg
+          const target = vscode.Uri.parse(reference.uri)
+          if (reference.path) {
+            if (!TokenEditorProvider.isOpen(target))
+              await vscode.commands.executeCommand(
+                "vscode.openWith",
+                target,
+                TokenEditorProvider.viewType,
+              )
+            TokenEditorProvider.scopeTo(
+              target,
+              reference.path.slice(0, -1),
+              reference.path,
+            )
+          } else {
+            const at = new vscode.Position(
+              reference.line - 1,
+              reference.character,
+            )
+            await vscode.window.showTextDocument(
+              await vscode.workspace.openTextDocument(target),
+              { selection: new vscode.Range(at, at) },
+            )
+          }
+          break
+        }
       }
     }
   }

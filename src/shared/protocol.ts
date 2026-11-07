@@ -50,6 +50,21 @@ export type WebviewToHost =
   | { type: "setModeValue"; context: string; path: string[]; value: unknown }
   /** The toolbar's view toggle; saved as `tokenAtlas.modeView`. */
   | { type: "setModeView"; view: ModeView }
+  /** Open a Referenced by entry in another file (spec 83). */
+  | { type: "openReference"; reference: TokenReference }
+
+/** One place Find All References found a token used (spec 83). */
+export interface TokenReference {
+  /** The file it is in. */
+  uri: string
+  /** That file, relative to the workspace, as the panel shows it. */
+  file: string
+  /** 1-based line, and the 0-based column the cursor goes to. */
+  line: number
+  character: number
+  /** In a token file, the token whose `$value` uses it; unset in code. */
+  path?: string[]
+}
 
 export type ModeView = "single" | "sideBySide"
 
@@ -113,3 +128,5 @@ export type HostToWebview =
   | { type: "renamed"; path: string[]; newName: string }
   /** A delete landed: a detail panel on `path` (or inside it) closes. */
   | { type: "deleted"; path: string[] }
+  /** Find All References on `path`: open its detail panel and list them. */
+  | { type: "references"; path: string[]; references: TokenReference[] }

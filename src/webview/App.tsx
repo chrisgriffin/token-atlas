@@ -4,6 +4,7 @@ import type {
   HostToWebview,
   Modes,
   ModeView,
+  TokenReference,
 } from "../shared/protocol"
 import type {
   GroupNode,
@@ -59,6 +60,11 @@ export function App() {
   const [columnWidths, setColumnWidths] = useState<ColumnWidths>({})
   const [modes, setModes] = useState<Modes | undefined>()
   const [modeView, setModeView] = useState<ModeView>("single")
+  // The last Find All References answer, for the token it was asked on.
+  const [references, setReferences] = useState<{
+    key: string
+    list: TokenReference[]
+  } | null>(null)
   // Names + Token and + Group have posted that no model has shown yet, by
   // parent path, so a second click before the host answers picks a new one.
   const pendingNames = useRef(new Map<string, Set<string>>())
@@ -107,6 +113,10 @@ export function App() {
             msg.newName,
             ...p.slice(msg.path.length),
           ])
+      } else if (msg.type === "references") {
+        setReferences({ key: msg.path.join("."), list: msg.references })
+        setSelectedPath(msg.path)
+        setPanelOpen(true)
       } else if (msg.type === "error") {
         setError(msg.message)
       }
@@ -422,6 +432,17 @@ export function App() {
               issues={issuesByPath.get(selected.path.join("."))}
               allTokens={allTokens}
               externalTokens={externalTokens}
+              references={
+                references?.key === selected.path.join(".")
+                  ? references.list
+                  : undefined
+              }
+              // This file's tokens open here, as a breadcrumb does.
+              onOpenReference={reference =>
+                reference.path && reference.uri === uri
+                  ? open(reference.path)
+                  : post({ type: "openReference", reference })
+              }
               onClose={() => setPanelOpen(false)}
               onOpenPath={open}
               onChangeValue={value =>

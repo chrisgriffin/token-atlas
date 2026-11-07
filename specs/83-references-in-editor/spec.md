@@ -22,11 +22,11 @@ Find All References on the visual editor's right-click menu ran VS Code's refere
 
 ## Success criteria
 
-- [ ] Find All References from a token row's right-click menu opens that token's detail panel with a Referenced by section, and opens no text editor on the token file.
-- [ ] The section lists every location Shift+F12 on the token's key finds: references from token files under Tokens, by token path, with the referencing token's value; every other location under Code, by file and line. With none, it says nothing references the token.
-- [ ] Clicking a token in the same file opens its detail panel; a token in another token file opens that file in the Token Editor with that token's detail panel open; a code use opens that file as text with the cursor on the use.
-- [ ] README describes the section.
-- [ ] **Runnable:** `npx vitest run test/host/editor-references.test.ts test/webview/references.test.tsx` passes (neither file exists on `develop@66deff7`, so it fails there), and the full gate is green: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`.
+- [x] Find All References from a token row's right-click menu opens that token's detail panel with a Referenced by section, and opens no text editor on the token file.
+- [x] The section lists every location Shift+F12 on the token's key finds: references from token files under Tokens, by token path, with the referencing token's value; every other location under Code, by file and line. With none, it says nothing references the token.
+- [x] Clicking a token in the same file opens its detail panel; a token in another token file opens that file in the Token Editor with that token's detail panel open; a code use opens that file as text with the cursor on the use.
+- [x] README describes the section.
+- [x] **Runnable:** `npx vitest run test/host/editor-references.test.ts test/webview/references.test.tsx` passes (neither file exists on `develop@66deff7`, so it fails there), and the full gate is green: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`.
 
 ## Out of scope
 

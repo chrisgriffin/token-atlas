@@ -68,6 +68,9 @@ export class Position {
     readonly line: number,
     readonly character: number,
   ) {}
+  translate(lines = 0, characters = 0) {
+    return new Position(this.line + lines, this.character + characters)
+  }
 }
 
 export class Range {
@@ -257,8 +260,15 @@ const show = async (message: string) => {
   return undefined
 }
 
+/** Every `showTextDocument`, newest last: the document and its options. */
+export const textEditorsShown: Array<{ uri: Uri; options: unknown }> = []
+
 export const window = {
   showInformationMessage: show,
+  async showTextDocument(doc: { uri: Uri }, options?: unknown) {
+    textEditorsShown.push({ uri: doc.uri, options })
+    return { document: doc }
+  },
   showWarningMessage: show,
   showErrorMessage: show,
   showInputBox: async () => undefined,
@@ -304,6 +314,7 @@ export function reset(): void {
   registered.clear()
   renameProviders.length = 0
   shown.length = 0
+  textEditorsShown.length = 0
   applyEditRefuses.value = false
   collections.clear()
   workspace.textDocuments.length = 0

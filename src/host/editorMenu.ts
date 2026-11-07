@@ -11,7 +11,7 @@
  * the panel's button wants a second click, which a menu has no room for.
  */
 import * as vscode from "vscode"
-import { applyEdits } from "jsonc-parser"
+import { applyEdits, getLocation } from "jsonc-parser"
 import {
   computeDeleteEdits,
   countTokens,
@@ -20,9 +20,15 @@ import {
   parseTokens,
   type TokenNode,
 } from "../core"
+import type { TokenReference } from "../shared/protocol"
 import { TokenEditorProvider } from "./tokenEditorProvider"
 import { findGroup } from "./tokenTree"
-import { externalIndexFor, keyRange, rowTarget } from "./workspaceIndex"
+import {
+  externalIndexFor,
+  isTokenDocument,
+  keyRange,
+  rowTarget,
+} from "./workspaceIndex"
 
 /** The row a menu command acts on; run from anywhere else, it says it needs one. */
 function noRow(arg: unknown): { uri: vscode.Uri; path: string[] } | undefined {
@@ -66,7 +72,11 @@ async function keyPosition(uri: vscode.Uri, path: string[]) {
   return range && { document, range, at: range.start.translate(0, 1) }
 }
 
-/** The references Shift+F12 on the key finds, in the references view. Returns them. */
+/**
+ * The references Shift+F12 on the key finds, listed in the row's own detail
+ * panel (spec 83): the peek only works in a text editor, so it would swap the
+ * file out of the visual editor. Returns them.
+ */
 async function findReferences(arg?: unknown) {
   const row = noRow(arg)
   const key = row && (await keyPosition(row.uri, row.path))
@@ -77,21 +87,37 @@ async function findReferences(arg?: unknown) {
       row.uri,
       key.at,
     )) ?? []
-  if (!found.length) {
-    void vscode.window.showInformationMessage(
-      `Nothing references {${row.path.join(".")}}.`,
-    )
-    return found
-  }
-  // The peek opens the file as text: marked first, as Show in JSON is.
-  TokenEditorProvider.preferText(row.uri)
-  void vscode.commands.executeCommand(
-    "editor.action.showReferences",
-    row.uri,
-    key.at,
-    found,
-  )
+  const references = await Promise.all(found.map(asReference))
+  if (editorOpen(row, "looked up"))
+    TokenEditorProvider.notify(row.uri, {
+      type: "references",
+      path: row.path,
+      references,
+    })
   return found
+}
+
+/**
+ * A found location as the panel lists it. In a token file it is the key of
+ * the token whose value uses the reference (`provideReferences` returns
+ * `memberRange(...).selection`), so the path one character in names it.
+ */
+async function asReference(location: vscode.Location): Promise<TokenReference> {
+  const { start } = location.range
+  const reference: TokenReference = {
+    uri: location.uri.toString(),
+    file: vscode.workspace.asRelativePath(location.uri),
+    line: start.line + 1,
+    character: start.character,
+  }
+  try {
+    const doc = await vscode.workspace.openTextDocument(location.uri)
+    if (!isTokenDocument(doc)) return reference
+    const path = getLocation(doc.getText(), doc.offsetAt(start) + 1).path
+    return path.length ? { ...reference, path: path.map(String) } : reference
+  } catch {
+    return reference
+  }
 }
 
 /**
