@@ -109,6 +109,13 @@ describe("package.json ↔ src identifiers", () => {
     expect(missing).toEqual([])
   })
 
+  it("titles the rename that skips the alias Rename Without Alias", () => {
+    const command = pkg.contributes.commands.find(
+      (c: { command: string }) => c.command === "tokenAtlas.renameWithoutAlias",
+    )
+    expect(command?.title).toBe("Rename Without Alias")
+  })
+
   // The visual editor's right-click menu (spec 022): its `when` clauses read
   // the `data-vscode-context` the webview sets, a string on each side.
   describe("the visual editor's right-click menu", () => {

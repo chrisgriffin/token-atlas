@@ -11,7 +11,7 @@
  * With `tokenAtlas.deprecationWorkflow` on (spec 019) the old name stays, as
  * a deprecated alias of the new one, and every `$deprecated` replacement that
  * named it moves too; a notification offers to remove the alias, and
- * `Rename Token Without Keeping Old Name` renames as the setting being off does.
+ * `Rename Without Alias` renames as the setting being off does.
  */
 import * as vscode from "vscode"
 import { getLocation } from "jsonc-parser"
@@ -438,7 +438,7 @@ class TokenRenameProvider implements vscode.RenameProvider {
 }
 
 /**
- * `Rename Token Without Keeping Old Name`: rename as the setting being off
+ * `Rename Without Alias`: rename as the setting being off
  * does, leaving no alias. The token under the cursor, the visual editor row
  * it was right-clicked on, or `uri` and `path` as `test/integration/` passes them, with `newName` asked for unless given.
  * Offered only while the deprecation workflow is on: off, F2 already does it.
@@ -488,7 +488,7 @@ async function renameWithoutAlias(
     typeof newName === "string"
       ? newName
       : await vscode.window.showInputBox({
-          title: `Rename ${target.path.join(".")} without keeping its old name`,
+          title: `Rename ${target.path.join(".")} without an alias`,
           value: target.path[target.path.length - 1],
         })
   if (name === undefined) return false

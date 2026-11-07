@@ -376,7 +376,7 @@ describe("The visual editor's right-click menu", () => {
       assert.ok(!(await textOf()).includes('"old"'))
     })
 
-    it("Rename Token Without Keeping Old Name leaves no alias", async () => {
+    it("Rename Without Alias leaves no alias", async () => {
       assert.equal(
         await vscode.commands.executeCommand(
           "tokenAtlas.renameWithoutAlias",

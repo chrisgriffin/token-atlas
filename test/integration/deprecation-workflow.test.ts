@@ -2,7 +2,7 @@
  * The deprecation workflow setting, inside a real VS Code (spec 019, #36):
  * off, rename and delete behave as they always have and the deprecation
  * commands refuse; on, rename keeps the old name as a deprecated alias and
- * says so, `Rename Token Without Keeping Old Name` and Remove alias undo
+ * says so, `Rename Without Alias` and Remove alias undo
  * that, and deleting a token that is still used offers to deprecate it.
  *
  * The suite writes its own files and removes them after, as
@@ -295,7 +295,7 @@ describe("The deprecation workflow setting", () => {
     assert.ok(doc.getText().includes('"button": { "$value": "{wf.muted}" }'))
   })
 
-  it("on: Rename Token Without Keeping Old Name leaves no alias", async () => {
+  it("on: Rename Without Alias leaves no alias", async () => {
     const renamed = await vscode.commands.executeCommand<boolean>(
       "tokenAtlas.renameWithoutAlias",
       tokens,
