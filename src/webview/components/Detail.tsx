@@ -239,7 +239,6 @@ export function Detail({
         <ReferencedBy
           token={token}
           references={references}
-          tokens={referenceCandidates}
           onOpen={reference => onOpenReference?.(reference)}
         />
       )}
@@ -380,21 +379,14 @@ function AdvancedJson({
 function ReferencedBy({
   token,
   references,
-  tokens,
   onOpen,
 }: {
   token: TokenNode
   references: TokenReference[]
-  /** This file's tokens, then other files', to draw each one's value. */
-  tokens: TokenNode[]
   onOpen: (reference: TokenReference) => void
 }) {
   const inTokens = references.filter(r => r.path)
   const inCode = references.filter(r => !r.path)
-  const find = (path: string[]) => {
-    const key = path.join(".")
-    return tokens.find(t => t.path.join(".") === key)
-  }
   return (
     <Section label="Referenced by">
       <div className="references">
@@ -406,7 +398,6 @@ function ReferencedBy({
         {inTokens.length > 0 && <div className="eyebrow">Tokens</div>}
         {inTokens.map(r => {
           const name = r.path!.join(".")
-          const t = find(r.path!)
           return (
             <button
               type="button"
@@ -415,12 +406,9 @@ function ReferencedBy({
               title={`Open ${name}`}
               onClick={() => onOpen(r)}
             >
-              {t && (
-                <Glyph
-                  value={t.resolvedValue}
-                  type={t.resolvedType ?? t.type}
-                />
-              )}
+              {/* The host resolved it in the token's own file: a path
+                  alone could name a same-path token in another one. */}
+              {r.value !== undefined && <Glyph value={r.value} type={r.type} />}
               <code>{name}</code>
               <span className="file">{r.file}</span>
             </button>

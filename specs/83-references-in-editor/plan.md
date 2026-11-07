@@ -3,9 +3,9 @@
 ## Technical context
 
 - `src/host/editorMenu.ts` `findReferences` runs `vscode.executeReferenceProvider` at the key, then `editor.action.showReferences` after `TokenEditorProvider.preferText`. The peek and `preferText` go; the locations are turned into `TokenReference`s and sent with `TokenEditorProvider.notify`.
-- Classifying a location: open its document; when `isTokenDocument`, the location's range is the referencing token's key (`memberRange(...).selection` in `languageFeatures.ts` `provideReferences`), so `jsonc-parser`'s `getLocation` one character in gives its path. Anything else is a code use.
+- Classifying a location: look its URI up in the workspace scan's token files (`findTokenFiles`, plus the open file), never opening it, since code uses can run to hundreds of files; in a token file the location's range is the referencing token's key (`memberRange(...).selection` in `languageFeatures.ts` `provideReferences`), so `jsonc-parser`'s `getLocation` one character in gives its path. Anything else is a code use.
 - Opening another token file on a token is what `tokenAtlas.revealToken` does: `openInVisualEditor(uri)` then `TokenEditorProvider.scopeTo(uri, parent, path)`.
-- The webview keeps the last `references` message; `Detail` renders it when its path is the panel's token. A referencing token's value is drawn with `Glyph`, looked up in the file's tokens and `externalTokens`.
+- The webview keeps the last `references` message; `Detail` renders it when its path is the panel's token. The list is cleared when the panel's selection moves to another token. A referencing token's value is resolved by the host in its own file (`resolveAliases` with that file's external index) and sent on the entry as `value` and `type`, since a path alone cannot tell two files' same-path tokens apart; `Detail` draws it with `Glyph`. A failed `openReference` is reported with `showErrorMessage` inside its handler, so the intent queue's catch does not replace the table.
 
 ## Design decisions
 

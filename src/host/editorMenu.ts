@@ -18,6 +18,7 @@ import {
   expandExtends,
   indexTokens,
   parseTokens,
+  resolveAliases,
   type TokenNode,
 } from "../core"
 import type { TokenReference } from "../shared/protocol"
@@ -25,8 +26,10 @@ import { TokenEditorProvider } from "./tokenEditorProvider"
 import { findGroup } from "./tokenTree"
 import {
   externalIndexFor,
+  findTokenFiles,
   isTokenDocument,
   keyRange,
+  localScopeFor,
   rowTarget,
 } from "./workspaceIndex"
 
@@ -87,7 +90,7 @@ async function findReferences(arg?: unknown) {
       row.uri,
       key.at,
     )) ?? []
-  const references = await Promise.all(found.map(asReference))
+  const references = await asReferences(found, key.document)
   if (editorOpen(row, "looked up"))
     TokenEditorProvider.notify(row.uri, {
       type: "references",
@@ -98,26 +101,78 @@ async function findReferences(arg?: unknown) {
 }
 
 /**
- * A found location as the panel lists it. In a token file it is the key of
- * the token whose value uses the reference (`provideReferences` returns
- * `memberRange(...).selection`), so the path one character in names it.
+ * The found locations as the panel lists them. One in a token file is the key
+ * of the token whose value uses the reference (`provideReferences` returns
+ * `memberRange(...).selection`), so the path one character in names it, and
+ * that token's value is resolved here, from its own file: a path alone cannot
+ * pick it out in the webview, since two files may hold the same path
+ * (invariant 4). Token files are told apart by the workspace scan's text,
+ * never by opening each location: code uses can run to hundreds of files,
+ * and `codeUsages` reads them without opening them for the same reason.
  */
-async function asReference(location: vscode.Location): Promise<TokenReference> {
-  const { start } = location.range
-  const reference: TokenReference = {
-    uri: location.uri.toString(),
-    file: vscode.workspace.asRelativePath(location.uri),
-    line: start.line + 1,
-    character: start.character,
+async function asReferences(
+  found: vscode.Location[],
+  current: vscode.TextDocument,
+): Promise<TokenReference[]> {
+  const tokenFiles = new Map(
+    (await findTokenFiles()).map(f => [f.uri.toString(), f.text]),
+  )
+  if (isTokenDocument(current))
+    tokenFiles.set(current.uri.toString(), current.getText())
+  const resolved = new Map<string, Map<string, TokenNode>>()
+  const tokensOf = async (uri: vscode.Uri, text: string) => {
+    const key = uri.toString()
+    let tokens = resolved.get(key)
+    if (!tokens) {
+      tokens = resolveAliases(
+        parseTokens(text),
+        await externalIndexFor(uri),
+        localScopeFor(uri),
+      )
+      resolved.set(key, tokens)
+    }
+    return tokens
   }
-  try {
-    const doc = await vscode.workspace.openTextDocument(location.uri)
-    if (!isTokenDocument(doc)) return reference
-    const path = getLocation(doc.getText(), doc.offsetAt(start) + 1).path
-    return path.length ? { ...reference, path: path.map(String) } : reference
-  } catch {
-    return reference
+  const out: TokenReference[] = []
+  for (const location of found) {
+    const { start } = location.range
+    const reference: TokenReference = {
+      uri: location.uri.toString(),
+      file: vscode.workspace.asRelativePath(location.uri),
+      line: start.line + 1,
+      character: start.character,
+    }
+    const text = tokenFiles.get(reference.uri)
+    const path =
+      text === undefined
+        ? []
+        : getLocation(text, offsetOf(text, start) + 1).path.map(String)
+    if (!path.length) {
+      out.push(reference)
+      continue
+    }
+    const token = (await tokensOf(location.uri, text!)).get(path.join("."))
+    out.push({
+      ...reference,
+      path,
+      ...(token && {
+        value: token.resolvedValue,
+        type: token.resolvedType ?? token.type,
+      }),
+    })
   }
+  return out
+}
+
+/** The offset of a line and column in `text`, as `TextDocument.offsetAt` gives it. */
+function offsetOf(text: string, at: vscode.Position): number {
+  let offset = 0
+  for (let line = 0; line < at.line; line++) {
+    const next = text.indexOf("\n", offset)
+    if (next === -1) return text.length
+    offset = next + 1
+  }
+  return offset + at.character
 }
 
 /**

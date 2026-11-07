@@ -129,6 +129,12 @@ export function App() {
   useEffect(() => {
     setSelectedPathState(selectedPath)
   }, [selectedPath])
+  // The list holds until the panel moves to another token (spec 83 FR-003),
+  // then goes: coming back must not show it again, out of date.
+  const selectedKey = selectedPath?.join(".") ?? null
+  useEffect(() => {
+    setReferences(r => (r && r.key !== selectedKey ? null : r))
+  }, [selectedKey])
 
   const selected = useMemo(
     () => (model && selectedPath ? findNode(model.root, selectedPath) : null),

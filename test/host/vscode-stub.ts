@@ -263,7 +263,33 @@ const show = async (message: string) => {
 /** Every `showTextDocument`, newest last: the document and its options. */
 export const textEditorsShown: Array<{ uri: Uri; options: unknown }> = []
 
+/** A text tab, as `window.tabGroups` lists it. */
+export class TabInputText {
+  constructor(readonly uri: Uri) {}
+}
+export class TabInputCustom {
+  constructor(
+    readonly uri: Uri,
+    readonly viewType: string,
+  ) {}
+}
+type Tab = { input: unknown; isDirty: boolean }
+/** The active group's tabs, and every tab `tabGroups.close` closed. */
+export const tabs: Tab[] = []
+export const closedTabs: Tab[] = []
+
 export const window = {
+  tabGroups: {
+    activeTabGroup: { tabs },
+    async close(closing: Tab | Tab[]) {
+      for (const tab of [closing].flat()) {
+        closedTabs.push(tab)
+        const i = tabs.indexOf(tab)
+        if (i !== -1) tabs.splice(i, 1)
+      }
+      return true
+    },
+  },
   showInformationMessage: show,
   async showTextDocument(doc: { uri: Uri }, options?: unknown) {
     textEditorsShown.push({ uri: doc.uri, options })
@@ -278,6 +304,8 @@ export const window = {
 }
 
 export const disk = new Map<string, string>()
+/** Every `workspace.openTextDocument`, by path, newest last. */
+export const opened: string[] = []
 export const stats = {
   findFiles: 0,
   readFile: 0,
@@ -315,6 +343,9 @@ export function reset(): void {
   renameProviders.length = 0
   shown.length = 0
   textEditorsShown.length = 0
+  tabs.length = 0
+  closedTabs.length = 0
+  opened.length = 0
   applyEditRefuses.value = false
   collections.clear()
   workspace.textDocuments.length = 0
@@ -380,6 +411,7 @@ export const workspace = {
     },
   },
   async openTextDocument(uri: Uri) {
+    opened.push(uri.path)
     const open = workspace.textDocuments.find(
       d => d.uri.toString() === uri.toString(),
     )

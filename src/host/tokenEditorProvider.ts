@@ -37,6 +37,7 @@ import type {
   WebviewToHost,
 } from "../shared/protocol"
 import type { ContrastTarget } from "../core/color"
+import { openInVisualEditor } from "./defaultEditor"
 import { mayDelete } from "./deprecate"
 import {
   activeResolution,
@@ -454,30 +455,35 @@ export class TokenEditorProvider implements vscode.CustomTextEditorProvider {
           break
         case "openReference": {
           // A Referenced by entry (spec 83): a token in another token file
-          // opens there in the Token Editor on it, as the Tokens panel's
-          // reveal does; a use in code opens as text at the use.
+          // opens there in the Token Editor on it, through the Tokens panel's
+          // reveal helper (which also folds a clean text tab on that file into
+          // it); a use in code opens as text at the use. Caught here, not by
+          // the queue: its catch replaces this editor's table with an error,
+          // and a file that moved or will not open says nothing about this one.
           const { reference } = msg
           const target = vscode.Uri.parse(reference.uri)
-          if (reference.path) {
-            if (!TokenEditorProvider.isOpen(target))
-              await vscode.commands.executeCommand(
-                "vscode.openWith",
+          try {
+            if (reference.path) {
+              if (!TokenEditorProvider.isOpen(target))
+                await openInVisualEditor(target)
+              TokenEditorProvider.scopeTo(
                 target,
-                TokenEditorProvider.viewType,
+                reference.path.slice(0, -1),
+                reference.path,
               )
-            TokenEditorProvider.scopeTo(
-              target,
-              reference.path.slice(0, -1),
-              reference.path,
-            )
-          } else {
-            const at = new vscode.Position(
-              reference.line - 1,
-              reference.character,
-            )
-            await vscode.window.showTextDocument(
-              await vscode.workspace.openTextDocument(target),
-              { selection: new vscode.Range(at, at) },
+            } else {
+              const at = new vscode.Position(
+                reference.line - 1,
+                reference.character,
+              )
+              await vscode.window.showTextDocument(
+                await vscode.workspace.openTextDocument(target),
+                { selection: new vscode.Range(at, at) },
+              )
+            }
+          } catch (err) {
+            void vscode.window.showErrorMessage(
+              `Could not open ${reference.file}: ${err instanceof Error ? err.message : String(err)}`,
             )
           }
           break

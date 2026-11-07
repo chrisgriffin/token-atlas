@@ -91,6 +91,8 @@ const button: TokenReference = {
   line: 6,
   character: 4,
   path: ["color", "button"],
+  value: black,
+  type: "color",
 }
 const brandText: TokenReference = {
   uri: BRAND,
@@ -98,6 +100,8 @@ const brandText: TokenReference = {
   line: 2,
   character: 4,
   path: ["brand", "text"],
+  value: black,
+  type: "color",
 }
 const css: TokenReference = {
   uri: "file:///work/app.css",
@@ -176,5 +180,51 @@ describe("the Referenced by section", () => {
       type: "openReference",
       reference: css,
     })
+  })
+
+  it("is gone when the panel comes back to the token after moving away", () => {
+    open()
+    send({ type: "references", path: ["color", "ink"], references: [button] })
+    expect(section()).not.toBeNull()
+    fireEvent.click(screen.getByTitle("Open color.button"))
+    const ink = [...document.querySelectorAll<HTMLElement>("tr.token")].find(
+      tr => tr.textContent?.startsWith("ink"),
+    )!
+    fireEvent.click(ink)
+    expect(vi.mocked(setSelectedPathState)).toHaveBeenLastCalledWith([
+      "color",
+      "ink",
+    ])
+    expect(document.querySelector("aside.panel")).not.toBeNull()
+    expect(section()).toBeNull()
+  })
+
+  it("draws the value the host sent, never a same-path token of this file", () => {
+    open()
+    const white = { colorSpace: "srgb", components: [1, 1, 1] }
+    // brand.tokens.json's own color.button, white; this file's is black.
+    const other: TokenReference = {
+      ...brandText,
+      path: ["color", "button"],
+      value: white,
+    }
+    const unresolved: TokenReference = {
+      ...brandText,
+      uri: "file:///work/legacy.tokens.json",
+      file: "legacy.tokens.json",
+      path: ["color", "button"],
+      value: undefined,
+      type: undefined,
+    }
+    send({
+      type: "references",
+      path: ["color", "ink"],
+      references: [other, unresolved],
+    })
+    const swatches = section()!.querySelectorAll<HTMLElement>(
+      ".reference.token .swatch span",
+    )
+    expect(swatches).toHaveLength(1)
+    expect(swatches[0].style.background).toMatch(/#ffffff|255, 255, 255/i)
   })
 })

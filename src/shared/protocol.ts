@@ -64,6 +64,9 @@ export interface TokenReference {
   character: number
   /** In a token file, the token whose `$value` uses it; unset in code. */
   path?: string[]
+  /** That token's resolved value and type, from its own file. */
+  value?: unknown
+  type?: TokenType
 }
 
 export type ModeView = "single" | "sideBySide"

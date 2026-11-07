@@ -263,7 +263,7 @@ right.
 - `scope { path, select? }` — the Tokens panel picked a group (or a token, via `select`)
 - `renamed { path, newName }` — a rename landed (a `renameNode` intent, or the Rename Token Without Keeping Old Name command, from the text editor or a row's menu); a detail panel open on `path` (or inside it) follows the node to its new name
 - `deleted { path }` — a delete landed (a `deleteNode` intent, or the Remove Deprecated Token command, from either editor); a detail panel open on `path` (or inside it) closes
-- `references { path, references }` — Find All References from a row's menu: the detail panel opens on `path` with a Referenced by section, each entry a `TokenReference` (`uri`, `file`, `line`, `character`, and in a token file the referencing token's `path`)
+- `references { path, references }` — Find All References from a row's menu: the detail panel opens on `path` with a Referenced by section, each entry a `TokenReference` (`uri`, `file`, `line`, `character`, and in a token file the referencing token's `path` and its resolved `value` and `type`)
 
 There is no `capabilities` handshake and no separate `validation` message —
 `validation` rides `init` and `update`. There is no `$extensions` intent either:
