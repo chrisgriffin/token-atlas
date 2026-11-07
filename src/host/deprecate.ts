@@ -446,8 +446,8 @@ async function deprecate(
   if (why === undefined) {
     why = await vscode.window.showInputBox({
       title: `Deprecate ${key}`,
-      // VS Code appends "(Press 'Enter' to confirm or 'Escape' to cancel)".
       placeHolder: "Deprecation reason (optional)…",
+      // VS Code appends "(Press 'Enter' to confirm or 'Escape' to cancel)" to the prompt.
       prompt: "Optional. Shown wherever the token is used.",
       value: current,
     })
