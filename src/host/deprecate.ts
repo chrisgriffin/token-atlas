@@ -446,7 +446,9 @@ async function deprecate(
   if (why === undefined) {
     why = await vscode.window.showInputBox({
       title: `Deprecate ${key}`,
-      prompt: "Why is it deprecated? (optional)",
+      placeHolder: "Deprecation reason (optional)…",
+      // VS Code appends "(Press 'Enter' to confirm or 'Escape' to cancel)" to the prompt.
+      prompt: "Optional. Shown wherever the token is used.",
       value: current,
     })
     if (why === undefined) return false
@@ -461,8 +463,8 @@ async function deprecate(
       })),
     ]
     const picked = await vscode.window.showQuickPick(items, {
-      title: `Deprecate ${key}: replace it with`,
-      placeHolder: "The token its uses should move to",
+      title: `Replace ${key} with`,
+      placeHolder: "Replacement token",
     })
     if (!picked) return false
     next = picked.key
