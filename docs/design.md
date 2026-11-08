@@ -53,7 +53,7 @@ Even scoped to VS Code only, a three-layer split pays for itself in testability 
 
 ### 2.1 `src/host/` — the file map
 
-The only vscode-aware code — all 16 files, alphabetical:
+The only vscode-aware code — all 18 files, alphabetical:
 `activeSet.ts` (the status-bar chooser for which files a `{reference}`
 resolves against: DTCG resolver resolutions first, stepping through each
 modifier when there are more than 12, then Tokens Studio `$themes`),
@@ -64,11 +64,45 @@ per file: the code half of find-references, and the opt-in unused-token hint),
 `colorProvider.ts` (inline colour swatches in the raw JSON),
 `defaultEditor.ts` (the `tokenAtlas.defaultEditor` setting: reopens a token
 document in the visual editor, content-based rather than by filename),
+`deprecate.ts` (carrying a deprecation out, mostly behind the
+`tokenAtlas.deprecationWorkflow` setting, off by default: the Deprecate Token command,
+writing `$deprecated` with a replacement as its first `{reference}`; the quick
+fix that moves one struck-through use onto that replacement, in token files,
+resolver inline tokens and code; the remaining-uses list, read from the
+workspace's files rather than its open editors; and the removal guard, shared
+by the Remove Deprecated Token command and the visual editor's delete, that
+names how many uses remain before a deprecated token goes — on the visual
+editor's delete of an already-deprecated token it works with the setting off
+too; with the setting on, the visual editor's delete of a token still in use offers Deprecate
+instead / Delete anyway / Cancel — see
+[ADR-003](./adr/ADR-003-deprecation-replacement.md)),
 `diagnostics.ts` (validation and lint results as squiggles in the Problems panel,
 the unused-token hint, a struck-through hint on each use of a deprecated token
 in token files, resolver inline tokens and open code files,
 the workspace folder's `token-atlas.lint.json`, re-read on every write, and
 resolver documents: their structure and that every file and fragment they name exists),
+`editorMenu.ts` (the visual editor's right-click menu: Copy Reference, Find
+All References, Show in JSON, Rename… and Delete on the row clicked, Copy
+Reference alone on an inherited token or a heading that `$extends` or a group-level `$ref` alone gives, read from
+its `data-vscode-context` by `workspaceIndex.ts` `rowTarget`, which the
+deprecation commands on the same menu read too; Delete asks first, naming how
+many tokens a group takes with it (its own keys in the file plus the inherited
+rows that leave the view), those that groups extending it in the same file
+inherit named apart,
+and refuses a row with no key in the file, saying it is inherited
+through `$extends` or `$ref`, no longer in the file, or not found in a file that
+does not parse (there, a key the tolerant delete still finds is asked about and
+sent); Find All References sends what the reference provider finds at the
+key to the open editor as one `references` message, with no peek, so the file
+stays in the visual editor; rename and delete go through
+`tokenEditorProvider.ts`'s intent queue. When no editor on the file is left
+to take the intent by the time either is confirmed, it says so and sends
+nothing (`TokenEditorProvider.canReceive`, the state `receive` reads). Rename
+Without Alias and Remove Deprecated Token, which do not go
+through the queue, tell the open editor through `TokenEditorProvider.notify`,
+so the detail panel follows the rename or closes only on a delete that changed
+the file; F2 in the text editor tells it the same way, once its edit has
+landed in the document),
 `exportFeatures.ts` (hover, definition and completion on exported
 identifiers in CSS/Sass/Less/JS/TS, matching via `src/core/exportNames.ts`,
 and an inlay hint with the resolved value after each `var(--token)` in
@@ -86,7 +120,10 @@ hints with each alias's resolved value, labelled by `src/core/inlay.ts`),
 `rename.ts` (F2 and the visual editor share its workspace-wide reference
 rewrite, which also re-spells the token's CSS/Sass/Less/JS/TS usages via
 `codeUsages.ts` and `core/exportNames.ts` `renameInIdentifier`, skipping
-generated files),
+generated files; with `tokenAtlas.deprecationWorkflow` on it keeps the old
+name as a deprecated alias via `core/serialize.ts`
+`computeAliasRenameEdits`, offers Remove alias in the notification after,
+and backs the Rename Without Alias command),
 `tokenEditorProvider.ts` (the Custom Text Editor provider and message bridge),
 `tokenTree.ts` (the Design Tokens panel — every token file in the workspace as
 a root, expanding into its groups and tokens),
@@ -94,7 +131,7 @@ a root, expanding into its groups and tokens),
 icons, kept free of `vscode` imports so vitest can check it),
 and `workspaceIndex.ts` (the workspace-wide token index behind cross-file
 completion, go-to-def, references and rename, and the scan that finds resolver
-documents).
+documents, and `rowTarget`, the row a right-click menu command acts on).
 
 ---
 
@@ -191,7 +228,7 @@ If the visual editor does `JSON.stringify(model)` on save, it will reorder keys 
 
 **Use `jsonc-parser`'s `modify()` / `applyEdits()`** to compute _surgical_ edits against the existing text: change only the bytes that actually changed, preserve key order and indentation everywhere else. The host adapter turns those into a `WorkspaceEdit`. Net effect: editing one color in the UI produces a one-line git diff.
 
-Adding or deleting a property beside a sibling is the exception: `modify()` reformats every line its edit touches, a one-line neighbour such as `"lg": { "$value": 2 }` included, so `computeAddEdits` and `computeDeleteEdits` in `src/core/serialize.ts` write that edit themselves and fall back to `modify()` everywhere else (#304). Setting or removing a `$` property goes through the same two, so a one-line token stays on one line. Every new line takes the file's own indentation (tabs, or its smallest space indent) and line ending, read from the text when the caller passes no formatting options.
+Adding or deleting a property beside a sibling is the exception: `modify()` reformats every line its edit touches, a one-line neighbour such as `"lg": { "$value": 2 }` included, so `computeAddEdits` and `computeDeleteEdits` in `src/core/serialize.ts` write that edit themselves and fall back to `modify()` everywhere else. Setting or removing a `$` property goes through the same two, so a one-line token stays on one line. Every new line takes the file's own indentation (tabs, or its smallest space indent) and line ending, read from the text when the caller passes no formatting options.
 
 ---
 
@@ -207,11 +244,12 @@ right.
 
 - `ready` — webview booted, request initial state
 - `setValue { path, value }`
-- `setType { path, tokenType, starterValue? }` · `setDescription { path, description }` · `setDeprecated { path, deprecated }`
+- `setType { path, tokenType, starterValue? }` · `setDescription { path, description }` · `setDeprecated { path, deprecated, replacement? }`
 - `addToken { parentPath, name }` · `addGroup { parentPath, name }`
 - `deleteNode { path }` · `renameNode { path, newName }`
 - `moveNode { path, direction }` — the detail panel's move up/down · `reorderNodes { parentPath, order[] }` — the full new order under `parentPath`, from a drag-and-drop
 - `openAsText` — hand the file back to the text editor
+- `openReference { reference }` — open a Referenced by entry in another file: a token file in the Token Editor on that token, a code file as text at the use
 - `setScope { path }` — the table's group scope changed in the webview
 - `setColumnWidths { widths }` — a table column was resized; the host saves the widths for every token file
 - `setMode { context }` — make this context of the file's resolver modifier the active resolution
@@ -220,9 +258,12 @@ right.
 
 **Host → webview** — the host sends state.
 
-- `init` and `update`, both carrying the same payload: `{ model, validation, externalTokens, settings, scope, selected?, columnWidths, modes? }`. `modes` is set only when the file is a mode of a resolver modifier: its contexts, the one it owns, the active one, and each context's values. `init` is the first push; `update` is every later one, including a change typed into the raw JSON in a split pane — so reconciling an external edit is the same message as any other, not a separate one.
+- `init` and `update`, both carrying the same payload: `{ uri, model, validation, externalTokens, settings, scope, selected?, columnWidths, modes? }`. `uri` is the document the right-click menu's commands act on. `modes` is set only when the file is a mode of a resolver modifier: its contexts, the one it owns, the active one, and each context's values. `init` is the first push; `update` is every later one, including a change typed into the raw JSON in a split pane — so reconciling an external edit is the same message as any other, not a separate one.
 - `error { message }`
 - `scope { path, select? }` — the Tokens panel picked a group (or a token, via `select`)
+- `renamed { path, newName }` — a rename landed (a `renameNode` intent, or the Rename Without Alias command, from the text editor or a row's menu); a detail panel open on `path` (or inside it) follows the node to its new name
+- `deleted { path }` — a delete landed (a `deleteNode` intent, or the Remove Deprecated Token command, from either editor); a detail panel open on `path` (or inside it) closes
+- `references { path, references }` — Find All References from a row's menu: the detail panel opens on `path` with a Referenced by section, each entry a `TokenReference` (`uri`, `file`, `line`, `character`, and in a token file the referencing token's `path` and its resolved `value` and `type`)
 
 There is no `capabilities` handshake and no separate `validation` message —
 `validation` rides `init` and `update`. There is no `$extensions` intent either:

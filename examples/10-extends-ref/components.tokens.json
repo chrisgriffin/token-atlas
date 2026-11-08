@@ -8,7 +8,10 @@
     "$extends": "#/button-danger",
     "$description": "Extends a variant: inherits danger's red background, overrides padding.",
     "padding": {
-      "$value": { "value": { "$ref": "#/space/md/$value/value" }, "unit": "rem" }
+      "$value": {
+        "value": { "$ref": "#/space/md/$value/value" },
+        "unit": "rem"
+      }
     }
   },
   "focus": {

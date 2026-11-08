@@ -398,6 +398,8 @@ export const css = `
     border-bottom: 1px dashed transparent;
   }
   .node-header-name h2:hover { border-bottom-color: var(--vscode-descriptionForeground); }
+  .node-header-name h2.readonly { cursor: default; }
+  .node-header-name h2.readonly:hover { border-bottom-color: transparent; }
   /* The name is a button for the keyboard, drawn as the heading's text. */
   .node-header-name h2 button.node-name {
     all: unset;
@@ -451,6 +453,11 @@ export const css = `
   .section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
   .section-head .eyebrow { margin: 0; }
 
+  .references .eyebrow { margin: 8px 0 2px; }
+  .references .none { margin: 0; color: var(--vscode-descriptionForeground); }
+  .references .reference { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 24px; padding: 2px 4px; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
+  .references .reference code { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .references .reference .file { margin-left: auto; opacity: 0.7; font-size: 0.9em; white-space: nowrap; }
   .ref-row { display: flex; align-items: center; gap: 8px; min-height: 26px; min-width: 0; }
   /* The reference itself is the control: click it to pick another token. */
   .ref-chip {
@@ -677,8 +684,8 @@ export const css = `
   .statusbar svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.6; }
   .sev-error { color: var(--vscode-errorForeground); }
   .sev-warning { color: var(--vscode-editorWarning-foreground); }
-`;
+`
 
-const style = document.createElement("style");
-style.textContent = css;
-document.head.appendChild(style);
+const style = document.createElement("style")
+style.textContent = css
+document.head.appendChild(style)

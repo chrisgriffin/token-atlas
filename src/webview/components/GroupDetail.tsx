@@ -1,6 +1,6 @@
-import type { GroupNode, TokenType, ValidationIssue } from "../../core/types";
-import { countTokens } from "../../core/parse";
-import { TextInput } from "../editors/fields";
+import type { GroupNode, TokenType, ValidationIssue } from "../../core/types"
+import { countTokens } from "../../core/parse"
+import { TextInput } from "../editors/fields"
 import {
   DeprecatedField,
   DeprecatedPill,
@@ -8,23 +8,27 @@ import {
   Problems,
   Section,
   TypeSelect,
-} from "./shared";
+} from "./shared"
 
 interface GroupDetailProps {
-  group: GroupNode;
-  issues?: ValidationIssue[];
-  onChangeDescription: (description: string) => void;
-  onRename: (newName: string) => void;
-  onDelete: () => void;
-  onMove: (direction: "up" | "down") => void;
-  onClose: () => void;
+  group: GroupNode
+  issues?: ValidationIssue[]
+  onChangeDescription: (description: string) => void
+  onRename: (newName: string) => void
+  onDelete: () => void
+  onMove: (direction: "up" | "down") => void
+  onClose: () => void
   /** Opens a group from the header's breadcrumb. */
-  onOpenPath?: (path: string[]) => void;
-  onChangeDeprecated: (deprecated: boolean | string | undefined) => void;
-  onChangeType: (type: TokenType | undefined, starterValue?: unknown) => void;
+  onOpenPath?: (path: string[]) => void
+  onChangeDeprecated: (deprecated: boolean | string | undefined) => void
+  onChangeType: (type: TokenType | undefined, starterValue?: unknown) => void
 }
 
-/** Right-panel editor for a group: rename, description, move, delete. */
+/**
+ * Right-panel editor for a group: description, type and deprecation, plus
+ * rename, move and delete for an owned group only — a heading that only
+ * `$extends` or a group-level `$ref` gives has no key of its own to edit.
+ */
 export function GroupDetail({
   group,
   issues,
@@ -37,7 +41,7 @@ export function GroupDetail({
   onChangeDeprecated,
   onChangeType,
 }: GroupDetailProps) {
-  const tokens = countTokens(group);
+  const tokens = countTokens(group)
   return (
     <div style={{ padding: "14px 20px 24px" }}>
       <NodeHeader
@@ -52,13 +56,17 @@ export function GroupDetail({
           </>
         }
         below={
-          <TypeSelect value={group.type} inherited={group.inheritedType} onChange={onChangeType} />
+          <TypeSelect
+            value={group.type}
+            inherited={group.inheritedType}
+            onChange={onChangeType}
+          />
         }
         summary={`${tokens} ${tokens === 1 ? "token" : "tokens"}`}
         onOpenPath={onOpenPath}
-        onRename={onRename}
-        onMove={onMove}
-        onDelete={onDelete}
+        // A group only `$extends` or a group-level `$ref` gives has no key in
+        // the file to edit.
+        {...(!group.inheritedFrom && { onRename, onMove, onDelete })}
         onClose={onClose}
       />
 
@@ -86,5 +94,5 @@ export function GroupDetail({
 
       <DeprecatedField value={group.deprecated} onChange={onChangeDeprecated} />
     </div>
-  );
+  )
 }

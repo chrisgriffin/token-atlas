@@ -81,7 +81,3 @@ Someone editing a border, shadow, typography, transition, gradient or custom str
 - Starter colours in a non-sRGB default space carry no `hex`, matching the existing colour starter.
 - The panel's last-sent value is replaced by the host's next update, whatever it carries.
 - Roving Tab stops follow the row's existing pattern: the edit button and alias chevron were already Tab stops only on the selected row.
-
-## Needs from Chris
-
-none

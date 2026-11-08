@@ -14,4 +14,4 @@ export {
   buildFromComponents,
   type DtcgColorSpace,
   type DtcgColor,
-} from "../../core/color";
+} from "../../core/color"

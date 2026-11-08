@@ -10,24 +10,35 @@
  * swatch opens a picker whose edit would land in the code file, not the token.
  * `tokenAtlas.codeColorSwatches` turns it off.
  */
-import * as vscode from "vscode";
-import { tokenUsages } from "../core";
-import { toHex } from "../core/color";
-import { LANGUAGES } from "./exportFeatures";
-import { buildWorkspaceIndex, onDidInvalidateWorkspaceIndex } from "./workspaceIndex";
+import * as vscode from "vscode"
+import { tokenUsages } from "../core"
+import { toHex } from "../core/color"
+import { LANGUAGES } from "./exportFeatures"
+import {
+  buildWorkspaceIndex,
+  onDidInvalidateWorkspaceIndex,
+} from "./workspaceIndex"
 
 /** What each document was last decorated with, for the integration tests: VS Code cannot read decorations back. */
-const applied = new Map<string, Array<{ range: vscode.Range; color: string }>>();
+const applied = new Map<string, Array<{ range: vscode.Range; color: string }>>()
 
-export function codeSwatches(uri: vscode.Uri): Array<{ range: vscode.Range; color: string }> {
-  return applied.get(uri.toString()) ?? [];
+export function codeSwatches(
+  uri: vscode.Uri,
+): Array<{ range: vscode.Range; color: string }> {
+  return applied.get(uri.toString()) ?? []
 }
 
 function enabled(): boolean {
-  return vscode.workspace.getConfiguration("tokenAtlas").get<boolean>("codeColorSwatches") ?? true;
+  return (
+    vscode.workspace
+      .getConfiguration("tokenAtlas")
+      .get<boolean>("codeColorSwatches") ?? true
+  )
 }
 
-export function registerCodeColorSwatches(context: vscode.ExtensionContext): void {
+export function registerCodeColorSwatches(
+  context: vscode.ExtensionContext,
+): void {
   const swatch = vscode.window.createTextEditorDecorationType({
     before: {
       contentText: " ",
@@ -37,65 +48,78 @@ export function registerCodeColorSwatches(context: vscode.ExtensionContext): voi
       border: "0.1em solid",
       borderColor: new vscode.ThemeColor("editorWidget.border"),
     },
-  });
+  })
 
   const refresh = async (editor: vscode.TextEditor) => {
-    const { document } = editor;
-    if (!LANGUAGES.includes(document.languageId)) return;
-    const ws = enabled() ? await buildWorkspaceIndex() : undefined;
+    const { document } = editor
+    if (!LANGUAGES.includes(document.languageId)) return
+    const ws = enabled() ? await buildWorkspaceIndex() : undefined
     const colorOf = (key: string) => {
-      const token = ws?.get(key)?.token;
-      if (!token || (token.resolvedType ?? token.type) !== "color") return undefined;
-      return toHex(token.resolvedValue ?? token.value);
-    };
+      const token = ws?.get(key)?.token
+      if (!token || (token.resolvedType ?? token.type) !== "color")
+        return undefined
+      return toHex(token.resolvedValue ?? token.value)
+    }
     const found =
       ws && ws.size > 0
-        ? tokenUsages(document.getText(), ws.keys(), colorOf, document.languageId).map((u) => ({
-            range: new vscode.Range(u.line, u.character, u.line, u.character + u.length),
+        ? tokenUsages(
+            document.getText(),
+            ws.keys(),
+            colorOf,
+            document.languageId,
+          ).map(u => ({
+            range: new vscode.Range(
+              u.line,
+              u.character,
+              u.line,
+              u.character + u.length,
+            ),
             color: u.value,
           }))
-        : [];
+        : []
     editor.setDecorations(
       swatch,
       found.map(({ range, color }) => ({
         range,
         renderOptions: { before: { backgroundColor: color } },
       })),
-    );
-    applied.set(document.uri.toString(), found);
-  };
+    )
+    applied.set(document.uri.toString(), found)
+  }
 
   const refreshAll = () => {
-    for (const editor of vscode.window.visibleTextEditors) void refresh(editor);
-  };
+    for (const editor of vscode.window.visibleTextEditors) void refresh(editor)
+  }
 
-  const timers = new Map<string, NodeJS.Timeout>();
+  const timers = new Map<string, NodeJS.Timeout>()
   const schedule = (document: vscode.TextDocument) => {
-    const key = document.uri.toString();
-    clearTimeout(timers.get(key));
+    const key = document.uri.toString()
+    clearTimeout(timers.get(key))
     timers.set(
       key,
       setTimeout(() => {
         for (const editor of vscode.window.visibleTextEditors) {
-          if (editor.document === document) void refresh(editor);
+          if (editor.document === document) void refresh(editor)
         }
       }, 250),
-    );
-  };
+    )
+  }
 
-  refreshAll();
+  refreshAll()
   context.subscriptions.push(
     swatch,
     { dispose: () => timers.forEach(clearTimeout) },
     vscode.window.onDidChangeVisibleTextEditors(refreshAll),
-    vscode.workspace.onDidChangeTextDocument((e) => {
-      if (LANGUAGES.includes(e.document.languageId)) schedule(e.document);
+    vscode.workspace.onDidChangeTextDocument(e => {
+      if (LANGUAGES.includes(e.document.languageId)) schedule(e.document)
     }),
-    vscode.workspace.onDidCloseTextDocument((doc) => applied.delete(doc.uri.toString())),
-    vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("tokenAtlas")) refreshAll();
+    vscode.workspace.onDidCloseTextDocument(doc =>
+      applied.delete(doc.uri.toString()),
+    ),
+    vscode.workspace.onDidChangeConfiguration(e => {
+      if (e.affectsConfiguration("tokenAtlas")) refreshAll()
     }),
     // Token edits, writes on disk and active-set changes all invalidate the index.
     onDidInvalidateWorkspaceIndex(refreshAll),
-  );
+  )
 }

@@ -1,20 +1,20 @@
-import { useState } from "react";
-import type { ValidationResult } from "../../core/types";
-import { ChevronDown, ErrorIcon, WarningIcon } from "../icons";
+import { useState } from "react"
+import type { ValidationResult } from "../../core/types"
+import { ChevronDown, ErrorIcon, WarningIcon } from "../icons"
 
 /** Folded status line ("2 errors · 1 warning") that expands to the full list. */
 export function Issues({
   validation,
   onSelect,
 }: {
-  validation: ValidationResult;
-  onSelect: (path: string[]) => void;
+  validation: ValidationResult
+  onSelect: (path: string[]) => void
 }) {
-  const [open, setOpen] = useState(false);
-  const issues = validation.issues;
-  if (issues.length === 0) return null;
-  const errors = issues.filter((i) => i.severity === "error").length;
-  const warnings = issues.length - errors;
+  const [open, setOpen] = useState(false)
+  const issues = validation.issues
+  if (issues.length === 0) return null
+  const errors = issues.filter(i => i.severity === "error").length
+  const warnings = issues.length - errors
 
   return (
     <div className="statusbar">
@@ -22,7 +22,7 @@ export function Issues({
         type="button"
         className="summary"
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOpen(o => !o)}
         title={open ? "Hide problems" : "Show problems"}
       >
         {errors > 0 && (
@@ -54,15 +54,20 @@ export function Issues({
               className="row issue"
               onClick={() => onSelect(issue.path)}
             >
-              <span className={`sev-${issue.severity}`} style={{ display: "inline-flex" }}>
+              <span
+                className={`sev-${issue.severity}`}
+                style={{ display: "inline-flex" }}
+              >
                 {issue.severity === "error" ? <ErrorIcon /> : <WarningIcon />}
               </span>
-              <code style={{ fontSize: "0.85em", flexShrink: 0 }}>{issue.path.join(".")}</code>
+              <code style={{ fontSize: "0.85em", flexShrink: 0 }}>
+                {issue.path.join(".")}
+              </code>
               <span style={{ flex: 1, minWidth: 0 }}>{issue.message}</span>
             </button>
           ))}
         </div>
       )}
     </div>
-  );
+  )
 }

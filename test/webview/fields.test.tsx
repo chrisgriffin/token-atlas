@@ -1,125 +1,127 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import {
   COMMIT_DELAY_MS,
   ColorSwatchInput,
   NumberInput,
   TextInput,
-} from "../../src/webview/editors/fields";
+} from "../../src/webview/editors/fields"
 
 /**
  * Text and number inputs commit while typing, once typing pauses, instead of
  * only on blur — so the table and the JSON follow the detail panel live.
  */
 
-afterEach(cleanup);
+afterEach(cleanup)
 beforeEach(() => {
-  vi.useFakeTimers();
-  return () => vi.useRealTimers();
-});
+  vi.useFakeTimers()
+  return () => vi.useRealTimers()
+})
 
-const pause = () => act(() => vi.advanceTimersByTime(COMMIT_DELAY_MS));
+const pause = () => act(() => vi.advanceTimersByTime(COMMIT_DELAY_MS))
 
 describe("TextInput", () => {
   it("commits once typing pauses, not on every keystroke", () => {
-    const onCommit = vi.fn();
-    render(<TextInput value="" onCommit={onCommit} />);
-    const input = screen.getByRole("textbox");
-    fireEvent.focus(input);
+    const onCommit = vi.fn()
+    render(<TextInput value="" onCommit={onCommit} />)
+    const input = screen.getByRole("textbox")
+    fireEvent.focus(input)
     for (const v of ["P", "Pr", "Pri", "Primary"])
-      fireEvent.change(input, { target: { value: v } });
-    expect(onCommit).not.toHaveBeenCalled();
-    pause();
-    expect(onCommit.mock.calls).toEqual([["Primary"]]);
-  });
+      fireEvent.change(input, { target: { value: v } })
+    expect(onCommit).not.toHaveBeenCalled()
+    pause()
+    expect(onCommit.mock.calls).toEqual([["Primary"]])
+  })
 
   it("commits at once on blur, without waiting for the pause", () => {
-    const onCommit = vi.fn();
-    render(<TextInput value="" onCommit={onCommit} />);
-    const input = screen.getByRole("textbox");
-    fireEvent.focus(input);
-    fireEvent.change(input, { target: { value: "Primary" } });
-    fireEvent.blur(input);
-    expect(onCommit.mock.calls).toEqual([["Primary"]]);
-    pause();
-    expect(onCommit).toHaveBeenCalledTimes(1);
-  });
+    const onCommit = vi.fn()
+    render(<TextInput value="" onCommit={onCommit} />)
+    const input = screen.getByRole("textbox")
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: "Primary" } })
+    fireEvent.blur(input)
+    expect(onCommit.mock.calls).toEqual([["Primary"]])
+    pause()
+    expect(onCommit).toHaveBeenCalledTimes(1)
+  })
 
   it("keeps the draft while focused when the value changes underneath it", () => {
-    const { rerender } = render(<TextInput value="a" onCommit={() => {}} />);
-    const input = screen.getByRole("textbox") as HTMLInputElement;
-    fireEvent.focus(input);
-    fireEvent.change(input, { target: { value: "abc" } });
-    rerender(<TextInput value="ab" onCommit={() => {}} />);
-    expect(input.value).toBe("abc");
-  });
+    const { rerender } = render(<TextInput value="a" onCommit={() => {}} />)
+    const input = screen.getByRole("textbox") as HTMLInputElement
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: "abc" } })
+    rerender(<TextInput value="ab" onCommit={() => {}} />)
+    expect(input.value).toBe("abc")
+  })
 
   it("follows the value when not focused", () => {
-    const { rerender } = render(<TextInput value="a" onCommit={() => {}} />);
-    rerender(<TextInput value="from JSON" onCommit={() => {}} />);
-    expect((screen.getByRole("textbox") as HTMLInputElement).value).toBe("from JSON");
-  });
+    const { rerender } = render(<TextInput value="a" onCommit={() => {}} />)
+    rerender(<TextInput value="from JSON" onCommit={() => {}} />)
+    expect((screen.getByRole("textbox") as HTMLInputElement).value).toBe(
+      "from JSON",
+    )
+  })
 
   it("flushes a pending commit when it unmounts, so switching tokens mid-word keeps the word", () => {
-    const onCommit = vi.fn();
-    const { unmount } = render(<TextInput value="" onCommit={onCommit} />);
-    const input = screen.getByRole("textbox");
-    fireEvent.focus(input);
-    fireEvent.change(input, { target: { value: "half" } });
-    unmount();
-    expect(onCommit.mock.calls).toEqual([["half"]]);
-  });
+    const onCommit = vi.fn()
+    const { unmount } = render(<TextInput value="" onCommit={onCommit} />)
+    const input = screen.getByRole("textbox")
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: "half" } })
+    unmount()
+    expect(onCommit.mock.calls).toEqual([["half"]])
+  })
 
   it("does not commit an unchanged value", () => {
-    const onCommit = vi.fn();
-    render(<TextInput value="same" onCommit={onCommit} />);
-    const input = screen.getByRole("textbox");
-    fireEvent.focus(input);
-    fireEvent.change(input, { target: { value: "same" } });
-    fireEvent.blur(input);
-    expect(onCommit).not.toHaveBeenCalled();
-  });
-});
+    const onCommit = vi.fn()
+    render(<TextInput value="same" onCommit={onCommit} />)
+    const input = screen.getByRole("textbox")
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: "same" } })
+    fireEvent.blur(input)
+    expect(onCommit).not.toHaveBeenCalled()
+  })
+})
 
 describe("NumberInput", () => {
   it("commits the number once typing pauses", () => {
-    const onCommit = vi.fn();
-    render(<NumberInput value={0} onCommit={onCommit} />);
-    const input = screen.getByRole("spinbutton");
-    fireEvent.focus(input);
-    fireEvent.change(input, { target: { value: "1" } });
-    fireEvent.change(input, { target: { value: "16" } });
-    pause();
-    expect(onCommit.mock.calls).toEqual([[16]]);
-  });
+    const onCommit = vi.fn()
+    render(<NumberInput value={0} onCommit={onCommit} />)
+    const input = screen.getByRole("spinbutton")
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: "1" } })
+    fireEvent.change(input, { target: { value: "16" } })
+    pause()
+    expect(onCommit.mock.calls).toEqual([[16]])
+  })
 
   it("skips a half-typed number and restores the value if left that way", () => {
-    const onCommit = vi.fn();
-    render(<NumberInput value={8} onCommit={onCommit} />);
-    const input = screen.getByRole("spinbutton") as HTMLInputElement;
-    fireEvent.focus(input);
-    fireEvent.change(input, { target: { value: "" } });
-    pause();
-    expect(onCommit).not.toHaveBeenCalled();
-    fireEvent.blur(input);
-    expect(onCommit).not.toHaveBeenCalled();
-    expect(input.value).toBe("8");
-  });
-});
+    const onCommit = vi.fn()
+    render(<NumberInput value={8} onCommit={onCommit} />)
+    const input = screen.getByRole("spinbutton") as HTMLInputElement
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: "" } })
+    pause()
+    expect(onCommit).not.toHaveBeenCalled()
+    fireEvent.blur(input)
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(input.value).toBe("8")
+  })
+})
 
 describe("ColorSwatchInput", () => {
   it("writes once when a pick is made, not on every step of a drag (#8)", () => {
-    const onPick = vi.fn();
-    render(<ColorSwatchInput hex="#000000" size={12} onPick={onPick} />);
-    const swatch = screen.getByLabelText("Pick color") as HTMLInputElement;
+    const onPick = vi.fn()
+    render(<ColorSwatchInput hex="#000000" size={12} onPick={onPick} />)
+    const swatch = screen.getByLabelText("Pick color") as HTMLInputElement
     for (const v of ["#110000", "#220000", "#330000"])
-      fireEvent.input(swatch, { target: { value: v } });
-    expect(onPick).not.toHaveBeenCalled();
-    expect(swatch.value).toBe("#330000");
-    fireEvent.change(swatch, { target: { value: "#440000" } });
-    expect(onPick.mock.calls).toEqual([["#440000"]]);
-  });
-});
+      fireEvent.input(swatch, { target: { value: v } })
+    expect(onPick).not.toHaveBeenCalled()
+    expect(swatch.value).toBe("#330000")
+    fireEvent.change(swatch, { target: { value: "#440000" } })
+    expect(onPick.mock.calls).toEqual([["#440000"]])
+  })
+})
 
 describe("Enter that confirms an IME composition", () => {
   it("commits nothing in a text or number field, and keeps it focused (#8)", () => {
@@ -127,22 +129,22 @@ describe("Enter that confirms an IME composition", () => {
       ["textbox", "にほ"],
       ["spinbutton", "12"],
     ] as const) {
-      const onCommit = vi.fn();
+      const onCommit = vi.fn()
       const { unmount } = render(
         role === "textbox" ? (
           <TextInput value="" onCommit={onCommit} />
         ) : (
           <NumberInput value={0} onCommit={onCommit} />
         ),
-      );
-      const field = screen.getByRole(role);
-      field.focus();
-      fireEvent.focus(field);
-      fireEvent.change(field, { target: { value: v } });
-      fireEvent.keyDown(field, { key: "Enter", isComposing: true });
-      expect(document.activeElement, role).toBe(field);
-      expect(onCommit, role).not.toHaveBeenCalled();
-      unmount();
+      )
+      const field = screen.getByRole(role)
+      field.focus()
+      fireEvent.focus(field)
+      fireEvent.change(field, { target: { value: v } })
+      fireEvent.keyDown(field, { key: "Enter", isComposing: true })
+      expect(document.activeElement, role).toBe(field)
+      expect(onCommit, role).not.toHaveBeenCalled()
+      unmount()
     }
-  });
-});
+  })
+})

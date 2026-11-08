@@ -9,8 +9,14 @@
       "contexts": {
         "light": [{ "$ref": "light.tokens.json" }],
         "dark": [{ "$ref": "dark.tokens.json" }],
-        "lightOverDark": [{ "$ref": "dark.tokens.json" }, { "$ref": "light.tokens.json" }],
-        "darkOverLight": [{ "$ref": "light.tokens.json" }, { "$ref": "dark.tokens.json" }]
+        "lightOverDark": [
+          { "$ref": "dark.tokens.json" },
+          { "$ref": "light.tokens.json" }
+        ],
+        "darkOverLight": [
+          { "$ref": "light.tokens.json" },
+          { "$ref": "dark.tokens.json" }
+        ]
       },
       "default": "light"
     }

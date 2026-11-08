@@ -4,14 +4,14 @@
  */
 
 export interface DimensionConversions {
-  px: string;
-  rem: string;
-  pt: string;
+  px: string
+  rem: string
+  pt: string
 }
 
 interface DimensionValue {
-  value: number;
-  unit: "px" | "rem";
+  value: number
+  unit: "px" | "rem"
 }
 
 function isDimension(v: unknown): v is DimensionValue {
@@ -19,24 +19,25 @@ function isDimension(v: unknown): v is DimensionValue {
     !!v &&
     typeof v === "object" &&
     typeof (v as DimensionValue).value === "number" &&
-    ((v as DimensionValue).unit === "px" || (v as DimensionValue).unit === "rem")
-  );
+    ((v as DimensionValue).unit === "px" ||
+      (v as DimensionValue).unit === "rem")
+  )
 }
 
 export function dimensionConversions(
   value: unknown,
   rootFontSizePx = 16,
 ): DimensionConversions | null {
-  if (!isDimension(value) || rootFontSizePx <= 0) return null;
-  const px = value.unit === "px" ? value.value : value.value * rootFontSizePx;
+  if (!isDimension(value) || rootFontSizePx <= 0) return null
+  const px = value.unit === "px" ? value.value : value.value * rootFontSizePx
   return {
     px: `${fmt(px)}px`,
     rem: `${fmt(px / rootFontSizePx)}rem`,
     pt: `${fmt(px * 0.75)}pt`,
-  };
+  }
 }
 
 /** Trim to at most 4 decimals (1px is 0.0625rem), without trailing zeros. */
 function fmt(n: number): string {
-  return String(Math.round(n * 10000) / 10000);
+  return String(Math.round(n * 10000) / 10000)
 }

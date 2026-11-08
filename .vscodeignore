@@ -18,7 +18,7 @@ vitest.config.ts
 .remember/**
 .claude/**
 .specify/**
-.prettierrc.json
+eslint.config.mjs
 .prettierignore
 CLAUDE.md
 
@@ -29,7 +29,6 @@ morning-briefing.md
 pm-briefing.md
 recovery-recap.md
 postcss.config.mjs
-changelog-preset.config.mjs
 docs/**
 specs/**
 

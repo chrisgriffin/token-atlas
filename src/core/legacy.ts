@@ -7,29 +7,34 @@
  * sub-value of a composite, such as a shadow's `color` — with a one-line
  * object, so the diff is that value and nothing else (invariant 1).
  */
-import { findNodeAtLocation, parseTree } from "jsonc-parser";
-import { inline, type Edit } from "./serialize";
-import { UNITS, type TokenType } from "./types";
-import { isReference, parseTokens } from "./parse";
-import { indexTokens } from "./resolve";
-import { fromCssColor } from "./color";
-import { expectedTypeAt } from "./aliases";
+import { findNodeAtLocation, parseTree } from "jsonc-parser"
+import { inline, type Edit } from "./serialize"
+import { UNITS, type TokenType } from "./types"
+import { isReference, parseTokens } from "./parse"
+import { indexTokens } from "./resolve"
+import { fromCssColor } from "./color"
+import { expectedTypeAt } from "./aliases"
 
 /** The 2025.10 shape of a legacy `value`, or undefined if it is not one this can read. */
-export function upgradeLegacyValue(type: TokenType | undefined, value: unknown): unknown {
-  if (typeof value !== "string" || isReference(value)) return undefined;
-  if (type === "color") return fromCssColor(value) ?? undefined;
-  const units = type && UNITS[type];
-  const m = units && /^\s*(-?(?:\d+\.?\d*|\.\d+))\s*([a-z]+)\s*$/.exec(value);
-  return m && units.includes(m[2]) ? { value: Number(m[1]), unit: m[2] } : undefined;
+export function upgradeLegacyValue(
+  type: TokenType | undefined,
+  value: unknown,
+): unknown {
+  if (typeof value !== "string" || isReference(value)) return undefined
+  if (type === "color") return fromCssColor(value) ?? undefined
+  const units = type && UNITS[type]
+  const m = units && /^\s*(-?(?:\d+\.?\d*|\.\d+))\s*([a-z]+)\s*$/.exec(value)
+  return m && units.includes(m[2])
+    ? { value: Number(m[1]), unit: m[2] }
+    : undefined
 }
 
 export interface LegacyFix {
-  path: string[];
+  path: string[]
   /** Replaces the token's `$value` node. */
-  edit: Edit;
+  edit: Edit
   /** The token's whole property (key to closing brace), for matching a cursor. */
-  span: { offset: number; length: number };
+  span: { offset: number; length: number }
 }
 
 /**
@@ -37,28 +42,37 @@ export interface LegacyFix {
  * each sub-value of a composite, typed by its member (`expectedTypeAt`).
  */
 export function computeLegacyFixes(text: string): LegacyFix[] {
-  const root = parseTree(text);
-  if (!root) return [];
-  const fixes: LegacyFix[] = [];
+  const root = parseTree(text)
+  if (!root) return []
+  const fixes: LegacyFix[] = []
   for (const token of indexTokens(parseTokens(text)).values()) {
-    if (token.isAlias) continue;
-    const property = findNodeAtLocation(root, token.path)?.parent;
+    if (token.isAlias) continue
+    const property = findNodeAtLocation(root, token.path)?.parent
     const visit = (value: unknown, sub: Array<string | number>): void => {
-      if (Array.isArray(value)) return value.forEach((v, i) => visit(v, [...sub, i]));
+      if (Array.isArray(value))
+        return value.forEach((v, i) => visit(v, [...sub, i]))
       if (value && typeof value === "object") {
-        return Object.entries(value).forEach(([k, v]) => visit(v, [...sub, k]));
+        return Object.entries(value).forEach(([k, v]) => visit(v, [...sub, k]))
       }
-      const upgraded = upgradeLegacyValue(expectedTypeAt(token.type, sub), value);
+      const upgraded = upgradeLegacyValue(
+        expectedTypeAt(token.type, sub),
+        value,
+      )
       const node =
-        upgraded !== undefined && findNodeAtLocation(root, [...token.path, "$value", ...sub]);
-      if (!node || !property) return;
+        upgraded !== undefined &&
+        findNodeAtLocation(root, [...token.path, "$value", ...sub])
+      if (!node || !property) return
       fixes.push({
         path: token.path,
-        edit: { offset: node.offset, length: node.length, content: inline(upgraded) },
+        edit: {
+          offset: node.offset,
+          length: node.length,
+          content: inline(upgraded),
+        },
         span: { offset: property.offset, length: property.length },
-      });
-    };
-    visit(token.value, []);
+      })
+    }
+    visit(token.value, [])
   }
-  return fixes;
+  return fixes
 }

@@ -2,7 +2,11 @@
   "color": {
     "$type": "color",
     "brand": {
-      "$value": { "colorSpace": "srgb", "components": [0.231, 0.51, 0.965], "hex": "#3b82f6" }
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [0.231, 0.51, 0.965],
+        "hex": "#3b82f6"
+      }
     }
   }
 }

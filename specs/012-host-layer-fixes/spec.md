@@ -66,7 +66,3 @@ With a resolver resolution active, editing the resolver re-resolves references w
 
 - The core model fixes (#10) add the same name check inside core `computeRenameEdits`; until both land, the host check is the one both rename paths hit.
 - `tokenAtlas.modeView` is window-scoped, so the toggle writes to workspace settings when they hold a value and to user settings otherwise.
-
-## Needs from Chris
-
-none

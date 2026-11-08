@@ -1,9 +1,9 @@
-import esbuild from "esbuild";
-import { readFileSync } from "node:fs";
+import esbuild from "esbuild"
+import { readFileSync } from "node:fs"
 
-const production = process.argv.includes("--production");
-const watch = process.argv.includes("--watch");
-const integration = process.argv.includes("--integration");
+const production = process.argv.includes("--production")
+const watch = process.argv.includes("--watch")
+const integration = process.argv.includes("--integration")
 
 /** @type {import('esbuild').BuildOptions} */
 const common = {
@@ -11,7 +11,7 @@ const common = {
   sourcemap: !production,
   minify: production,
   logLevel: "info",
-};
+}
 
 /** Extension host bundle (runs in Node, has access to the `vscode` module). */
 const extensionConfig = {
@@ -27,7 +27,7 @@ const extensionConfig = {
   // Without this the bundle keeps runtime `require("./impl/...")` calls that
   // fail once node_modules isn't shipped (--no-dependencies). See the guard below.
   mainFields: ["module", "main"],
-};
+}
 
 /**
  * Integration tests (run by `vscode-test` inside a real VS Code). They reach
@@ -42,7 +42,7 @@ const integrationConfig = {
   format: "cjs",
   target: "node20",
   external: ["vscode"],
-};
+}
 
 /** Webview bundle (runs in a browser sandbox inside the editor). */
 const webviewConfig = {
@@ -56,22 +56,22 @@ const webviewConfig = {
   define: {
     "process.env.NODE_ENV": production ? '"production"' : '"development"',
   },
-};
+}
 
 async function run() {
   if (watch) {
-    const ctxExt = await esbuild.context(extensionConfig);
-    const ctxWeb = await esbuild.context(webviewConfig);
-    await Promise.all([ctxExt.watch(), ctxWeb.watch()]);
-    console.log("[token-atlas] watching for changes…");
+    const ctxExt = await esbuild.context(extensionConfig)
+    const ctxWeb = await esbuild.context(webviewConfig)
+    await Promise.all([ctxExt.watch(), ctxWeb.watch()])
+    console.log("[token-atlas] watching for changes…")
   } else {
     await Promise.all([
       esbuild.build(extensionConfig),
       esbuild.build(webviewConfig),
       ...(integration ? [esbuild.build(integrationConfig)] : []),
-    ]);
-    assertSelfContained("dist/extension.js");
-    console.log("[token-atlas] build complete.");
+    ])
+    assertSelfContained("dist/extension.js")
+    console.log("[token-atlas] build complete.")
   }
 }
 
@@ -82,18 +82,18 @@ async function run() {
  * wasn't inlined and the extension will fail to activate at runtime.
  */
 function assertSelfContained(file) {
-  const code = readFileSync(file, "utf8");
-  const leftover = code.match(/["'`]\.\/[A-Za-z0-9_./-]+["'`]/g);
+  const code = readFileSync(file, "utf8")
+  const leftover = code.match(/["'`]\.\/[A-Za-z0-9_./-]+["'`]/g)
   if (leftover && leftover.length) {
-    const unique = [...new Set(leftover)].slice(0, 10).join(", ");
+    const unique = [...new Set(leftover)].slice(0, 10).join(", ")
     throw new Error(
       `${file} contains unbundled relative module references (${unique}). ` +
         `A dependency was not inlined — check mainFields / the dependency's package exports.`,
-    );
+    )
   }
 }
 
-run().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+run().catch(err => {
+  console.error(err)
+  process.exit(1)
+})

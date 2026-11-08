@@ -4,7 +4,10 @@
   "sets": {
     "foundation": {
       "description": "Raw palette and the components built on the theme",
-      "sources": [{ "$ref": "base.tokens.json" }, { "$ref": "components.tokens.json" }]
+      "sources": [
+        { "$ref": "base.tokens.json" },
+        { "$ref": "components.tokens.json" }
+      ]
     },
     "layout": {
       "description": "Written inline: tokens that live in the resolver itself",

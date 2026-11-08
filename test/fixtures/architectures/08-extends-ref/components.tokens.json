@@ -10,7 +10,12 @@
   },
   "button-pill": {
     "$extends": "{button-danger}",
-    "radius": { "$value": { "value": { "$ref": "#/button/radius/$value/value" }, "unit": "rem" } }
+    "radius": {
+      "$value": {
+        "value": { "$ref": "#/button/radius/$value/value" },
+        "unit": "rem"
+      }
+    }
   },
   "link": { "$ref": "#/button-danger/background/$value", "$type": "color" }
 }
