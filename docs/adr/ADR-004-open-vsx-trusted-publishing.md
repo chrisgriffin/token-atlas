@@ -37,8 +37,13 @@ the `OVSX_PAT` question are tracked in chrisgriffin/ops#2002.
 - A release whose trusted-publishing exchange fails now goes red instead of
   green-with-a-notice, so a missing or mismatched open-vsx.org registration
   is visible on the first release after this.
-- The release job can request an OIDC token. It is scoped to this workflow
-  run and is only useful to a registry that trusts this repo and workflow.
+- Every step of the release job can request an OIDC token, not only the
+  Open VSX publish: the shared body has no `permissions:` key, so the grant
+  reaches its `build_command` (`npm ci && …`) and whatever that installs
+  (chrisgriffin/workflows#31). Open VSX trusts that token, so a dependency's
+  install script running in the release job could mint it and publish to
+  `chrisgriffinio.token-atlas`. The token is scoped to the run, but within
+  the run it is a publishing credential.
 - Worth revisiting if Open VSX drops trusted publishing, or if the stub's
-  workflow file or job is renamed, which would no longer match the
-  registration.
+  workflow file is renamed: Open VSX matches its registration on the ID
+  token's `workflow_ref`, the stub's file (chrisgriffin/workflows#22).

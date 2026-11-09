@@ -21,8 +21,10 @@ jobs:
       build_command: npm ci && npm run build && npm run package
       release_assets: ./*.vsix
       marketplace_packages: ./*.vsix
-    # One token per registry the called workflow publishes to: the VS Code
-    # Marketplace and Open VSX. A missing one skips that registry with a notice.
+    # VSCE_PAT publishes to the VS Code Marketplace; unset, the called
+    # workflow skips that registry with a notice. OVSX_PAT publishes to Open
+    # VSX and is preferred over trusted publishing when set; unset, Open VSX
+    # is published by trusted publishing, which fails red on a bad exchange.
     secrets:
       VSCE_PAT: ${{ secrets.VSCE_PAT }}
       OVSX_PAT: ${{ secrets.OVSX_PAT }}
