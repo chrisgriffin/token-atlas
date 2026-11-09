@@ -8,8 +8,13 @@ on:
 jobs:
   release:
     if: github.event.pull_request.merged == true
+    # id-token: write lets the called workflow publish to Open VSX by trusted
+    # publishing (the run's OIDC token, no stored secret). Without it the
+    # release went green with "Open VSX publish skipped: no OVSX_PAT secret,
+    # and no id-token: write" (#87). Not unused: do not remove it.
     permissions:
       contents: write
+      id-token: write
     uses: chrisgriffin/workflows/.github/workflows/_reusable-create-github-release.yml@v1
     with:
       node_version: "22"

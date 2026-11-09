@@ -16,3 +16,4 @@ has a successor; then `# ADR-NNN: <title>`; then `## Context`,
 | [ADR-001](./ADR-001-exported-identifier-matching.md) | 2026-09-07 | accepted | Match an exported identifier to a token by normalized name, with no export config.       |
 | [ADR-002](./ADR-002-js-style-property-names.md)      | 2026-10-24 | proposed | In JS/TS, a DOM style property name counts as a token only when the file imports it.     |
 | [ADR-003](./ADR-003-deprecation-replacement.md)      | 2026-10-24 | proposed | A deprecated token's replacement is the first `{reference}` in its `$deprecated` reason. |
+| [ADR-004](./ADR-004-open-vsx-trusted-publishing.md)  | 2026-11-09 | accepted | Open VSX is published by trusted publishing, not a stored token.                         |
