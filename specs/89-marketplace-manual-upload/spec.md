@@ -4,7 +4,7 @@
 
 ## Overview
 
-Microsoft retires global Azure DevOps personal access tokens on 2026-12-01, and the Marketplace publish uses one (`VSCE_PAT`). After that date the release run skips the Marketplace with only a notice and finishes green, so `docs/releasing.md` is the only thing that tells whoever releases that a manual upload is owed. Today it says the opposite: every release is published to the Marketplace automatically and there are no manual steps.
+Microsoft retires global Azure DevOps personal access tokens on 2026-12-01, and the Marketplace publish uses one (`VSCE_PAT`). After that date the retired token makes `vsce publish` fail and the release run go red, until the `VSCE_PAT` repo secret is deleted; only then does the run skip the Marketplace with a notice and finish green. Either way the Marketplace no longer gets the release on its own, so `docs/releasing.md` is the only thing that tells whoever releases that a manual upload is owed. Today it says the opposite: every release is published to the Marketplace automatically and there are no manual steps.
 
 ## Functional requirements
 
@@ -19,5 +19,7 @@ Microsoft retires global Azure DevOps personal access tokens on 2026-12-01, and 
 
 ## Out of scope
 
-- Changing the release workflow or the `VSCE_PAT` secret: the decided plan is a manual upload, not a new token.
+- Changing the release workflow, or replacing the `VSCE_PAT` secret with a new token: the decided plan is a manual upload, not a new token. Deleting the secret on 2026-12-01 is listed in `docs/releasing.md` § Manual steps alongside the upload, because the shared release workflow skips the Marketplace only when the secret is empty.
 - Open VSX publishing (#87, PR #88).
+
+_Correction (Autofix, round 1): the Overview first said the run skips the Marketplace and finishes green after 2026-12-01 with no other change. The shared `_reusable-create-github-release.yml` skips only when `VSCE_PAT` is empty, and this repo's stub still passes it, so a retired token still set fails the publish; the Overview and this section now say so._

@@ -8,7 +8,7 @@
 
 ## Surfaces touched
 
-- `docs/releasing.md` — opening line, a new § What this repo ships bullet, § Manual steps
+- `docs/releasing.md` — opening line, a new § What this repo ships bullet, § Manual steps (deleting the `VSCE_PAT` secret, then the upload)
 - `CLAUDE.md` § Releasing — the publish sentence
 - `docs/architecture.md` — the "Nothing depends on this repo as code" bullet
 - none — no code, workflow, `package.json`, `.vscodeignore`, test, ruleset, vault note or published surface changes; no cost
