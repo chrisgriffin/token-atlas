@@ -20,14 +20,13 @@ The tests prove that the pure token logic — parsing, alias resolution, validat
 - `npm run typecheck` — `tsc --noEmit`, with a `tsconfig.json` that extends `@chrisgriffin/config/tsconfig.json`.
 - `npm test` — `vitest run`, the whole vitest suite. Needs no build.
 - `npm run build` — `node esbuild.mjs`, producing `dist/extension.js` and `dist/webview.js`.
-- `npm run test:integration` — compiles the integration suite to `out/` and launches a downloaded VS Code through `vscode-test`. It needs a display, so CI runs it as `xvfb-run -a npm run test:integration`.
+- `npm run test:integration` — compiles the integration suite to `out/` and launches a downloaded VS Code through `vscode-test`. It needs a display, so CI runs it as `xvfb-run -a npm run test:integration`. It runs against the **dev** bundle: its own `esbuild.mjs --integration` rebuilds `dist/` in dev mode before launching VS Code, so a failure there keeps a readable stack and sourcemap. The production build and the packaging come after it, so they leave the shipped bundle on disk last.
 - `test/integration-run.mjs` runs `vscode-test` for that last command and names a failure in the step's own output:
   - a test failed → `Integration tests failed`, exit 1 as before;
   - VS Code logged `CodeWindow: detected unresponsive` before any test ran → `VS Code startup hang`, retried once, exit 3 if it hangs again (a recovered run leaves a warning);
   - no test reported and no hang logged → `No integration tests reported`, exit 4.
 - `npm run build:production` — `node esbuild.mjs --production`, the minified build without sourcemaps that the published `.vsix` carries, so `esbuild.mjs`'s self-contained guard reads the bundle that ships, not only the dev one. Minification can turn source the dev build leaves alone into a `"./…"` literal, so a guard verdict on the dev bundle alone is not a verdict on the published one.
 - `npm run package` — `vsce package`, which re-runs `vscode:prepublish` (the same `--production` build; `test/ci/production-build.test.ts` holds the two scripts equal) and produces a `.vsix`. Nothing uploads it, and `.gitignore` keeps it out of git.
-- `npm run test:integration` runs against the **dev** bundle: its own `esbuild.mjs --integration` rebuilds `dist/` in dev mode before launching VS Code, so a failure there keeps a readable stack and sourcemap. The production build and the packaging come after it, so they leave the shipped bundle on disk last.
 
 Narrower runs while working: `npx vitest run test/core/parse.test.ts` for one file, `npx vitest` to watch. `VSCODE_VERSION=1.90.0 npm run test:integration` checks the extension against an older VS Code instead of `stable`.
 
