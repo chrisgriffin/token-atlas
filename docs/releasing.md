@@ -1,6 +1,6 @@
 # Releasing
 
-A release of Token Atlas is a packaged `.vsix` extension, attached to a GitHub Release and published as `chrisgriffinio.token-atlas` to both the VS Code Marketplace and Open VSX.
+A release of Token Atlas is a packaged `.vsix` extension, attached to a GitHub Release and published as `chrisgriffinio.token-atlas` to both the VS Code Marketplace and Open VSX. From 2026-12-01 the Marketplace copy is uploaded by hand (§ Manual steps).
 
 ## How a release happens
 
@@ -45,6 +45,7 @@ through `release-pr.yml`. Merging it runs steps 4 and 5 above.
 - `--githubBranch main` points the README's relative links and screenshots at `main`, so the listing shows what was released rather than whatever is on `develop`. The screenshots are not in the `.vsix`; the listing loads them from GitHub.
 - Every `./*.vsix` the package step produces is attached to the GitHub Release, and the same file is then published to two registries: the VS Code Marketplace with the `VSCE_PAT` secret, and Open VSX (namespace `chrisgriffinio`) by trusted publishing. `create-github-release.yml` grants `id-token: write`, so the run's OIDC token is traded for a short-lived Open VSX publishing token and no stored secret is needed ([ADR-004](./adr/ADR-004-open-vsx-trusted-publishing.md)). It still passes `VSCE_PAT` and `OVSX_PAT` by name; an `OVSX_PAT` secret, if one is ever set, is used instead of trusted publishing.
 - The two publishes are independent. The Marketplace is skipped with a notice in the run log when `VSCE_PAT` is missing, and Open VSX still publishes. A trusted-publishing exchange that fails (the open-vsx.org registration is missing or does not match) fails the step rather than skipping. A publish that fails does not stop the other, and the step fails once both have run. A version already on a registry is a no-op, so re-running a release is safe.
+- Microsoft retires global Azure DevOps personal access tokens on 2026-12-01, and `VSCE_PAT` is one. From that date the Marketplace gets each release's `.vsix` by a manual upload instead (§ Manual steps). The run skips the Marketplace with a notice and still finishes green only once the `VSCE_PAT` repo secret is deleted: while the retired token is still set, `vsce publish` fails and the release run goes red on every release, re-runs included. Open VSX publishing is unaffected.
 - Nothing is published to npm or GitHub Packages.
 - Because the package runs with `--no-dependencies`, `dist/extension.js` must already inline everything it needs; `esbuild.mjs`'s post-build guard is what catches a dependency that did not bundle.
 - To install a release, install `chrisgriffinio.token-atlas` from the Marketplace, or from Open VSX in an editor that uses it, or download its `.vsix` and run `code --install-extension token-atlas-<version>.vsix --force`, then reload the window.
@@ -52,4 +53,6 @@ through `release-pr.yml`. Merging it runs steps 4 and 5 above.
 
 ## Manual steps
 
-None. Merging the `release/next` PR is the only human step: it tags, attaches the `.vsix` and publishes to the Marketplace and Open VSX.
+1. Merge the `release/next` PR. It tags the release, attaches the `.vsix` to the GitHub Release and publishes it to Open VSX, and to the Marketplace until 2026-12-01.
+2. On 2026-12-01, delete the `VSCE_PAT` secret under the repo's **Settings → Secrets and variables → Actions**. The release run skips the Marketplace only when that secret is empty; a retired token still set fails the publish and turns every release run red.
+3. From 2026-12-01, upload that `.vsix` to the Marketplace by hand: download `token-atlas-<version>.vsix` from the GitHub Release's assets, open the `chrisgriffinio` publisher's manage page (`https://marketplace.visualstudio.com/manage/publishers/chrisgriffinio`), choose **Update** on Token Atlas, and upload the file. The release run cannot do it: the Marketplace token it used is a global PAT, retired that day.
