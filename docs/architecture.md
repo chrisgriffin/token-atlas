@@ -75,7 +75,7 @@ npm run package           # vsce package --no-dependencies --githubBranch main â
 
 To use it: press <kbd>F5</kbd> in VS Code ("Run Token Atlas Extension"), which opens an Extension Development Host with the extension loaded, then open one of the token files in `examples/` or `fixtures/`.
 
-The gate CI runs, and the one to run before pushing, is those commands in order: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`. CI wraps the last one in `xvfb-run -a` because it needs a display.
+The gate CI runs, and the one to run before pushing, is those commands in order: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration && npm run build:production && npm run package`. CI wraps `test:integration` in `xvfb-run -a` because it needs a display; the last two build and package the minified bundle the `.vsix` ships.
 
 ## Where to look next
 

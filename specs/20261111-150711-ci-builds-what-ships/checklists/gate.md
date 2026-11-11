@@ -69,7 +69,7 @@
 ## Ambiguities & Conflicts
 
 - [x] CHK035 Is it unambiguous whether the gate's new steps run before or after the integration suite? [Ambiguity, Plan § Technical context, Tasks §T007] — after, with the reason and the rejected alternative both written down.
-- [ ] CHK036 Does the spec resolve whether the ordering decision deserves an ADR? [Ambiguity, Plan § Surfaces touched, Tasks §T023] — **left open, deliberately.** The plan says an ADR is plausible and hands the call to the build, with T023 requiring an answer either way in the pull request. Open because the judgment belongs to whoever sees the choice hold up in review, not to grooming — and leaving it open is what keeps T023 from being skipped.
+- [x] CHK036 Does the spec resolve whether the ordering decision deserves an ADR? [Ambiguity, Plan § Surfaces touched, Tasks §T023] — **left open, deliberately.** The plan says an ADR is plausible and hands the call to the build, with T023 requiring an answer either way in the pull request. Open because the judgment belongs to whoever sees the choice hold up in review, not to grooming — and leaving it open is what keeps T023 from being skipped. **Resolved at build: no ADR.** `test:integration` rebuilds `dist/` in dev mode itself (`esbuild.mjs --integration`), so the gate's order does not choose which bundle it runs against; the "decision" has no live alternative to record, and `docs/testing.md` states the fact.
 
 ## Notes
 
