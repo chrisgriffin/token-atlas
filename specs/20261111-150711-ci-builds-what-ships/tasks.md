@@ -41,7 +41,7 @@ One task per `## Surfaces touched` line in the plan, in its order.
 - [x] T019 `docs/testing.md` — the gate's chain with the two new steps, what each is for, and which build `test:integration` runs against.
 - [x] T020 `docs/releasing.md` — says the production build and the packaging are green before the release pull request merges, so the release job is no longer the first place they run.
 - [x] T021 `CLAUDE.md` — the Commands block gains `build:production`; the Build gate line lists the new chain; invariant 2 says the guard runs on the minified bundle in CI. Then `wc -c CLAUDE.md` is under 8500 and the gate passes on it.
-- [ ] T022 cost — read the `build / ci` job's duration before and after and quote both in the pull request, with whether it crosses a billed-minute boundary. Measured from the job, never estimated.
+- [x] T022 cost — read the `build / ci` job's duration before and after and quote both in the pull request, with whether it crosses a billed-minute boundary. Measured from the job, never estimated. Measured: before, 104–130 s on the last five green runs (#95, #94, #90); after, 120 s on a017993 (job 130633075221, 15:51:24 to 15:53:24), of which the two new steps took about 1.7 s (log: integration exit 15:53:18.54, `Packaged:` 15:53:20.21). 120 s bills as 2 minutes, as do four of the five baseline runs (the 130 s one billed 3), so no billed-minute boundary is crossed.
 - [x] T023 `docs/adr/` — decide whether FR-004's ordering choice warrants an ADR and write one if so; say either way in the pull request.
 - [x] T024 none else — confirm in the pull request: no reusable workflow body in chrisgriffin/workflows touched, no required check renamed, and `contributes`, the commands and the schema unchanged.
 
