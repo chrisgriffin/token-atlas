@@ -42,6 +42,12 @@ describe("stub permissions — a called workflow cannot elevate past its caller"
     expect(job("create-github-release")).toMatch(/^ {6}contents: write$/m)
   })
 
+  it("#87 create-github-release grants id-token: write so Open VSX publishes by trusted publishing, and nothing more", () => {
+    expect(job("create-github-release")).toMatch(
+      /^ {4}permissions:\n {6}contents: write\n {6}id-token: write\n {4}uses:/m,
+    )
+  })
+
   it("build-check grants contents + the packages read its callee requires", () => {
     const text = job("build-check")
     expect(text).toMatch(/^ {6}contents: read\n {6}packages: read$/m)
