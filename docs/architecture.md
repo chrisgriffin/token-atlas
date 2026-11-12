@@ -57,25 +57,26 @@ _Reopen Editor With… → Token Editor_ hands the file to `host/tokenEditorProv
 - **The DTCG spec** (Design Tokens Format Module 2025.10) is the external contract the core is written against. It is an inbound dependency only — the repo tracks the spec, nothing flows back.
 - **Runtime dependencies** are `jsonc-parser` (format-preserving edits), `colorjs.io` (colour-space maths), and React for the webview. All are bundled into `dist/`, so an installed extension has no `node_modules`.
 - **CI.** Every workflow in `.github/workflows/` is a thin trigger stub calling one of the `_reusable-*.yml` workflows in the public **[chrisgriffin/workflows](https://github.com/chrisgriffin/workflows)** repo (at its floating `v1` tag, so a release there is what changes CI here), passing this repo's own facts as inputs (the gate chain, the `CLAUDE.md` byte budget, the docs it owes, the docs-only paths), so a change to CI or the release machinery reaches this repo without a PR here. Local agent tooling is never committed, and `.gitignore`, `.prettierignore` and `.vscodeignore` all list it.
-- **Nothing depends on this repo as code.** There is no npm package; the only output is the `.vsix` each release attaches to its GitHub Release and publishes as `chrisgriffinio.token-atlas` to the VS Code Marketplace and Open VSX.
+- **Nothing depends on this repo as code.** There is no npm package; the only output is the `.vsix` each release attaches to its GitHub Release and publishes as `chrisgriffinio.token-atlas` to the VS Code Marketplace and Open VSX (the Marketplace by a manual upload from 2026-12-01, [`releasing.md`](releasing.md) § Manual steps).
 
 ## Running it
 
 ```bash
 npm install
-npm run build             # esbuild → dist/extension.js + dist/webview.js
 npm run watch             # rebuild on change
-npm test                  # vitest: core, webview and repo-shape tests
-npm run typecheck         # tsc --noEmit
 npm run format:check      # prettier, with the shared @chrisgriffin/config style
 npm run lint              # eslint, from eslint.config.mjs on the shared base
+npm run typecheck         # tsc --noEmit
+npm test                  # vitest: core, webview and repo-shape tests
+npm run build             # esbuild → dist/extension.js + dist/webview.js
 npm run test:integration  # the extension inside a downloaded VS Code
+npm run build:production  # the minified bundle the .vsix ships
 npm run package           # vsce package --no-dependencies --githubBranch main → .vsix
 ```
 
 To use it: press <kbd>F5</kbd> in VS Code ("Run Token Atlas Extension"), which opens an Extension Development Host with the extension loaded, then open one of the token files in `examples/` or `fixtures/`.
 
-The gate CI runs, and the one to run before pushing, is those commands in order: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`. CI wraps the last one in `xvfb-run -a` because it needs a display.
+The gate CI runs, and the one to run before pushing, is the commands after `watch` above, in that order: `npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration && npm run build:production && npm run package`. CI wraps `test:integration` in `xvfb-run -a` because it needs a display; the last two build and package the minified bundle the `.vsix` ships.
 
 ## Where to look next
 

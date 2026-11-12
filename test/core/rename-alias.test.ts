@@ -1,8 +1,9 @@
 /**
- * Rename under the deprecation workflow (spec 019, #36): the old name stays
- * as a deprecated alias of the new one. Each edge case the issue names has a
- * test here, and every case applies the edits with jsonc-parser's
- * `applyEdits`, which throws on overlapping edits.
+ * Rename under the deprecation workflow (spec 019): the old name stays
+ * as a deprecated alias of the new one. Each core edge case the spec names
+ * has a test here; the sixth, generated files, is tested in
+ * `test/integration/deprecation-workflow.test.ts`. Every case applies the
+ * edits with jsonc-parser's `applyEdits`, which throws on overlapping edits.
  */
 import { describe, expect, it } from "vitest"
 import { applyEdits } from "jsonc-parser"

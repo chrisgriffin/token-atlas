@@ -30,7 +30,7 @@ const ALLOWED = [
   /^media\/icon\.png$/,
   // `contributes.jsonValidation`: completion and checks in token-atlas.lint.json.
   /^schemas\/token-atlas\.lint\.schema\.json$/,
-  // Built by `npm run build`, which CI runs after the tests — so these are
+  // Built by `npm run build` and `build:production`, which CI runs after the tests — so these are
   // present locally and absent on a clean checkout. Either is fine.
   /^dist\/(extension|webview)\.js$/,
 ]
