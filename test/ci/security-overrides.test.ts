@@ -20,19 +20,38 @@ const VULNERABLE: Record<
   minimatch: { from: "7.0.0", patched: "11.0.1", issue: "#92" },
 }
 
-// A prerelease sorts before its release, as in semver (#98): 11.0.1-rc.0 < 11.0.1.
-// Two prereleases of one release compare as plain strings, enough for these bounds.
+// Semver precedence (#98): build metadata (`+…`) is ignored, a prerelease sorts
+// before its release (11.0.1-rc.0 < 11.0.1), and two prereleases of one release
+// compare identifier by identifier: numeric ones as numbers, below any
+// alphanumeric one, and a shorter set below a longer one it prefixes.
 const split = (v: string) => {
-  const [core, ...pre] = v.split("-")
-  return { core: core.split(".").slice(0, 3).map(Number), pre: pre.join("-") }
+  const [core, ...pre] = v.split("+")[0].split("-")
+  return {
+    core: core.split(".").slice(0, 3).map(Number),
+    pre: pre.length ? pre.join("-").split(".") : [],
+  }
+}
+const NUMERIC = /^\d+$/
+const compareIds = (a: string, b: string) => {
+  const [an, bn] = [NUMERIC.test(a), NUMERIC.test(b)]
+  if (an && bn) return Number(a) - Number(b)
+  if (an !== bn) return an ? -1 : 1
+  return a < b ? -1 : a > b ? 1 : 0
 }
 const atLeast = (v: string, min: string) => {
   const [a, b] = [split(v), split(min)]
   for (let i = 0; i < 3; i++)
     if (a.core[i] !== b.core[i]) return a.core[i] > b.core[i]
-  if (!a.pre || !b.pre) return !a.pre
-  return a.pre >= b.pre
+  if (!a.pre.length || !b.pre.length) return !a.pre.length
+  for (let i = 0; i < Math.min(a.pre.length, b.pre.length); i++) {
+    const c = compareIds(a.pre[i], b.pre[i])
+    if (c !== 0) return c > 0
+  }
+  return a.pre.length >= b.pre.length
 }
+// The one range predicate: the lockfile check and the #98 cases both call it.
+const inRange = (v: string, from: string, patched: string) =>
+  atLeast(v, from) && !atLeast(v, patched)
 
 describe("security overrides", () => {
   for (const [name, { from, patched, issue }] of Object.entries(VULNERABLE)) {
@@ -43,27 +62,45 @@ describe("security overrides", () => {
         .filter(([path]) => path.endsWith(`node_modules/${name}`))
         .map(([path, entry]) => ({ path, version: entry.version }))
       expect(copies.length).toBeGreaterThan(0)
-      expect(
-        copies.filter(
-          c => atLeast(c.version, from) && !atLeast(c.version, patched),
-        ),
-      ).toEqual([])
+      expect(copies.filter(c => inRange(c.version, from, patched))).toEqual([])
     })
   }
 })
 
 describe("#98 version comparison orders a prerelease before its release", () => {
-  const vulnerable = (v: string) => atLeast(v, "7.0.0") && !atLeast(v, "11.0.1")
+  const { from, patched } = VULNERABLE.minimatch
   it.each([
     ["11.0.1-rc.0", true],
     ["11.0.0", true],
     ["11.0.1", false],
     ["11.0.2", false],
     ["11.0.2-rc.0", false],
+    ["7.0.0+build", true],
+    ["7.0.0+build-1", true],
+    ["11.0.1-rc.0+build", true],
+    ["11.0.1+build", false],
+    ["7.0.0-rc.0", false],
   ])(
-    "a prerelease-aware check of minimatch %s against patched 11.0.1 reports vulnerable=%s",
+    "a prerelease-aware check of minimatch %s against its table range reports vulnerable=%s",
     (v, expected) => {
-      expect(vulnerable(v)).toBe(expected)
+      expect(inRange(v, from, patched)).toBe(expected)
+    },
+  )
+
+  it.each([
+    ["11.0.1-rc.10", "11.0.1-rc.9", true],
+    ["11.0.1-rc.9", "11.0.1-rc.10", false],
+    ["11.0.1-rc.2", "11.0.1-rc.2", true],
+    ["11.0.1-rc.1", "11.0.1-rc", true],
+    ["11.0.1-rc", "11.0.1-rc.1", false],
+    ["11.0.1-alpha", "11.0.1-1", true],
+    ["11.0.1-1", "11.0.1-alpha", false],
+    ["11.0.1-beta", "11.0.1-alpha.9", true],
+    ["11.0.1-rc.10+build", "11.0.1-rc.9", true],
+  ])(
+    "two prerelease versions of one release: %s is at least %s = %s",
+    (v, min, expected) => {
+      expect(atLeast(v, min)).toBe(expected)
     },
   )
 })
