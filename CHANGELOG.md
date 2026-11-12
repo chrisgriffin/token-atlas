@@ -2,6 +2,29 @@
 
 All notable changes to Token Atlas are documented here.
 
+## [1.1.1](https://github.com/chrisgriffin/token-atlas/compare/v1.1.0...v1.1.1) (2026-11-12)
+
+### Bug Fixes
+
+* answer the Evaluator on the production-build gate ([a017993](https://github.com/chrisgriffin/token-atlas/commit/a0179935c41f0bf9a705490f1882919b46a969bc))
+* **deps:** override minimatch and glob past GHSA-g3hv-75wg-m249 ([fc35263](https://github.com/chrisgriffin/token-atlas/commit/fc352635ed6954ab1b482d4380f4baa0af3be0ef))
+* **release:** grant id-token: write so Open VSX publishes by trusted publishing ([6a710e7](https://github.com/chrisgriffin/token-atlas/commit/6a710e7a334f854a8171a53277214ae0e2aabd14))
+* **test:** compare prerelease identifiers and drop build metadata in the security check ([b910d74](https://github.com/chrisgriffin/token-atlas/commit/b910d74bc4d442d0567a0e03abb507d545f0016a))
+* **test:** order a prerelease before its release in the security-overrides check ([9f7221a](https://github.com/chrisgriffin/token-atlas/commit/9f7221a3d05fee3ca1e4ff855156c324a04fad48))
+
+### Documentation
+
+* **release:** correct the stub's secrets comment and ADR-004's token exposure ([075a771](https://github.com/chrisgriffin/token-atlas/commit/075a7715bea8f7308926c693c080495770f89d87))
+* **release:** name deleting VSCE_PAT on 2026-12-01 as the step that keeps the run green ([0c87c80](https://github.com/chrisgriffin/token-atlas/commit/0c87c8045a0398f84a71d825ff79af4255a6296c))
+* **release:** name the manual Marketplace upload owed once global PATs retire on 2026-12-01 ([b839529](https://github.com/chrisgriffin/token-atlas/commit/b83952941f91d192a678384d0b2e990d77db6a54))
+* **spec:** CI builds what ships ([43b8494](https://github.com/chrisgriffin/token-atlas/commit/43b8494e3e6790b505d499e74abc17fc6d6d74eb))
+* **spec:** Dependabot minimatch update fails on every attempt ([b05b277](https://github.com/chrisgriffin/token-atlas/commit/b05b27771221688bf4a3aab675e315077aa92622))
+* **spec:** grant id-token: write so releases reach Open VSX by trusted publishing ([50c9e93](https://github.com/chrisgriffin/token-atlas/commit/50c9e934bfd0fe26e77209ee02d3bbd158baec01))
+* **spec:** record the measured CI time and tick T022 ([c0be18c](https://github.com/chrisgriffin/token-atlas/commit/c0be18cf320fd9c95f8d81e7353db845413fdc22))
+* **spec:** releasing.md says the Marketplace gets a manual .vsix upload from 2026-12-01 ([8fa2e23](https://github.com/chrisgriffin/token-atlas/commit/8fa2e23befafb52cbb5e683d18544996f1843923))
+* **spec:** say the overrides force parents past their declared majors ([abd9b70](https://github.com/chrisgriffin/token-atlas/commit/abd9b70195368359273fa2c1d5f9a7f4e33aacdb))
+* **spec:** two test comments cite a moved issue ([116ef55](https://github.com/chrisgriffin/token-atlas/commit/116ef55bd4df2c2d3624ae5ee04faed8fe9d6ca2))
+
 ## [1.1.0](https://github.com/chrisgriffin/token-atlas/compare/v1.0.0...v1.1.0) (2026-11-07)
 
 ### Features
