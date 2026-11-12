@@ -20,11 +20,18 @@ const VULNERABLE: Record<
   minimatch: { from: "7.0.0", patched: "11.0.1", issue: "#92" },
 }
 
-const parts = (v: string) => v.split(/[.-]/).slice(0, 3).map(Number)
+// A prerelease sorts before its release, as in semver (#98): 11.0.1-rc.0 < 11.0.1.
+// Two prereleases of one release compare as plain strings, enough for these bounds.
+const split = (v: string) => {
+  const [core, ...pre] = v.split("-")
+  return { core: core.split(".").slice(0, 3).map(Number), pre: pre.join("-") }
+}
 const atLeast = (v: string, min: string) => {
-  const [a, b] = [parts(v), parts(min)]
-  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] > b[i]
-  return true
+  const [a, b] = [split(v), split(min)]
+  for (let i = 0; i < 3; i++)
+    if (a.core[i] !== b.core[i]) return a.core[i] > b.core[i]
+  if (!a.pre || !b.pre) return !a.pre
+  return a.pre >= b.pre
 }
 
 describe("security overrides", () => {
@@ -43,4 +50,20 @@ describe("security overrides", () => {
       ).toEqual([])
     })
   }
+})
+
+describe("#98 version comparison orders a prerelease before its release", () => {
+  const vulnerable = (v: string) => atLeast(v, "7.0.0") && !atLeast(v, "11.0.1")
+  it.each([
+    ["11.0.1-rc.0", true],
+    ["11.0.0", true],
+    ["11.0.1", false],
+    ["11.0.2", false],
+    ["11.0.2-rc.0", false],
+  ])(
+    "a prerelease-aware check of minimatch %s against patched 11.0.1 reports vulnerable=%s",
+    (v, expected) => {
+      expect(vulnerable(v)).toBe(expected)
+    },
+  )
 })
