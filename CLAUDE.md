@@ -8,6 +8,7 @@ VS Code extension for editing W3C/DTCG design tokens. **Text-editor-first**: lan
 
 ```bash
 npm run build      # esbuild → dist/extension.js + dist/webview.js
+npm run build:production  # the minified build the .vsix ships
 npm run watch      # rebuild on change
 npm test           # vitest — test/{core,webview,ci,host}, no vscode
 npm run test:integration  # the extension inside a downloaded VS Code (test/integration/)
@@ -33,7 +34,7 @@ The couplings below are the ones no test or CI check catches: touch the left, do
 | If you touch                                                                       | Then                                                                                                                                                                   |
 | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | the `when` clause on `contributes.menus` in `package.json`                        | the `setContext("tokenAtlas.isTokenDocument", …)` call in `src/extension.ts` that feeds it                                                                             |
-| a `dependencies` entry or `mainFields` in `esbuild.mjs`                            | invariant 2: run `npm run build` and read the guard's output — the bundle ships with `--no-dependencies`, so a dep that does not inline breaks activation at runtime   |
+| a `dependencies` entry or `mainFields` in `esbuild.mjs`                            | invariant 2: run `npm run build:production` and read the guard's output — the bundle ships with `--no-dependencies`, so a dep that does not inline breaks activation at runtime   |
 | the `build` job name in `.github/workflows/build-check.yml`                        | the branch ruleset on GitHub, which requires the check named `build / ci` (admin-only; see the comment block at the top of that file)                                 |
 | the local agent-tooling entries in `.prettierignore` / `.gitignore` / `.vscodeignore` | all three are load-bearing: the first two keep the format check green, the third keeps that tooling out of a packaged extension (pinned by `test/ci/vscodeignore-overlay.test.ts`) |
 | a top-level directory tooling drops into the repo (Spec Kit's .specify, local agent tooling, the integration build's out)   | add it to `.vscodeignore`, or it ships inside the packaged extension — `test/ci/package-contents.test.ts` fails on any packaged file outside the allow-list |
@@ -44,7 +45,8 @@ Left out on purpose because a test already covers them: the `package.json` ↔ `
 ## Non-negotiable invariants
 
 1. **Format-preserving writes.** All edits go through jsonc-parser surgical edits (`src/core/serialize.ts`) → ranged `WorkspaceEdit`s. Never `JSON.stringify` a whole document — clean git diffs are the product's reason to exist.
-2. **Self-contained extension bundle.** We package with `--no-dependencies`, so `dist/extension.js` must inline everything. esbuild uses `mainFields: ["module","main"]` (jsonc-parser's UMD `main` is un-bundleable) and `esbuild.mjs` has a post-build guard that fails on leftover relative requires. A bundle that misses this installs fine and then fails to activate — don't regress it.
+2. **Self-contained extension bundle.** We package with `--no-dependencies`, so `dist/extension.js` must inline everything. esbuild uses `mainFields: ["module","main"]` (jsonc-parser's UMD `main` is un-bundleable) and `esbuild.mjs` has a post-build guard that fails on leftover relative requires; CI runs it on the shipped bundle (`build:production`).
+   A bundle that misses this installs fine and then fails to activate — don't regress it.
 3. **Content-based detection.** Language features register for `json`/`jsonc` but no-op unless the document sniffs as DTCG (`"$value"`/`"$type"`) or has the format's extension (`.tokens`, `.tokens.json`), which is how an empty new file counts; a resolver document (`resolutionOrder` at the root) never counts. Never spam ordinary JSON. Cross-file indexing scans `tokenAtlas.include` globs.
 4. **Local-first resolution.** The active document's tokens win over the workspace index (unsaved edits + multi-brand identical paths depend on this — pinned in `test/core/architectures.test.ts`).
 
@@ -68,5 +70,5 @@ workflow in the public [`chrisgriffin/workflows`](https://github.com/chrisgriffi
 repo at its `v1` tag.
 
 **Build gate:**
-`npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration`
-(CI wraps the last in `xvfb-run -a`).
+`npm run format:check && npm run lint && npm run typecheck && npm test && npm run build && npm run test:integration && npm run build:production && npm run package`
+(CI wraps `test:integration` in `xvfb-run -a`). The last two build and package the mode that ships.

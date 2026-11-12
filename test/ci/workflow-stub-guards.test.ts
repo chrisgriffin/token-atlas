@@ -144,14 +144,18 @@ describe("every stub calls the public workflows repo at v1, by named secrets", (
 describe("build-check is this repo's one CI gate", () => {
   it("carries the whole gate chain into the called workflow", () => {
     const text = job("build-check")
+    const lines = text.split("\n").map(line => line.trim())
     for (const command of [
       "npm run format:check",
       "npm run lint",
       "npm run typecheck",
       "npm test",
       "npm run build",
+      "xvfb-run -a npm run test:integration",
+      "npm run build:production",
+      "npm run package",
     ]) {
-      expect(text, `gate chain is missing \`${command}\``).toContain(command)
+      expect(lines, `gate chain is missing \`${command}\``).toContain(command)
     }
   })
 
