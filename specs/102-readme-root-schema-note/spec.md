@@ -20,4 +20,4 @@ A reference like `{spacing.2.$root}` resolves correctly in Token Atlas, but a fi
 
 ## Out of scope
 
-- Any change to how Token Atlas validates or resolves `$root` references: PR #101 already pinned that behaviour with tests.
+- Any change to how Token Atlas validates or resolves `$root` references: PR #101 (open, not yet merged) pins that behaviour with tests.
