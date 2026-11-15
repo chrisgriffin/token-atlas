@@ -151,6 +151,8 @@ Each rule is `"off"`, `"warn"` (the default), or `"error"`. Findings show up in 
 
 Token Atlas targets the Design Tokens Format Module **2025.10**, the first stable release: groups, `$type` inheritance, `{alias}` and `$ref` references, `$extends`, validation of every value type, and color math through [colorjs.io](https://colorjs.io). Color values are objects (`{ "colorSpace": "srgb", "components": [0.231, 0.51, 0.965] }`) and dimensions are `{ "value": 16, "unit": "px" }`. The quick fix in the editor upgrades older string values for you.
 
+A group's `$root` token and references through it, like `{spacing.2.$root}`, are supported. If your file declares the DTCG 2025.10 schema in `$schema`, VS Code's own JSON validation may still flag such a reference with an "Incorrect type" warning (for example `Incorrect type. Expected "object".` on a dimension or color, or `Expected "number".` on a number): that warning comes from the schema, whose reference pattern rejects a path segment starting with `$`, not from Token Atlas. Remove the `$schema` line, or ignore that one warning.
+
 ## Contributing
 
 How the code is laid out: [docs/architecture.md](docs/architecture.md). Press F5 to run the extension against `examples/` in a development host.
