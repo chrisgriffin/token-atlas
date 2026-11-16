@@ -42,6 +42,12 @@ describe("stub permissions — a called workflow cannot elevate past its caller"
     expect(job("create-github-release")).toMatch(/^ {6}contents: write$/m)
   })
 
+  it("#87 create-github-release grants id-token: write so Open VSX publishes by trusted publishing, and nothing more", () => {
+    expect(job("create-github-release")).toMatch(
+      /^ {4}permissions:\n {6}contents: write\n {6}id-token: write\n {4}uses:/m,
+    )
+  })
+
   it("build-check grants contents + the packages read its callee requires", () => {
     const text = job("build-check")
     expect(text).toMatch(/^ {6}contents: read\n {6}packages: read$/m)
@@ -138,14 +144,18 @@ describe("every stub calls the public workflows repo at v1, by named secrets", (
 describe("build-check is this repo's one CI gate", () => {
   it("carries the whole gate chain into the called workflow", () => {
     const text = job("build-check")
+    const lines = text.split("\n").map(line => line.trim())
     for (const command of [
       "npm run format:check",
       "npm run lint",
       "npm run typecheck",
       "npm test",
       "npm run build",
+      "xvfb-run -a npm run test:integration",
+      "npm run build:production",
+      "npm run package",
     ]) {
-      expect(text, `gate chain is missing \`${command}\``).toContain(command)
+      expect(lines, `gate chain is missing \`${command}\``).toContain(command)
     }
   })
 

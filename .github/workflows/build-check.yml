@@ -30,5 +30,7 @@ jobs:
         npm test
         npm run build
         xvfb-run -a npm run test:integration
+        npm run build:production
+        npm run package
     secrets:
       NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

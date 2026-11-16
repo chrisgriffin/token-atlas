@@ -109,6 +109,39 @@ describe("core model fixes — reading spec-valid files", () => {
     expect(validate(model).issues).toEqual([])
   })
 
+  it("#100 $root alias resolves through the workspace index", () => {
+    // The reporter's shape: a numeric group key whose base value is `$root`,
+    // defined in another file and reached only through the external index.
+    const rem = (value: number) => ({ value, unit: "rem" })
+    const primitives = parseTokens(
+      JSON.stringify({
+        spacing: {
+          $description: "Used for padding, margin, or gap.",
+          "2": {
+            $root: { $value: rem(0.125), $type: "dimension" },
+            negative: { $value: rem(-0.125), $type: "dimension" },
+          },
+        },
+      }),
+    )
+    const external = indexTokens(primitives)
+    expect(external.has("spacing.2.$root")).toBe(true)
+
+    const theme = parseTokens(
+      JSON.stringify({
+        gap: {
+          $type: "dimension",
+          viaRoot: { $value: "{spacing.2.$root}" },
+          viaNegative: { $value: "{spacing.2.negative}" },
+        },
+      }),
+    )
+    const index = resolveAliases(theme, external)
+    expect(index.get("gap.viaRoot")!.resolvedValue).toEqual(rem(0.125))
+    expect(index.get("gap.viaNegative")!.resolvedValue).toEqual(rem(-0.125))
+    expect(validate(theme, external).issues).toEqual([])
+  })
+
   it("keeps every token in a file with comments and trailing commas", () => {
     const text = `{
   // brand colors

@@ -72,6 +72,42 @@ it("publishes nothing for a token document closed while it was checked", async (
   ).toBe(false)
 })
 
+it("#100 reports nothing on a $root alias to a token in another file", async () => {
+  // The path the extension runs: the workspace scan, the external index and
+  // the local scope assembled by `computeDiagnostics`, not core alone.
+  const rem = (value: number) => ({ value, unit: "rem" })
+  stub.disk.set(
+    "/ws/spacing.tokens.json",
+    JSON.stringify({
+      spacing: {
+        $description: "Used for padding, margin, or gap.",
+        "2": {
+          $root: { $value: rem(0.125), $type: "dimension" },
+          negative: { $value: rem(-0.125), $type: "dimension" },
+        },
+      },
+    }),
+  )
+  const editor = stub.openDocument(
+    "/ws/gap.tokens.json",
+    JSON.stringify({
+      gap: {
+        $type: "dimension",
+        viaRoot: { $value: "{spacing.2.$root}" },
+        viaNegative: { $value: "{spacing.2.negative}" },
+        broken: { $value: "{spacing.2.missing}" },
+      },
+    }),
+  )
+  const key = editor.doc.uri.toString()
+  const published = () => stub.collections.get("token-atlas")!.get(key)
+  // The broken alias proves the check ran; only it may be reported.
+  await waitFor(() => (published()?.length ?? 0) > 0, "the check to publish")
+  expect(published()!.map(d => d.message)).toEqual([
+    "Unresolved reference: {spacing.2.missing}",
+  ])
+})
+
 it("publishes nothing for a stylesheet closed while it was checked", async () => {
   stub.settings.global.hardcodedValues = "warning"
   stub.disk.set(
